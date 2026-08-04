@@ -1,10 +1,12 @@
 {
   "name": "chien-binh-dich",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "private": true,
   "type": "module",
   "scripts": {
     "test": "node --test tests/*.test.js",
-    "lint:content": "node src/data/validateContent.js"
+    "lint:content": "node src/data/validateContent.js",
+    "check:syntax": "node scripts/checkSyntax.mjs",
+    "ci": "npm run check:syntax && npm run lint:content && npm test"
   }
 }
