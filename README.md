@@ -39,12 +39,17 @@ Primary classroom viewport:
 Mobile target:
 - iPhone 11 class viewport ~414 × 896 CSS px
 
-## Run checks
+## Quality gates
 
 ```bash
-npm test
-npm run lint:content
+npm run ci
 ```
+
+`npm run ci` là SSOT cho kiểm tra local và GitHub Actions: syntax → content lint → automated tests.
+
+## CI/CD
+
+GitHub Actions chạy quality gates trên mọi pull request và push vào `main`. Chi tiết release contract, Vercel Git integration và rollback nằm ở [`docs/ci-cd.md`](docs/ci-cd.md).
 
 ## Deploy
 
