@@ -1,9 +1,13 @@
 import { evaluateAnswer } from './answerEvaluator.js';
-import { getFirstTryCorrectCount, hasPassedScore, scorePercentFromAttempts } from './scoreEngine.js';
+import { getMasteryCounts, masteryDisplayPercent, masteryPercentFromAttempts, masteryUnitPercent } from './masteryEngine.js';
+import { advanceLearningPrompt, queueRetry } from './retryScheduler.js';
 
-export const SESSION_SCHEMA_VERSION = 2;
+export const SESSION_SCHEMA_VERSION = 3;
 
 export function createSession({ studentName, set, now = Date.now() }) {
+  const firstItem = set.items[0];
+  if (!firstItem) throw new Error('Set must contain at least one item.');
+
   return {
     schemaVersion: SESSION_SCHEMA_VERSION,
     id: createSessionId(now),
@@ -12,111 +16,155 @@ export function createSession({ studentName, set, now = Date.now() }) {
     setVersion: set.version ?? 1,
     startedAt: now,
     completedAt: null,
-    currentIndex: 0,
-    attempts: [],
-    status: 'in_progress'
+    submittedAt: null,
+    status: 'active',
+    currentItemId: firstItem.id,
+    currentPromptKind: 'main',
+    promptIndex: 0,
+    mainCursor: 1,
+    retryQueue: [],
+    attempts: []
   };
 }
 
 export function submitAnswer({ session, set, answer, attemptMeta = {}, now = Date.now() }) {
-  const item = set.items[session.currentIndex];
-  if (!item) return { session, event: { type: 'finished' } };
+  if (session.status !== 'active') return { session, event: { type: session.status } };
+  const item = set.items.find(candidate => candidate.id === session.currentItemId);
+  if (!item) throw new Error(`Current item not found: ${session.currentItemId}`);
 
-  const previousAttempts = session.attempts.filter(attempt => attempt.itemId === item.id);
-  const attemptNumber = previousAttempts.length + 1;
-  const hasSeenAnswer = previousAttempts.some(attempt => attempt.answerRevealedAfterAttempt === true);
+  const exposureAttempts = session.attempts.filter(attempt => attempt.promptIndex === session.promptIndex);
+  const itemAttempts = session.attempts.filter(attempt => attempt.itemId === item.id);
+  const attemptNumber = exposureAttempts.length + 1;
+  const itemAttemptNumber = itemAttempts.length + 1;
+  const hadWrongThisExposure = exposureAttempts.some(attempt => !attempt.correct);
+  const hasSeenAnswer = exposureAttempts.some(attempt => attempt.answerRevealedAfterAttempt === true);
+  const failedAttemptsBefore = exposureAttempts.filter(attempt => !attempt.correct).length;
   const result = evaluateAnswer(answer, item.en);
   const submittedAt = finiteTime(attemptMeta.submittedAt, now);
   const startedAt = finiteTime(attemptMeta.startedAt, submittedAt);
-  const failedAttemptsBefore = previousAttempts.filter(attempt => !attempt.correct).length;
   const revealAfterAttempt = !result.correct && (hasSeenAnswer || failedAttemptsBefore + 1 >= 2);
-  const inputMethod = normalizeInputMethod(attemptMeta.inputMethod);
+  const masteryDeltaUnits = result.correct ? (hadWrongThisExposure ? 0 : 1) : -1;
 
   const attempt = {
-    id: `${session.id}-${item.id}-${attemptNumber}`,
+    id: `${session.id}-p${session.promptIndex}-a${attemptNumber}`,
     itemId: item.id,
+    promptIndex: session.promptIndex,
+    promptKind: session.currentPromptKind,
     attemptNumber,
+    itemAttemptNumber,
     submittedAnswer: result.normalizedInput,
     correct: result.correct,
-    result: resolveAttemptResult({ correct: result.correct, attemptNumber, revealAfterAttempt }),
+    result: resolveAttemptResult({ correct: result.correct, hadWrongThisExposure, revealAfterAttempt }),
+    masteryDeltaUnits,
     startedAt,
     submittedAt,
     responseDurationMs: Math.max(0, submittedAt - startedAt),
-    inputMethod,
+    inputMethod: normalizeInputMethod(attemptMeta.inputMethod),
     pasteDetected: Boolean(attemptMeta.pasteDetected),
     answerRevealedBeforeAttempt: hasSeenAnswer,
     answerRevealedAfterAttempt: revealAfterAttempt || hasSeenAnswer
   };
 
-  const nextSession = structuredClone(session);
+  let nextSession = structuredClone(session);
   nextSession.attempts.push(attempt);
 
   if (!result.correct) {
+    nextSession.retryQueue = queueRetry(nextSession.retryQueue, item.id, session.promptIndex);
     return {
       session: nextSession,
       event: {
         type: revealAfterAttempt ? 'incorrect_reveal' : 'incorrect_retry',
         entered: result.normalizedInput,
         revealAnswer: revealAfterAttempt ? item.en : null,
-        attemptNumber
+        attemptNumber,
+        masteryDeltaUnits,
+        masteryDeltaPercent: round2(masteryDeltaUnits * masteryUnitPercent(set.items.length)),
+        mastery: masteryDisplayPercent(nextSession.attempts, set.items.length)
       }
     };
   }
 
-  nextSession.currentIndex += 1;
-  const completed = nextSession.currentIndex >= set.items.length;
-  if (completed) {
-    nextSession.completedAt = submittedAt;
-    nextSession.status = 'completed';
-  }
+  const wasCorrection = hadWrongThisExposure;
+  nextSession = advanceLearningPrompt(nextSession, set);
+  const mastery = masteryDisplayPercent(nextSession.attempts, set.items.length);
 
-  const score = scorePercentFromAttempts(nextSession.attempts, set.items.length);
   return {
     session: nextSession,
     event: {
-      type: attemptNumber === 1 ? 'correct_first_try' : 'corrected',
-      completed,
-      score,
-      passed: completed ? hasPassedScore(nextSession.attempts, set.items.length, set.passThreshold) : false
+      type: wasCorrection ? 'correction' : 'retrieval_success',
+      answer: item.en,
+      masteryDeltaUnits,
+      masteryDeltaPercent: round2(masteryDeltaUnits * masteryUnitPercent(set.items.length)),
+      mastery,
+      passed: nextSession.status === 'passed'
     }
   };
 }
 
+export function abandonSession(session, now = Date.now()) {
+  if (session.status === 'submitted' || session.status === 'abandoned') return session;
+  return {
+    ...session,
+    status: 'abandoned',
+    completedAt: now
+  };
+}
+
+export function submitPassedSession(session, now = Date.now()) {
+  if (session.status !== 'passed') return session;
+  return {
+    ...session,
+    status: 'submitted',
+    submittedAt: now,
+    completedAt: now
+  };
+}
+
+export function getCurrentItem(session, set) {
+  return set.items.find(item => item.id === session.currentItemId) ?? null;
+}
+
 export function getSessionMetrics(session, set, now = Date.now()) {
-  const total = set.items.length;
   const attempts = session.attempts ?? [];
-  const firstTryCorrect = getFirstTryCorrectCount(attempts);
-  const score = scorePercentFromAttempts(attempts, total);
-  const correctedItemIds = new Set();
-  const revealedItemIds = new Set();
-  const groupedAttempts = new Map();
-
-  for (const attempt of attempts) {
-    if (!groupedAttempts.has(attempt.itemId)) groupedAttempts.set(attempt.itemId, []);
-    groupedAttempts.get(attempt.itemId).push(attempt);
-  }
-
-  for (const item of set.items) {
-    const itemAttempts = groupedAttempts.get(item.id) ?? [];
-    if (itemAttempts.length > 1 && itemAttempts.some(attempt => attempt.correct)) correctedItemIds.add(item.id);
-    if (itemAttempts.some(attempt => attempt.answerRevealedAfterAttempt)) revealedItemIds.add(item.id);
-  }
+  const masteryExact = masteryPercentFromAttempts(attempts, set.items.length);
+  const mastery = masteryDisplayPercent(attempts, set.items.length);
+  const counts = getMasteryCounts(attempts);
+  const completedMainIds = new Set(
+    attempts.filter(attempt => attempt.promptKind === 'main' && attempt.correct).map(attempt => attempt.itemId)
+  );
+  const correctedPromptIds = new Set(
+    attempts.filter(attempt => attempt.result === 'correction').map(attempt => attempt.promptIndex)
+  );
+  const revealedPromptIds = new Set(
+    attempts.filter(attempt => attempt.answerRevealedAfterAttempt).map(attempt => attempt.promptIndex)
+  );
+  const retryPromptIds = new Set(
+    attempts.filter(attempt => attempt.promptKind === 'retry').map(attempt => attempt.promptIndex)
+  );
 
   return {
-    total,
-    completedItems: Math.min(session.currentIndex, total),
-    firstTryCorrect,
-    correctedCount: correctedItemIds.size,
-    revealedCount: revealedItemIds.size,
+    total: set.items.length,
+    completedMainItems: completedMainIds.size,
+    mainComplete: completedMainIds.size >= set.items.length,
     totalAttempts: attempts.length,
-    score,
-    passed: session.status === 'completed' && score >= set.passThreshold,
+    retrievalSuccesses: counts.gains,
+    retrievalErrors: counts.losses,
+    corrections: correctedPromptIds.size,
+    revealedCount: revealedPromptIds.size,
+    retryCount: retryPromptIds.size,
+    mastery,
+    masteryExact,
+    masteryUnit: masteryUnitPercent(set.items.length),
+    thresholdReached: masteryExact >= set.passThreshold,
+    passed: session.status === 'passed' || session.status === 'submitted',
+    submitted: session.status === 'submitted',
+    abandoned: session.status === 'abandoned',
     durationMs: (session.completedAt ?? now) - session.startedAt
   };
 }
 
-function resolveAttemptResult({ correct, attemptNumber, revealAfterAttempt }) {
-  if (correct) return attemptNumber === 1 ? 'correct_first_try' : 'corrected';
+function resolveAttemptResult({ correct, hadWrongThisExposure, revealAfterAttempt }) {
+  if (correct) return hadWrongThisExposure ? 'correction' : 'retrieval_success';
   return revealAfterAttempt ? 'incorrect_reveal' : 'incorrect_retry';
 }
 
@@ -126,6 +174,10 @@ function normalizeInputMethod(value) {
 
 function finiteTime(value, fallback) {
   return Number.isFinite(value) ? value : fallback;
+}
+
+function round2(value) {
+  return Math.round((value + Number.EPSILON) * 100) / 100;
 }
 
 function createSessionId(now) {

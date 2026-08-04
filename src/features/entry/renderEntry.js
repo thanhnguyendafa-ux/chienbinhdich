@@ -1,11 +1,11 @@
-export function renderEntry({ root, lastName, resumeSession, onStart, onResume }) {
+export function renderEntry({ root, lastName, directSet = null, resumeSession, onStart, onResume }) {
   root.innerHTML = `
     <main class="page page-centered entry-page">
       <section class="entry-card">
         <div class="brand-lockup centered"><span class="brand-seal">MRT</span><span>English Practice</span></div>
         <p class="eyebrow">GLOBAL SUCCESS · OUTPUT TRAINING</p>
         <h1>Chiến Binh Dịch</h1>
-        <p class="lead">Nhớ tiếng Anh từ đơn vị nhỏ, rồi tự xây lên câu hoàn chỉnh.</p>
+        ${directSet ? `<div class="direct-set"><strong>${esc(directSet.unit)}</strong><span>${esc(directSet.title)}</span></div>` : '<p class="lead">Nhớ tiếng Anh từ đơn vị nhỏ, rồi tự xây lên câu hoàn chỉnh.</p>'}
         <div class="learning-path" aria-label="Từ đến câu"><span>TỪ</span><i></i><span>CỤM TỪ</span><i></i><span>CÂU</span></div>
 
         ${resumeSession ? `<button class="resume-card" id="resume-btn" type="button"><span>Tiếp tục bài đang làm</span><strong>${esc(resumeSession.studentName)}</strong></button>` : ''}
@@ -13,8 +13,8 @@ export function renderEntry({ root, lastName, resumeSession, onStart, onResume }
         <form id="name-form" class="entry-form">
           <label for="student-name">Tên của em</label>
           <input id="student-name" maxlength="50" autocomplete="name" value="${esc(lastName)}" placeholder="Ví dụ: Minh Anh" required />
-          <p class="input-note">Tên và thời gian làm bài sẽ xuất hiện trong báo cáo cuối.</p>
-          <button class="primary-btn" type="submit">Bắt đầu học</button>
+          <p class="input-note">${directSet ? 'Nhập tên rồi bắt đầu ngay đúng bài thầy đã gửi.' : 'Tên và thời gian làm bài sẽ xuất hiện trong báo cáo cuối.'}</p>
+          <button class="primary-btn" type="submit">${directSet ? 'Bắt đầu bài này' : 'Bắt đầu học'}</button>
         </form>
       </section>
     </main>`;
