@@ -1,13 +1,15 @@
 export function renderEntry({ root, lastName, resumeSession, onStart, onResume }) {
   root.innerHTML = `
-    <main class="page page-centered">
-      <section class="hero-card entry-card">
-        <div class="brand-mark" aria-hidden="true">⚔️</div>
-        <p class="eyebrow">MRT ENGLISH</p>
+    <main class="page page-centered entry-page">
+      <section class="entry-card">
+        <div class="brand-lockup centered"><span class="brand-seal">MRT</span><span>English Practice</span></div>
+        <p class="eyebrow">GLOBAL SUCCESS · OUTPUT TRAINING</p>
         <h1>Chiến Binh Dịch</h1>
-        <p class="lead">Biến tiếng Việt thành tiếng Anh từng bước.</p>
-        <div class="flow-pills"><span>Từ</span><b>→</b><span>Cụm từ</span><b>→</b><span>Câu</span></div>
+        <p class="lead">Nhớ tiếng Anh từ đơn vị nhỏ, rồi tự xây lên câu hoàn chỉnh.</p>
+        <div class="learning-path" aria-label="Từ đến câu"><span>TỪ</span><i></i><span>CỤM TỪ</span><i></i><span>CÂU</span></div>
+
         ${resumeSession ? `<button class="resume-card" id="resume-btn" type="button"><span>Tiếp tục bài đang làm</span><strong>${esc(resumeSession.studentName)}</strong></button>` : ''}
+
         <form id="name-form" class="entry-form">
           <label for="student-name">Tên của em</label>
           <input id="student-name" maxlength="50" autocomplete="name" value="${esc(lastName)}" placeholder="Ví dụ: Minh Anh" required />
@@ -16,13 +18,32 @@ export function renderEntry({ root, lastName, resumeSession, onStart, onResume }
         </form>
       </section>
     </main>`;
+
   const input = root.querySelector('#student-name');
+  const submitButton = root.querySelector('#name-form .primary-btn');
   input?.focus();
-  root.querySelector('#name-form')?.addEventListener('submit', e => {
-    e.preventDefault();
+
+  root.querySelector('#name-form')?.addEventListener('submit', async event => {
+    event.preventDefault();
     const name = input.value.trim();
-    if (name) onStart(name);
+    if (!name) return;
+    setBusy(submitButton, 'Đang mở bài...');
+    await onStart(name);
   });
-  root.querySelector('#resume-btn')?.addEventListener('click', onResume);
+
+  root.querySelector('#resume-btn')?.addEventListener('click', async event => {
+    setBusy(event.currentTarget, 'Đang mở lại bài...');
+    await onResume();
+  });
 }
-function esc(v) { return String(v ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'})[c]); }
+
+function setBusy(button, label) {
+  if (!button) return;
+  button.disabled = true;
+  button.setAttribute('aria-busy', 'true');
+  button.textContent = label;
+}
+
+function esc(value) {
+  return String(value ?? '').replace(/[&<>'"]/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[char]);
+}

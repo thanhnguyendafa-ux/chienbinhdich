@@ -1,5 +1,6 @@
 export const global7Unit1Set1 = Object.freeze({
   id: 'g7-u1-s1',
+  version: 2,
   course: 'Global Success 7',
   unit: 'Unit 1 · Hobbies',
   title: 'My Hobby · Like & Benefit',

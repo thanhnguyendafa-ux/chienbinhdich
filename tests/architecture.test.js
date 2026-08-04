@@ -1,0 +1,33 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+
+const app = readFileSync(new URL('../src/app.js', import.meta.url), 'utf8');
+const lessonRepository = readFileSync(new URL('../src/repositories/lessonRepository.js', import.meta.url), 'utf8');
+const sessionMachine = readFileSync(new URL('../src/core/sessionMachine.js', import.meta.url), 'utf8');
+const css = readFileSync(new URL('../styles/global.css', import.meta.url), 'utf8');
+
+test('feature screens and lesson data stay lazy-loaded', () => {
+  for (const path of ['entry/renderEntry.js', 'library/renderLibrary.js', 'drill/renderDrill.js', 'report/renderReport.js']) {
+    assert.match(app, new RegExp(`import\\('./features/${path.replace('.', '\\.')}`));
+  }
+  assert.match(lessonRepository, /import\('\.\.\/data\/global7-unit1-set1\.js'\)/);
+});
+
+test('attempt log remains the scoring SSOT', () => {
+  const createSessionBody = sessionMachine.slice(sessionMachine.indexOf('export function createSession'), sessionMachine.indexOf('export function submitAnswer'));
+  assert.doesNotMatch(createSessionBody, /firstTryCorrect\s*:/);
+  assert.doesNotMatch(createSessionBody, /itemStates\s*:/);
+  assert.match(createSessionBody, /attempts:\s*\[\]/);
+});
+
+test('CSS explicitly supports classroom and iPhone-sized viewports', () => {
+  assert.match(css, /min-width:\s*900px[^}]*max-height:\s*620px/s);
+  assert.match(css, /max-width:\s*640px/);
+});
+
+test('raw hex colors live only inside the design-token root block', () => {
+  const rootEnd = css.indexOf('\n}');
+  const afterRoot = css.slice(rootEnd + 2);
+  assert.doesNotMatch(afterRoot, /#[0-9a-fA-F]{3,8}\b/);
+});
