@@ -1,13 +1,13 @@
 export const global7Unit1Set1 = Object.freeze({
   id: 'g7-u1-s1',
-  version: 2,
+  version: 3,
   course: 'Global Success 7',
   unit: 'Unit 1 · Hobbies',
   title: 'My Hobby · Like & Benefit',
   subtitle: 'Từ → Cụm từ → Câu',
   passThreshold: 80,
   teacher: 'Thầy Thành MRT',
-  description: 'Xây câu tiếng Anh từ các đơn vị nhỏ. Cố gắng gõ chính xác ngay lần đầu.',
+  description: 'Xây câu tiếng Anh từ các đơn vị nhỏ. Câu sai sẽ quay lại trong chuỗi để luyện đến khi Mastery đạt yêu cầu.',
   items: [
     { id: 'w-like', stage: 'word', vi: 'thích', en: 'like', buildsFrom: [] },
     { id: 'w-gardening', stage: 'word', vi: 'làm vườn', en: 'gardening', buildsFrom: [] },

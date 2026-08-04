@@ -1,10 +1,14 @@
 import { validateSet } from './data/contentValidator.js';
 import { localSessionRepository as sessions } from './repositories/localSessionRepository.js';
 import { loadLessonSet } from './repositories/lessonRepository.js';
-import { createSession, submitAnswer } from './core/sessionMachine.js';
+import { abandonSession, createSession, getCurrentItem, submitAnswer, submitPassedSession } from './core/sessionMachine.js';
+import { buildSetShareUrl, resolveSetIdFromLocation } from './core/setRouting.js';
 import { renderLoading } from './ui/renderLoading.js';
 
 const DEFAULT_SET_ID = 'g7-u1-s1';
+const requestedSetId = resolveSetIdFromLocation(window.location);
+const activeSetId = requestedSetId || DEFAULT_SET_ID;
+const isDirectSetLink = Boolean(requestedSetId);
 const root = document.querySelector('#app');
 const moduleCache = new Map();
 let currentStudentName = sessions.getLastStudentName();
@@ -29,35 +33,49 @@ async function getScreen(name, loadingMessage) {
 
 async function ensureSet() {
   if (set) return set;
-  set = await loadLessonSet(DEFAULT_SET_ID);
+  set = await loadLessonSet(activeSetId);
   const contentErrors = validateSet(set);
   if (contentErrors.length) throw new Error(`Invalid lesson content: ${contentErrors.join('; ')}`);
   return set;
 }
 
+function canResumeCurrentSet() {
+  return session?.status === 'active' && session.setId === activeSetId && (!set || session.setVersion === set.version);
+}
+
 async function showEntry() {
+  const lesson = isDirectSetLink ? await ensureSet() : null;
   const { renderEntry } = await getScreen('entry', 'Đang mở trang học...');
   renderEntry({
     root,
     lastName: currentStudentName,
-    resumeSession: session?.status === 'in_progress' ? session : null,
+    directSet: lesson,
+    resumeSession: canResumeCurrentSet() ? session : null,
     onStart: async name => {
       currentStudentName = name;
-      session = null;
-      await showLibrary();
+      if (isDirectSetLink) {
+        renderLoading(root, 'Đang chuẩn bị bài luyện...');
+        session = createSession({ studentName: name, set: lesson });
+        sessions.saveActive(session);
+        await showDrill();
+      } else {
+        session = null;
+        await showLibrary();
+      }
     },
     onResume: showDrill
   });
 }
 
 async function showLibrary() {
-  if (!set) renderLoading(root, 'Đang tải nội dung Set 1...');
+  if (!set) renderLoading(root, 'Đang tải nội dung bài học...');
   const lesson = await ensureSet();
-  const { renderLibrary } = await getScreen('library', 'Đang mở Set 1...');
+  const { renderLibrary } = await getScreen('library', 'Đang mở bài học...');
   renderLibrary({
     root,
     studentName: currentStudentName,
     set: lesson,
+    shareUrl: buildSetShareUrl(window.location, lesson.id),
     onBegin: async () => {
       renderLoading(root, 'Đang chuẩn bị bài luyện...');
       session = createSession({ studentName: currentStudentName, set: lesson });
@@ -72,16 +90,32 @@ async function showDrill() {
   if (!session) return showEntry();
   if (!set) renderLoading(root, 'Đang tải bài luyện...');
   const lesson = await ensureSet();
-  if (session.status === 'completed') return showReport();
-  const { renderDrill, showSuccess } = await getScreen('drill', 'Đang tải bài luyện...');
+  const { renderDrill, renderPassed, showSuccess } = await getScreen('drill', 'Đang tải bài luyện...');
+
+  if (session.status === 'passed') {
+    return renderPassed({
+      root,
+      session,
+      set: lesson,
+      onSubmit: async () => {
+        session = submitPassedSession(session);
+        sessions.saveReport(session);
+        await showReport();
+      },
+      onAbandon: finishAbandoned
+    });
+  }
+
+  if (session.status === 'submitted' || session.status === 'abandoned') return showReport();
 
   renderDrill({
     root,
     session,
     set: lesson,
     feedback,
+    onExit: finishAbandoned,
     onSubmit: ({ answer, attemptMeta }) => {
-      const currentItem = lesson.items[session.currentIndex];
+      const currentItem = getCurrentItem(session, lesson);
       const result = submitAnswer({ session, set: lesson, answer, attemptMeta });
       session = result.session;
       sessions.saveActive(session);
@@ -95,19 +129,22 @@ async function showDrill() {
       showSuccess({
         root,
         type: result.event.type,
-        answer: currentItem.en,
-        score: result.event.score,
-        onContinue: async () => {
-          if (result.event.completed) {
-            sessions.saveReport(session);
-            await showReport();
-          } else {
-            await showDrill();
-          }
-        }
+        answer: currentItem?.en ?? result.event.answer,
+        mastery: result.event.mastery,
+        masteryDeltaUnits: result.event.masteryDeltaUnits,
+        masteryDeltaPercent: result.event.masteryDeltaPercent,
+        onContinue: showDrill
       });
     }
   });
+}
+
+async function finishAbandoned() {
+  if (!session) return;
+  session = abandonSession(session);
+  sessions.saveReport(session);
+  feedback = null;
+  await showReport();
 }
 
 async function showReport() {
@@ -136,5 +173,6 @@ showEntry().catch(showFatalError);
 
 function showFatalError(error) {
   console.error(error);
-  root.innerHTML = `<main class="loading-page"><section class="loading-panel error-panel"><div class="brand-lockup"><span class="brand-seal">MRT</span><span>Chiến Binh Dịch</span></div><h1>Không mở được bài học</h1><p>Hãy tải lại trang. Nếu lỗi vẫn còn, báo cho Thầy Thành MRT.</p></section></main>`;
+  const missingSet = String(error?.message ?? '').includes('Không tìm thấy set');
+  root.innerHTML = `<main class="loading-page"><section class="loading-panel error-panel"><div class="brand-lockup"><span class="brand-seal">MRT</span><span>Chiến Binh Dịch</span></div><h1>${missingSet ? 'Không tìm thấy bài học' : 'Không mở được bài học'}</h1><p>${missingSet ? 'Link bài học không còn hợp lệ. Hãy xin lại link từ giáo viên.' : 'Hãy tải lại trang. Nếu lỗi vẫn còn, báo cho Thầy Thành MRT.'}</p></section></main>`;
 }
