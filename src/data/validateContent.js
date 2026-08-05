@@ -11,17 +11,17 @@ if (catalogErrors.length) {
   console.error(`Catalog invalid:\n${catalogErrors.join('\n')}`);
 } else {
   console.log(`Catalog valid: ${lessonFolders.length} folder(s), ${lessonRegistry.length} Set(s)`);
-}
 
-for (const descriptor of lessonRegistry) {
-  const set = await loadLessonSet(descriptor.id);
-  const errors = validateSet(set);
-  if (set.items.length !== descriptor.itemCount) errors.push(`itemCount metadata ${descriptor.itemCount} không khớp ${set.items.length} items.`);
-  if (errors.length) {
-    hasErrors = true;
-    console.error(`${set.id}:\n${errors.join('\n')}`);
-  } else {
-    console.log(`Content valid: ${set.id} (${set.items.length} items)`);
+  for (const descriptor of lessonRegistry) {
+    const set = await loadLessonSet(descriptor.id);
+    const errors = validateSet(set);
+    if (set.items.length !== descriptor.itemCount) errors.push(`itemCount metadata ${descriptor.itemCount} không khớp ${set.items.length} items.`);
+    if (errors.length) {
+      hasErrors = true;
+      console.error(`${set.id}:\n${errors.join('\n')}`);
+    } else {
+      console.log(`Content valid: ${set.id} (${set.items.length} items)`);
+    }
   }
 }
 
