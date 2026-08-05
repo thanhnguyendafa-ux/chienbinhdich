@@ -70,15 +70,18 @@ function bindMcq({ root, onSubmit, attemptStartedAt }) {
   return () => root.querySelector('[data-choice-id]')?.focus({ preventScroll: true });
 }
 
-function renderTrueFalse(item) {
+function renderTrueFalse(item, { exposureKey = item.id } = {}) {
+  const options = orderForExposure([
+    { value: true, label: 'TRUE', helper: 'Đúng' },
+    { value: false, label: 'FALSE', helper: 'Sai' }
+  ], `${exposureKey}:true_false`);
   return `
     <div class="prompt-block mixed-prompt-block">
       <p class="prompt-label">Đúng hay sai?</p>
       <h1>${esc(questionPromptDisplay(item))}</h1>
     </div>
     <div class="choice-grid true-false-grid" role="group" aria-label="Chọn True hoặc False">
-      <button class="choice-btn tf-btn" type="button" data-boolean="true"><strong>TRUE</strong><small>Đúng</small></button>
-      <button class="choice-btn tf-btn" type="button" data-boolean="false"><strong>FALSE</strong><small>Sai</small></button>
+      ${options.map(option => `<button class="choice-btn tf-btn" type="button" data-boolean="${option.value}"><strong>${option.label}</strong><small>${option.helper}</small></button>`).join('')}
     </div>`;
 }
 
