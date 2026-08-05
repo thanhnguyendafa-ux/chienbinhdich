@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 
 const report = readFileSync(new URL('../src/features/report/renderReport.js', import.meta.url), 'utf8');
 const questionRegistry = readFileSync(new URL('../src/features/drill/questionTypeRegistry.js', import.meta.url), 'utf8');
+const reportCss = readFileSync(new URL('../styles/report-document.css', import.meta.url), 'utf8');
 const printCss = readFileSync(new URL('../styles/report-print.css', import.meta.url), 'utf8');
 const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const sessionMachine = readFileSync(new URL('../src/core/sessionMachine.js', import.meta.url), 'utf8');
@@ -26,20 +27,21 @@ test('submitted reports expose print while printing stays outside learning evide
   assert.doesNotMatch(sessionMachine, /print-report|window\.print|printedAt/);
 });
 
-test('report print stylesheet is linked and produces a clean A4 layout', () => {
+test('report print stylesheet is linked and produces a clean A4 document', () => {
+  assert.match(index, /styles\/report-document\.css/);
   assert.match(index, /styles\/report-print\.css/);
   assert.match(printCss, /@page\{size:A4 portrait;margin:12mm\}/);
   assert.match(printCss, /@media print/);
-  assert.match(printCss, /\.report-actions\{display:none!important\}/);
+  assert.match(printCss, /\.report-toolbar\{display:none!important\}/);
   assert.match(printCss, /break-inside:avoid/);
   assert.match(printCss, /grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/);
 });
 
-test('mobile report actions stack with a large print target before invoking native print', () => {
-  assert.match(printCss, /@media screen and \(max-width:640px\)/);
-  assert.match(printCss, /\.report-actions\{display:grid;grid-template-columns:1fr;width:100%\}/);
-  assert.match(printCss, /min-height:48px/);
-  assert.match(printCss, /\.print-report-btn\{order:-1\}/);
+test('mobile report actions stay at the top with a large print target', () => {
+  assert.match(reportCss, /@media \(max-width:640px\)/);
+  assert.match(reportCss, /\.report-actions\{display:grid;grid-template-columns:1fr;width:100%\}/);
+  assert.match(reportCss, /min-height:48px/);
+  assert.match(reportCss, /\.report-actions \.print-report-btn\{order:-1\}/);
 });
 
 test('print stylesheet does not introduce raw hex colors outside global design tokens', () => {
