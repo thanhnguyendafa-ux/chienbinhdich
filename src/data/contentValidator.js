@@ -22,6 +22,7 @@ export function validateSet(set) {
     ids.add(item.id);
 
     validateItemByType(item, type, errors);
+    validateTeachingFeedback(item, errors);
 
     if (item.stage !== undefined) {
       if (!(item.stage in stageRank)) errors.push(`Stage không hợp lệ tại ${item.id}`);
@@ -75,6 +76,18 @@ function validateItemByType(item, type, errors) {
     }
     if (!sameMultiset(tokens, item.correctOrder)) errors.push(`Sentence Order ${item.id} có token không khớp đáp án`);
     if (item.displayOrder && !sameMultiset(item.displayOrder, item.correctOrder)) errors.push(`Sentence Order ${item.id} có displayOrder không khớp đáp án`);
+  }
+}
+
+function validateTeachingFeedback(item, errors) {
+  if (item.teachingFeedback === undefined) return;
+  const value = item.teachingFeedback;
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    errors.push(`Teaching feedback không hợp lệ tại ${item.id}`);
+    return;
+  }
+  for (const field of ['correctLabel', 'reason', 'theory', 'example']) {
+    if (!nonEmpty(value[field])) errors.push(`Teaching feedback ${item.id} thiếu ${field}`);
   }
 }
 
