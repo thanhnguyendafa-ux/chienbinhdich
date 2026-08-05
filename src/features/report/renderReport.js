@@ -57,14 +57,14 @@ export function renderReport({ root, session, set, onRetry, onHome }) {
             ['Đã hiện đáp án', metrics.revealedCount]
           ],
           [
+            ['Chuỗi chính', `${metrics.completedMainItems}/${metrics.total}`],
             ['Mastery cuối', `${formatPercent(metrics.mastery)}%`],
-            ['Mục tiêu', `${set.passThreshold}%`],
-            ['Mastery lúc đạt', metrics.masteryAtQualification === null ? '—' : `${formatPercent(metrics.masteryAtQualification)}%`]
+            ['Mục tiêu', `${set.passThreshold}%`]
           ],
           [
+            ['Mastery lúc đạt', metrics.masteryAtQualification === null ? '—' : `${formatPercent(metrics.masteryAtQualification)}%`],
             ['Luyện thêm', metrics.extendedPractice ? 'Có' : 'Không'],
-            ['Lượt luyện thêm', metrics.extendedAttempts],
-            ['Trạng thái', submitted ? 'Đã nộp bài' : 'Đã bỏ cuộc']
+            ['Lượt luyện thêm', metrics.extendedAttempts]
           ]
         ])}
 
@@ -159,7 +159,7 @@ function renderOutcome({ submitted, abandoned, metrics, set }) {
     const extra = metrics.extendedPractice
       ? `Học sinh đã chọn Làm tiếp sau khi đạt mục tiêu và luyện thêm ${metrics.extendedAttempts} lượt trước khi nộp.`
       : 'Học sinh đã nộp ngay sau khi đạt mục tiêu.';
-    return `<section class="report-outcome"><strong>Bài đã được đánh dấu là ĐÃ NỘP</strong><p>Mastery cuối ${formatPercent(metrics.mastery)}%. ${extra} Có thể bấm In báo cáo ở thanh công cụ phía trên để in hoặc lưu PDF và gửi cho ${esc(set.teacher)}.</p></section>`;
+    return `<section class="report-outcome"><strong>Bài đã được đánh dấu là ĐÃ NỘP</strong><p>Mastery cuối ${formatPercent(metrics.mastery)}%. Chuỗi chính ${metrics.completedMainItems}/${metrics.total}. ${extra} Có thể bấm In báo cáo ở thanh công cụ phía trên để in hoặc lưu PDF và gửi cho ${esc(set.teacher)}.</p></section>`;
   }
   if (abandoned) return `<section class="report-outcome"><strong>Chưa được tính là nộp bài</strong><p>Học sinh đã chọn Bỏ cuộc ở Mastery ${formatPercent(metrics.mastery)}%. Báo cáo vẫn giữ tổng thời gian và toàn bộ lịch sử làm bài.</p></section>`;
   return '';
