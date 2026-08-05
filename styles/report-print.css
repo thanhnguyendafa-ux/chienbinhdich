@@ -1,3 +1,9 @@
+@media screen and (max-width:640px){
+  .report-actions{display:grid;grid-template-columns:1fr;width:100%}
+  .report-actions button{width:100%;min-height:48px}
+  .print-report-btn{order:-1}
+}
+
 @page{size:A4 portrait;margin:12mm}
 
 @media print{
