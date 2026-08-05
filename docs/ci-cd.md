@@ -38,6 +38,17 @@ The production Vercel project should be connected to:
 
 This removes the split delivery path where GitHub contains one commit while Vercel is deployed independently through an API call.
 
+### Connection verification
+
+After connecting Git integration, verify it with a normal pull request rather than a manual Vercel upload:
+
+1. The pull request should produce a Vercel Preview deployment associated with the Git branch/commit.
+2. After CI passes and the pull request is merged, the `main` commit should produce a Production deployment automatically.
+3. The resulting deployment metadata should identify the Git repository, branch, and commit so production provenance can be audited.
+4. Production smoke checks must include `/`, `/s/g7-u1-s1`, static assets, security headers, and runtime errors.
+
+If any of these checks fails, treat Git delivery as unverified and do not substitute a manual file deployment.
+
 ## Rollback
 
 If production fails after a release:
