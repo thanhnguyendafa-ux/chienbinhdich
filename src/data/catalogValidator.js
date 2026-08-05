@@ -8,6 +8,7 @@ export function validateCatalog(folders, registry) {
     else if (folderIds.has(folder.id)) errors.push(`Folder id bị trùng: ${folder.id}`);
     else folderIds.add(folder.id);
     if (!folder?.name) errors.push(`Folder ${folder?.id ?? '(unknown)'} thiếu name.`);
+    if (!Number.isInteger(folder?.order)) errors.push(`Folder ${folder?.id ?? '(unknown)'} có order không hợp lệ.`);
   }
 
   for (const entry of registry ?? []) {
@@ -15,6 +16,7 @@ export function validateCatalog(folders, registry) {
     else if (setIds.has(entry.id)) errors.push(`Set id bị trùng: ${entry.id}`);
     else setIds.add(entry.id);
 
+    if (!Number.isInteger(entry?.order)) errors.push(`Set ${entry?.id ?? '(unknown)'} có order không hợp lệ.`);
     if (!entry?.folderId || !folderIds.has(entry.folderId)) errors.push(`Set ${entry?.id ?? '(unknown)'} tham chiếu folder không tồn tại: ${entry?.folderId ?? '(missing)'}`);
     if (!entry?.title) errors.push(`Set ${entry?.id ?? '(unknown)'} thiếu title.`);
     if (!entry?.course) errors.push(`Set ${entry?.id ?? '(unknown)'} thiếu course.`);
