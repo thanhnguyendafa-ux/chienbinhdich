@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 
 const app = readFileSync(new URL('../src/app.js', import.meta.url), 'utf8');
 const lessonRepository = readFileSync(new URL('../src/repositories/lessonRepository.js', import.meta.url), 'utf8');
+const localSessionRepository = readFileSync(new URL('../src/repositories/localSessionRepository.js', import.meta.url), 'utf8');
 const sessionMachine = readFileSync(new URL('../src/core/sessionMachine.js', import.meta.url), 'utf8');
 const retryScheduler = readFileSync(new URL('../src/core/retryScheduler.js', import.meta.url), 'utf8');
 const drill = readFileSync(new URL('../src/features/drill/renderDrill.js', import.meta.url), 'utf8');
@@ -25,9 +26,32 @@ test('attempt log remains mastery SSOT rather than storing derived mastery or it
   assert.match(createSessionBody, /attempts:\s*\[\]/);
 });
 
+test('only the first attempt in each exposure can change mastery', () => {
+  assert.match(sessionMachine, /masteryDeltaUnits = attemptNumber === 1 \? \(result\.correct \? 1 : -1\) : 0/);
+});
+
 test('retry timing lives in scheduler domain rather than Drill UI', () => {
   assert.match(retryScheduler, /export const RETRY_GAP = 2/);
   assert.doesNotMatch(drill, /splice\(|eligiblePromptIndex|retryQueue\.push/);
+});
+
+test('mastery progress bar uses mastery value and the set pass threshold marker', () => {
+  assert.match(drill, /masteryProgress = clamp\(metrics\.mastery, 0, 100\)/);
+  assert.match(drill, /masteryTarget = clamp\(Number\(set\.passThreshold/);
+  assert.match(drill, /Mục tiêu \$\{formatPercent\(masteryTarget\)\}%/);
+  assert.match(drill, /left:\$\{masteryTarget\}%/);
+  assert.doesNotMatch(drill, /mainProgress/);
+});
+
+test('student feedback distinguishes mastery loss from neutral correction attempts', () => {
+  assert.match(drill, /Mastery không đổi/);
+  assert.match(drill, /delta < 0/);
+});
+
+test('session persistence key advances with scoring semantics', () => {
+  assert.match(sessionMachine, /SESSION_SCHEMA_VERSION = 4/);
+  assert.match(localSessionRepository, /cbd\.activeSession\.v4/);
+  assert.match(localSessionRepository, /cbd\.report\.v4\./);
 });
 
 test('stable set deep links have a Vercel rewrite to the SPA shell', () => {

@@ -13,7 +13,7 @@ export function masteryPercentFromAttempts(attempts = [], totalItems = 0) {
 }
 
 export function masteryDisplayPercent(attempts = [], totalItems = 0) {
-  return Math.round(masteryPercentFromAttempts(attempts, totalItems));
+  return Math.round(clamp(masteryPercentFromAttempts(attempts, totalItems), 0, 100));
 }
 
 export function hasReachedMastery(attempts = [], totalItems = 0, threshold = 80) {
@@ -44,6 +44,10 @@ export function getMasteryCounts(attempts = []) {
 function normalizeDelta(value) {
   if (value === 1 || value === -1) return value;
   return 0;
+}
+
+function clamp(value, min, max) {
+  return Math.min(max, Math.max(min, value));
 }
 
 function round2(value) {
