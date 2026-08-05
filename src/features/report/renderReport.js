@@ -68,12 +68,17 @@ export function renderReport({ root, session, set, onRetry, onHome }) {
 
         <footer class="report-footer">
           <code>Session: ${esc(session.id)}</code>
-          <div class="report-actions">${abandoned ? '<button id="retry-btn" class="secondary-btn">Làm lại Set</button>' : ''}<button id="home-btn" class="secondary-btn">Về trang đầu</button></div>
+          <div class="report-actions">
+            ${abandoned ? '<button id="retry-btn" class="secondary-btn" type="button">Làm lại Set</button>' : ''}
+            ${submitted ? '<button id="print-report-btn" class="primary-btn print-report-btn" type="button">In báo cáo</button>' : ''}
+            <button id="home-btn" class="secondary-btn" type="button">Về trang đầu</button>
+          </div>
         </footer>
       </section>
     </main>`;
 
   root.querySelector('#retry-btn')?.addEventListener('click', onRetry);
+  root.querySelector('#print-report-btn')?.addEventListener('click', () => window.print());
   root.querySelector('#home-btn')?.addEventListener('click', onHome);
 }
 
@@ -101,7 +106,7 @@ function renderOutcome({ submitted, abandoned, metrics, set }) {
     const extra = metrics.extendedPractice
       ? ` Học sinh đã chọn Làm tiếp sau khi đạt mục tiêu và luyện thêm ${metrics.extendedAttempts} lượt trước khi nộp.`
       : ' Học sinh đã nộp ngay sau khi đạt mục tiêu.';
-    return `<section class="submission-callout"><strong>Bài đã được đánh dấu là ĐÃ NỘP</strong><p>Mastery cuối ${formatPercent(metrics.mastery)}%.${extra} Chụp báo cáo này và gửi cho <b>${esc(set.teacher)}</b> nếu lớp đang dùng quy trình nộp bằng ảnh.</p></section>`;
+    return `<section class="submission-callout"><strong>Bài đã được đánh dấu là ĐÃ NỘP</strong><p>Mastery cuối ${formatPercent(metrics.mastery)}%.${extra} Có thể bấm <b>In báo cáo</b> để in hoặc lưu PDF và gửi cho <b>${esc(set.teacher)}</b>.</p></section>`;
   }
   if (abandoned) return `<section class="submission-callout retry-callout"><strong>Chưa được tính là nộp bài</strong><p>Học sinh đã chọn Bỏ cuộc ở Mastery ${formatPercent(metrics.mastery)}%. Báo cáo vẫn giữ tổng thời gian và toàn bộ lịch sử làm bài.</p></section>`;
   return '';
