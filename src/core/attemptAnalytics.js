@@ -1,3 +1,5 @@
+import { expectedResponseDisplay, questionTypeForItem } from './questionTypes.js';
+
 const RAPID_THRESHOLD_MS = 1200;
 const RAPID_MIN_EXPECTED_LENGTH = 8;
 
@@ -22,7 +24,8 @@ export function deriveAttemptAnalytics(session, set) {
 
 export function isRapidAttempt(attempt, item) {
   if (!item || !Number.isFinite(attempt.responseDurationMs)) return false;
-  return item.en.length >= RAPID_MIN_EXPECTED_LENGTH && attempt.responseDurationMs < RAPID_THRESHOLD_MS;
+  if (questionTypeForItem(item) !== 'typing') return false;
+  return expectedResponseDisplay(item).length >= RAPID_MIN_EXPECTED_LENGTH && attempt.responseDurationMs < RAPID_THRESHOLD_MS;
 }
 
 function buildFlags(attempt, item) {
