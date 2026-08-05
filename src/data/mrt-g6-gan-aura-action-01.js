@@ -61,6 +61,12 @@ function trueFalse(number, unitKey, sentence, claimClassId, answer, feedback) {
   };
 }
 
+function deepFreeze(value) {
+  if (!value || typeof value !== 'object' || Object.isFrozen(value)) return value;
+  for (const child of Object.values(value)) deepFreeze(child);
+  return Object.freeze(value);
+}
+
 const items = [
   mcq(1, 'u1', 'Nam là một học sinh.', 'gan', '“một học sinh” trả lời câu hỏi Nam LÀ AI / LÀ GÌ. Đây là một danh từ.', 'Nam is a student.'),
   trueFalse(2, 'u1', 'Trường mới của tôi lớn.', 'aura', true, feedbackSpec('aura', '“lớn” trả lời câu hỏi trường NHƯ THẾ NÀO. Đây là tính từ mô tả đặc điểm.', 'My new school is big.')),
@@ -84,4 +90,4 @@ const items = [
   trueFalse(20, 'u3', 'Nam thông minh.', 'gan', false, feedbackSpec('aura', '“thông minh” trả lời câu hỏi Nam NHƯ THẾ NÀO. “clever” là tính từ mô tả tính cách.', 'Nam is clever.'))
 ];
 
-export const mrtG6GanAuraAction01Content = Object.freeze({ items: Object.freeze(items) });
+export const mrtG6GanAuraAction01Content = deepFreeze({ items });
