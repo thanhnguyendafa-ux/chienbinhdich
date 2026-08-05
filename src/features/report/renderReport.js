@@ -1,10 +1,12 @@
 import { getSessionMetrics } from '../../core/sessionMachine.js';
+import { getMasteryTransitions } from '../../core/masteryEngine.js';
 import { deriveAttemptAnalytics } from '../../core/attemptAnalytics.js';
 import { formatClockTime, formatDateTime, formatDuration, formatResponseDuration, stageLabel } from '../../core/formatters.js';
 
 export function renderReport({ root, session, set, onRetry, onHome }) {
   const metrics = getSessionMetrics(session, set);
   const analytics = deriveAttemptAnalytics(session, set);
+  const transitions = getMasteryTransitions(session.attempts, set.items.length);
   const itemById = new Map(set.items.map(item => [item.id, item]));
   const submitted = session.status === 'submitted';
   const abandoned = session.status === 'abandoned';
@@ -54,7 +56,7 @@ export function renderReport({ root, session, set, onRetry, onHome }) {
             <span>${session.attempts.length} attempts</span>
           </div>
           <ol class="attempt-list">
-            ${analytics.attempts.map(attempt => renderAttempt(attempt, itemById.get(attempt.itemId), metrics.masteryUnit)).join('')}
+            ${analytics.attempts.map((attempt, index) => renderAttempt(attempt, itemById.get(attempt.itemId), transitions[index]?.delta ?? 0)).join('')}
           </ol>
         </section>
 
@@ -69,12 +71,11 @@ export function renderReport({ root, session, set, onRetry, onHome }) {
   root.querySelector('#home-btn')?.addEventListener('click', onHome);
 }
 
-function renderAttempt(attempt, item, masteryUnit) {
+function renderAttempt(attempt, item, impact) {
   const correction = attempt.result === 'correction';
   const status = correction ? 'Sửa đúng' : (attempt.correct ? 'Đúng' : 'Sai');
   const statusClass = attempt.correct ? 'attempt-correct' : 'attempt-wrong';
   const flags = attempt.flags.map(flag => `<span class="attempt-flag ${flag}">${flagLabel(flag)}</span>`).join('');
-  const impact = Number(attempt.masteryDeltaUnits ?? 0) * masteryUnit;
   const impactLabel = impact > 0 ? `+${formatPercent(impact)}%` : impact < 0 ? `−${formatPercent(Math.abs(impact))}%` : '0%';
   return `
     <li class="attempt-row ${statusClass}">

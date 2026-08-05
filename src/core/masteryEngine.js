@@ -8,16 +8,36 @@ export function masteryUnitsFromAttempts(attempts = []) {
 
 export function masteryPercentFromAttempts(attempts = [], totalItems = 0) {
   const unit = masteryUnitPercent(totalItems);
-  const raw = masteryUnitsFromAttempts(attempts) * unit;
-  return round2(Math.min(100, raw));
+  let mastery = 0;
+
+  for (const attempt of attempts) {
+    mastery = clamp(mastery + normalizeDelta(attempt.masteryDeltaUnits) * unit, 0, 100);
+  }
+
+  return round2(mastery);
 }
 
 export function masteryDisplayPercent(attempts = [], totalItems = 0) {
-  return Math.round(clamp(masteryPercentFromAttempts(attempts, totalItems), 0, 100));
+  return masteryPercentFromAttempts(attempts, totalItems);
 }
 
 export function hasReachedMastery(attempts = [], totalItems = 0, threshold = 80) {
   return masteryPercentFromAttempts(attempts, totalItems) >= threshold;
+}
+
+export function getMasteryTransitions(attempts = [], totalItems = 0) {
+  const unit = masteryUnitPercent(totalItems);
+  let mastery = 0;
+
+  return attempts.map(attempt => {
+    const before = mastery;
+    mastery = clamp(mastery + normalizeDelta(attempt.masteryDeltaUnits) * unit, 0, 100);
+    return {
+      before: round2(before),
+      after: round2(mastery),
+      delta: round2(mastery - before)
+    };
+  });
 }
 
 export function getItemMasteryUnits(attempts = [], itemId) {

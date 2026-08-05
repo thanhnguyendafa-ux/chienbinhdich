@@ -1,5 +1,6 @@
 import { getCurrentItem, getSessionMetrics } from '../../core/sessionMachine.js';
 import { stageLabel } from '../../core/formatters.js';
+import { animateMasteryProgress, formatMasteryPercent, renderMasteryProgress } from '../../ui/masteryProgress.js';
 
 export function renderDrill({ root, session, set, feedback = null, onSubmit, onExit }) {
   const item = getCurrentItem(session, set);
@@ -7,8 +8,12 @@ export function renderDrill({ root, session, set, feedback = null, onSubmit, onE
   const metrics = getSessionMetrics(session, set);
   const stageItems = set.items.filter(candidate => candidate.stage === item.stage);
   const stagePosition = stageItems.findIndex(candidate => candidate.id === item.id) + 1;
-  const masteryProgress = clamp(metrics.mastery, 0, 100);
-  const masteryTarget = clamp(Number(set.passThreshold ?? 80), 0, 100);
+  const masteryTarget = Number(set.passThreshold ?? 80);
+  const masteryTransition = {
+    from: Number(feedback?.masteryBefore ?? metrics.mastery),
+    to: Number(feedback?.mastery ?? metrics.mastery),
+    delta: Number(feedback?.masteryDeltaPercent ?? 0)
+  };
   const revealAnswer = feedback?.type === 'incorrect_reveal';
   const reviewMode = session.currentPromptKind !== 'main';
 
@@ -20,13 +25,13 @@ export function renderDrill({ root, session, set, feedback = null, onSubmit, onE
       </header>
 
       <section class="shell metrics-row" aria-label="Tiến độ bài học và Mastery">
-        <div class="metric"><span>Chuỗi chính</span><strong>${metrics.completedMainItems}/${metrics.total}</strong></div>
-        <div class="mastery-progress-wrap" aria-label="Mastery ${formatPercent(masteryProgress)}%, mục tiêu ${formatPercent(masteryTarget)}%" style="position:relative;padding-bottom:18px">
-          <div class="progress-track" aria-hidden="true"><div style="width:${masteryProgress}%"></div></div>
-          <span class="mastery-target-marker" aria-hidden="true" style="position:absolute;left:${masteryTarget}%;top:-4px;height:15px;border-left:2px solid var(--color-accent)"></span>
-          <small class="mastery-target-label" style="position:absolute;left:${masteryTarget}%;top:9px;transform:translateX(-50%);white-space:nowrap;color:var(--color-muted);font-size:10px;font-weight:800">Mục tiêu ${formatPercent(masteryTarget)}%</small>
-        </div>
-        <div class="metric score-metric"><span>Mastery</span><strong>${formatPercent(masteryProgress)}%</strong></div>
+        <div class="metric sequence-metric"><span>Chuỗi chính</span><strong>${metrics.completedMainItems}/${metrics.total}</strong></div>
+        ${renderMasteryProgress({
+          value: masteryTransition.to,
+          previous: masteryTransition.from,
+          threshold: masteryTarget,
+          delta: masteryTransition.delta
+        })}
       </section>
 
       <section class="drill-shell shell">
@@ -49,10 +54,12 @@ export function renderDrill({ root, session, set, feedback = null, onSubmit, onE
       </section>
 
       <dialog class="exit-dialog" id="exit-dialog">
-        <div class="dialog-copy"><strong>Em muốn dừng bài?</strong><p>Chưa đạt ${set.passThreshold}% thì chưa thể nộp bài. Nếu đã cố gắng nhưng cần dừng, em vẫn có báo cáo thời gian và lịch sử làm bài.</p></div>
+        <div class="dialog-copy"><strong>Em muốn dừng bài?</strong><p>Chưa đạt ${formatMasteryPercent(set.passThreshold)}% thì chưa thể nộp bài. Nếu đã cố gắng nhưng cần dừng, em vẫn có báo cáo thời gian và lịch sử làm bài.</p></div>
         <div class="dialog-actions"><button class="primary-btn" id="keep-learning-btn" type="button">Tiếp tục học</button><button class="danger-text-btn" id="abandon-btn" type="button">Bỏ cuộc và xem báo cáo</button></div>
       </dialog>
     </main>`;
+
+  window.requestAnimationFrame(() => animateMasteryProgress(root, masteryTransition));
 
   const input = root.querySelector('#answer-input');
   const tracker = createInputTracker(input);
@@ -87,19 +94,33 @@ export function renderDrill({ root, session, set, feedback = null, onSubmit, onE
   dialog?.addEventListener('cancel', () => window.setTimeout(() => focusInput(input), 0));
 }
 
-export function showSuccess({ root, type, answer, mastery, masteryDeltaPercent, onContinue }) {
+export function showSuccess({ root, type, answer, mastery, masteryBefore, masteryDeltaPercent, onContinue }) {
   const card = root.querySelector('.prompt-card');
   const form = card?.querySelector('.answer-form');
   if (!card || !form) return onContinue();
+
+  animateMasteryProgress(root, {
+    from: masteryBefore,
+    to: mastery,
+    delta: masteryDeltaPercent
+  });
+
   card.classList.remove('has-error', 'is-reveal');
   card.classList.add('has-success');
   const correction = type === 'correction';
+  const actualGain = Number(masteryDeltaPercent ?? 0);
+  const masteryMessage = correction
+    ? `Correction: Mastery không đổi · ${formatMasteryPercent(mastery)}%`
+    : actualGain > 0
+      ? `Mastery +${formatMasteryPercent(actualGain)}% → ${formatMasteryPercent(mastery)}%`
+      : `Mastery giữ ở ${formatMasteryPercent(mastery)}%`;
+
   form.innerHTML = `
     <div class="success-panel" role="status">
       <span class="success-mark">ĐÚNG</span>
       <strong>${correction ? 'Đã sửa chính xác' : 'Retrieval chính xác'}</strong>
       <span class="answer-reveal">${esc(answer)}</span>
-      <small>${correction ? `Correction: Mastery không đổi · ${formatPercent(mastery)}%` : `Mastery +${formatPercent(masteryDeltaPercent)}% → ${formatPercent(mastery)}%`}</small>
+      <small>${masteryMessage}</small>
     </div>`;
   window.setTimeout(onContinue, 430);
 }
@@ -111,8 +132,8 @@ export function renderPassed({ root, session, set, onSubmit }) {
       <section class="passed-card">
         <div class="brand-lockup centered"><span class="brand-seal">MRT</span><span>Chiến Binh Dịch</span></div>
         <p class="eyebrow">ĐÃ ĐẠT MỨC YÊU CẦU</p>
-        <h1>${formatPercent(metrics.mastery)}% Mastery</h1>
-        <p>Em đã hoàn thành chuỗi Từ → Cụm từ → Câu và đạt mốc ${set.passThreshold}%.</p>
+        <h1>${formatMasteryPercent(metrics.mastery)}% Mastery</h1>
+        <p>Em đã hoàn thành chuỗi Từ → Cụm từ → Câu và đạt mốc ${formatMasteryPercent(set.passThreshold)}%.</p>
         <div class="passed-stats"><span>${metrics.totalAttempts} lượt gõ</span><span>${metrics.retryCount} lượt gặp lại</span></div>
         <button class="primary-btn submit-assignment-btn" id="submit-assignment-btn" type="button">Nộp bài</button>
         <small>Chỉ sau khi bấm Nộp bài, báo cáo mới được đánh dấu là đã nộp.</small>
@@ -128,7 +149,13 @@ export function renderPassed({ root, session, set, onSubmit }) {
 function renderFeedback(feedback) {
   if (!feedback) return '';
   const delta = Number(feedback.masteryDeltaPercent ?? 0);
-  const masteryMessage = delta < 0 ? `Mastery −${formatPercent(Math.abs(delta))}%` : 'Mastery không đổi';
+  const hitFloor = Number(feedback.masteryDeltaUnits ?? 0) < 0 && delta === 0 && Number(feedback.mastery ?? 0) === 0;
+  const masteryMessage = delta < 0
+    ? `Mastery −${formatMasteryPercent(Math.abs(delta))}%`
+    : hitFloor
+      ? 'Mastery đang ở sàn 0%'
+      : 'Mastery không đổi';
+
   if (feedback.type === 'incorrect_reveal') {
     return `
       <div class="feedback reveal-feedback" role="alert">
@@ -172,15 +199,6 @@ function createInputTracker(input) {
       return 'unknown';
     }
   };
-}
-
-function clamp(value, min, max) {
-  return Math.min(max, Math.max(min, Number(value ?? 0)));
-}
-
-function formatPercent(value) {
-  const numeric = Number(value ?? 0);
-  return Number.isInteger(numeric) ? String(numeric) : numeric.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
 }
 
 function esc(value) {
