@@ -47,6 +47,8 @@ After connecting Git integration, verify it with a normal pull request rather th
 3. The resulting deployment metadata should identify the Git repository, branch, and commit so production provenance can be audited.
 4. Production smoke checks must include `/`, `/s/g7-u1-s1`, static assets, security headers, and runtime errors.
 
+Canonical production verification must be performed against the Vercel project that owns `chien-binh-dich.vercel.app`, not against a temporary probe project.
+
 If any of these checks fails, treat Git delivery as unverified and do not substitute a manual file deployment.
 
 ## Rollback
