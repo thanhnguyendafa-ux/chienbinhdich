@@ -103,6 +103,7 @@ export function submitAnswer({ session, set, response, answer, attemptMeta = {},
     session: nextSession,
     event: {
       type: wasCorrection ? 'correction' : 'retrieval_success',
+      entered: result.displayResponse,
       answer: expectedDisplay,
       masteryDeltaUnits,
       masteryBefore,
