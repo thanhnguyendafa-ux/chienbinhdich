@@ -1,4 +1,4 @@
-import { getItemMasteryUnits, hasReachedMastery } from './masteryEngine.js';
+import { getItemMasteryUnits } from './masteryEngine.js';
 
 export const RETRY_GAP = 2;
 
@@ -58,15 +58,6 @@ export function advanceLearningPrompt(session, set) {
 
   if (session.status === 'extended') {
     return beginExtendedPracticePrompt(session, set, nextPromptIndex);
-  }
-
-  if (hasReachedMastery(session.attempts, set.items.length, set.passThreshold)) {
-    return {
-      ...session,
-      retryQueue: queue,
-      status: 'passed',
-      qualifiedAt: session.qualifiedAt ?? session.attempts.at(-1)?.submittedAt ?? null
-    };
   }
 
   const reviewId = pickContinuationReviewItem(session, set);
