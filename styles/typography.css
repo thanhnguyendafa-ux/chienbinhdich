@@ -1,0 +1,16 @@
+:root{
+  --font-ui:"Segoe UI",Arial,sans-serif;
+  --font-report:Arial,"Segoe UI",sans-serif;
+}
+
+body,button,input{font-family:var(--font-ui)}
+h1,h2,.answer-reveal,.dialog-copy strong,.folder-copy strong,.catalog-set-card h2{font-family:var(--font-ui)}
+.entry-card h1,.section-heading h1,.catalog-heading h1,.catalog-set-card h2,.folder-copy strong,.prompt-card h1,.passed-card h1{line-height:1.18;letter-spacing:0}
+.entry-card h1,.section-heading h1,.catalog-heading h1,.passed-card h1{font-weight:750}
+.prompt-card h1,.catalog-set-card h2,.folder-copy strong{font-weight:700}
+.lead,.section-heading>p:last-child,.catalog-heading p:last-child,.set-card>p,.dialog-copy p,.passed-card>p{line-height:1.5}
+button,input{line-height:1.25}
+
+@media (max-width:640px){
+  .entry-card h1,.section-heading h1,.catalog-heading h1,.prompt-card h1,.passed-card h1{line-height:1.16}
+}
