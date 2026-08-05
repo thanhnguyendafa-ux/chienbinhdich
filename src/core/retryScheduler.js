@@ -56,8 +56,17 @@ export function advanceLearningPrompt(session, set) {
     });
   }
 
+  if (session.status === 'extended') {
+    return beginExtendedPracticePrompt(session, set, nextPromptIndex);
+  }
+
   if (hasReachedMastery(session.attempts, set.items.length, set.passThreshold)) {
-    return { ...session, retryQueue: queue, status: 'passed' };
+    return {
+      ...session,
+      retryQueue: queue,
+      status: 'passed',
+      qualifiedAt: session.qualifiedAt ?? session.attempts.at(-1)?.submittedAt ?? null
+    };
   }
 
   const reviewId = pickContinuationReviewItem(session, set);
@@ -66,6 +75,16 @@ export function advanceLearningPrompt(session, set) {
     promptKind: 'review',
     promptIndex: nextPromptIndex,
     retryQueue: queue
+  });
+}
+
+export function beginExtendedPracticePrompt(session, set, nextPromptIndex = session.promptIndex + 1) {
+  const reviewId = pickContinuationReviewItem(session, set);
+  return withPrompt(session, {
+    itemId: reviewId,
+    promptKind: 'review',
+    promptIndex: nextPromptIndex,
+    retryQueue: (session.retryQueue ?? []).map(entry => ({ ...entry }))
   });
 }
 
