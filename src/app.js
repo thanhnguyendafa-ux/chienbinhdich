@@ -131,7 +131,7 @@ async function showDrill() {
         type: result.event.type,
         answer: currentItem?.en ?? result.event.answer,
         mastery: result.event.mastery,
-        masteryDeltaUnits: result.event.masteryDeltaUnits,
+        masteryBefore: result.event.masteryBefore,
         masteryDeltaPercent: result.event.masteryDeltaPercent,
         onContinue: showDrill
       });
