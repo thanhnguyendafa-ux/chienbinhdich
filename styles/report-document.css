@@ -38,9 +38,9 @@
 .timeline-heading h2{margin:0;font-family:var(--font-report);font-size:19px;line-height:1.25;color:black}
 .timeline-heading>span{font-size:10px;color:black}
 .attempt-list{list-style:none;margin:0;padding:0;border-top:2px solid black}
-.attempt-row{padding:9px 0;border-bottom:1px solid black;background:white;color:black}
+.attempt-row{display:block;grid-template-columns:none;gap:0;padding:9px 0;border-bottom:1px solid black;background:white;color:black}
 .attempt-topline{display:grid;grid-template-columns:72px minmax(0,1fr) auto auto;align-items:baseline;gap:10px;color:black}
-.attempt-time{font-family:var(--font-mono);font-size:10px;font-weight:700}
+.attempt-time{display:inline;font-family:var(--font-mono);font-size:10px;font-weight:700}
 .attempt-meta{display:flex;gap:6px;flex-wrap:wrap;min-width:0;font-size:9px;font-weight:700;text-transform:uppercase;color:black}
 .attempt-status,.mastery-impact{font-size:10px;font-weight:800;white-space:nowrap;color:black}
 .attempt-prompt{margin:5px 0 3px;font-family:var(--font-report);font-size:13px;line-height:1.4;color:black}
