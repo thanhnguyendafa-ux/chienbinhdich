@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { abandonSession, createSession, getCurrentItem, getSessionMetrics, submitAnswer, submitPassedSession } from '../src/core/sessionMachine.js';
+import { abandonSession, continueQualifiedSession, createSession, getCurrentItem, getSessionMetrics, submitAnswer, submitPassedSession } from '../src/core/sessionMachine.js';
 
 const set = {
   id: 'test',
@@ -23,13 +23,24 @@ function answer(session, value, t) {
   return submitAnswer({ session, set, answer: value, attemptMeta: meta(t, t + 10), now: t + 10 });
 }
 
+function passCleanly() {
+  let session = createSession({ studentName: 'Test', set, now: 1 });
+  session = answer(session, 'alpha', 10).session;
+  session = answer(session, 'beta', 30).session;
+  session = answer(session, 'gamma', 50).session;
+  session = answer(session, 'delta', 70).session;
+  session = answer(session, 'echo', 90).session;
+  return session;
+}
+
 test('session keeps attempts as mastery evidence SSOT and scheduler state operational', () => {
   const session = createSession({ studentName: 'Test', set, now: 1 });
-  assert.equal(session.schemaVersion, 6);
+  assert.equal(session.schemaVersion, 7);
   assert.equal('mastery' in session, false);
   assert.equal('itemStates' in session, false);
   assert.equal(session.currentItemId, 'a');
   assert.equal(session.currentPromptKind, 'main');
+  assert.equal(session.qualifiedAt, null);
   assert.deepEqual(session.retryQueue, []);
   assert.deepEqual(session.attempts, []);
 });
@@ -126,6 +137,7 @@ test('main sequence plus recovered retry passes once mastery is at least 80', ()
   const final = answer(session, 'echo', 130);
   session = final.session;
   assert.equal(session.status, 'passed');
+  assert.equal(session.qualifiedAt, 140);
   assert.equal(getSessionMetrics(session, set).masteryExact, 100);
   assert.equal(getSessionMetrics(session, set).thresholdReached, true);
   assert.equal(getSessionMetrics(session, set).mainComplete, true);
@@ -157,12 +169,39 @@ test('a completed main sequence at 60 stays active in review and passes at exact
 
   const recovered = answer(session, 'alpha', 200);
   assert.equal(recovered.session.status, 'passed');
+  assert.equal(recovered.session.qualifiedAt, 210);
   assert.equal(getSessionMetrics(recovered.session, set).masteryExact, 80);
 });
 
-test('submission is gated by passed state, while abandon preserves evidence and duration', () => {
+test('qualified learner can continue without bouncing back to pass screen, then submit a full report', () => {
+  const passed = passCleanly();
+  assert.equal(passed.status, 'passed');
+  assert.equal(getSessionMetrics(passed, set).masteryExact, 100);
+
+  let extended = continueQualifiedSession(passed, set, 500);
+  assert.equal(extended.status, 'extended');
+  assert.equal(extended.extendedPracticeStartedAt, 500);
+  assert.equal(extended.currentPromptKind, 'review');
+
+  const reviewItem = getCurrentItem(extended, set);
+  extended = answer(extended, reviewItem.en, 600).session;
+  assert.equal(extended.status, 'extended');
+
+  const submitted = submitPassedSession(extended, 800);
+  const metrics = getSessionMetrics(submitted, set, 800);
+  assert.equal(submitted.status, 'submitted');
+  assert.equal(submitted.extendedPracticeEndedAt, 800);
+  assert.equal(metrics.extendedPractice, true);
+  assert.equal(metrics.extendedAttempts, 1);
+  assert.equal(metrics.extendedPracticeDurationMs, 300);
+});
+
+test('submission is gated by qualification, while abandon preserves evidence and duration', () => {
   const active = createSession({ studentName: 'Test', set, now: 100 });
   assert.equal(submitPassedSession(active, 200).status, 'active');
+
+  const passed = passCleanly();
+  assert.equal(submitPassedSession(passed, 300).status, 'submitted');
 
   const abandoned = abandonSession(active, 500);
   assert.equal(abandoned.status, 'abandoned');

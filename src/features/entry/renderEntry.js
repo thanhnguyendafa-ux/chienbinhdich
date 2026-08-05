@@ -1,12 +1,17 @@
 export function renderEntry({ root, lastName, directSet = null, resumeSession, onStart, onResume }) {
+  const threshold = Number(directSet?.passThreshold ?? 80);
+  const teacher = directSet?.teacher ?? 'Thầy Thành MRT';
   root.innerHTML = `
     <main class="page page-centered entry-page">
-      <section class="entry-card">
-        <div class="brand-lockup centered"><span class="brand-seal">MRT</span><span>English Practice</span></div>
-        <p class="eyebrow">GLOBAL SUCCESS · OUTPUT TRAINING</p>
+      <section class="entry-card ${directSet ? 'direct-entry-card' : ''}">
+        <div class="brand-lockup centered"><span class="brand-seal">MRT</span><span>Chiến Binh Dịch</span></div>
+        <p class="eyebrow">${directSet ? esc(directSet.course) : 'GLOBAL SUCCESS · OUTPUT TRAINING'}</p>
         <h1>Chiến Binh Dịch</h1>
-        ${directSet ? `<div class="direct-set"><strong>${esc(directSet.unit)}</strong><span>${esc(directSet.title)}</span></div>` : '<p class="lead">Nhớ tiếng Anh từ đơn vị nhỏ, rồi tự xây lên câu hoàn chỉnh.</p>'}
-        <div class="learning-path" aria-label="Từ đến câu"><span>TỪ</span><i></i><span>CỤM TỪ</span><i></i><span>CÂU</span></div>
+        ${directSet
+          ? `<div class="direct-set"><strong>${esc(directSet.unit)}</strong><span>${esc(directSet.title)}</span></div>
+             <p class="welcome-copy">Chào mừng con đến với bài test <strong>${esc(teacher)}</strong>.<br />Con hãy cố gắng vượt qua <strong>${threshold}% Mastery</strong> nhé!</p>`
+          : '<p class="lead">Nhớ tiếng Anh từ đơn vị nhỏ, rồi tự xây lên câu hoàn chỉnh.</p>'}
+        ${directSet ? '' : '<div class="learning-path" aria-label="Từ đến câu"><span>TỪ</span><i></i><span>CỤM TỪ</span><i></i><span>CÂU</span></div>'}
 
         ${resumeSession ? `<button class="resume-card" id="resume-btn" type="button"><span>Tiếp tục bài đang làm</span><strong>${esc(resumeSession.studentName)}</strong></button>` : ''}
 
@@ -14,7 +19,7 @@ export function renderEntry({ root, lastName, directSet = null, resumeSession, o
           <label for="student-name">Tên của em</label>
           <input id="student-name" maxlength="50" autocomplete="name" value="${esc(lastName)}" placeholder="Ví dụ: Minh Anh" required />
           <p class="input-note">${directSet ? 'Nhập tên rồi bắt đầu ngay đúng bài thầy đã gửi.' : 'Tên và thời gian làm bài sẽ xuất hiện trong báo cáo cuối.'}</p>
-          <button class="primary-btn" type="submit">${directSet ? 'Bắt đầu bài này' : 'Bắt đầu học'}</button>
+          <button class="primary-btn" type="submit">${directSet ? 'Bắt đầu bài test' : 'Bắt đầu học'}</button>
         </form>
       </section>
     </main>`;

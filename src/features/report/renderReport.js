@@ -26,7 +26,7 @@ export function renderReport({ root, session, set, onRetry, onHome }) {
             <h1>${esc(session.studentName)}</h1>
             <p class="report-course">${esc(set.course)} · ${esc(set.unit)} · ${esc(set.title)}</p>
           </div>
-          <div class="score-hero"><span>Mastery cuối</span><strong>${formatPercent(metrics.mastery)}%</strong><small>${submitted ? `Đạt mốc ${set.passThreshold}% và đã bấm Nộp bài` : `Chưa nộp · mốc yêu cầu ${set.passThreshold}%`}</small></div>
+          <div class="score-hero"><span>Mastery cuối</span><strong>${formatPercent(metrics.mastery)}%</strong><small>${submitted ? `Đã vượt mốc ${set.passThreshold}% và đã bấm Nộp bài` : `Chưa nộp · mốc yêu cầu ${set.passThreshold}%`}</small></div>
         </section>
 
         <section class="report-grid" aria-label="Tóm tắt buổi học">
@@ -36,6 +36,11 @@ export function renderReport({ root, session, set, onRetry, onHome }) {
           ${summaryCell('Correction', metrics.corrections)}
           ${summaryCell('Lượt gặp lại', metrics.retryCount)}
           ${summaryCell('Đã hiện đáp án', metrics.revealedCount)}
+          ${summaryCell('Đạt mục tiêu', metrics.qualifiedAt ? formatDateTime(metrics.qualifiedAt) : 'Chưa đạt')}
+          ${summaryCell('Mastery lúc đạt', metrics.masteryAtQualification === null ? '—' : `${formatPercent(metrics.masteryAtQualification)}%`)}
+          ${summaryCell('Luyện thêm', metrics.extendedPractice ? 'Có' : 'Không')}
+          ${summaryCell('Lượt luyện thêm', metrics.extendedAttempts)}
+          ${summaryCell('Thời gian luyện thêm', metrics.extendedPractice ? formatDuration(metrics.extendedPracticeDurationMs) : '—')}
           ${summaryCell('Paste detected', analytics.pasteCount)}
           ${summaryCell('Phản hồi rất nhanh', analytics.rapidCount)}
           ${summaryCell('Trung vị phản hồi', formatResponseDuration(analytics.medianResponseMs))}
@@ -92,7 +97,12 @@ function renderAttempt(attempt, item, impact) {
 }
 
 function renderOutcome({ submitted, abandoned, metrics, set }) {
-  if (submitted) return `<section class="submission-callout"><strong>Bài đã được đánh dấu là ĐÃ NỘP</strong><p>Mastery ${formatPercent(metrics.mastery)}%. Chụp báo cáo này và gửi cho <b>${esc(set.teacher)}</b> nếu lớp đang dùng quy trình nộp bằng ảnh.</p></section>`;
+  if (submitted) {
+    const extra = metrics.extendedPractice
+      ? ` Học sinh đã chọn Làm tiếp sau khi đạt mục tiêu và luyện thêm ${metrics.extendedAttempts} lượt trước khi nộp.`
+      : ' Học sinh đã nộp ngay sau khi đạt mục tiêu.';
+    return `<section class="submission-callout"><strong>Bài đã được đánh dấu là ĐÃ NỘP</strong><p>Mastery cuối ${formatPercent(metrics.mastery)}%.${extra} Chụp báo cáo này và gửi cho <b>${esc(set.teacher)}</b> nếu lớp đang dùng quy trình nộp bằng ảnh.</p></section>`;
+  }
   if (abandoned) return `<section class="submission-callout retry-callout"><strong>Chưa được tính là nộp bài</strong><p>Học sinh đã chọn Bỏ cuộc ở Mastery ${formatPercent(metrics.mastery)}%. Báo cáo vẫn giữ tổng thời gian và toàn bộ lịch sử làm bài.</p></section>`;
   return '';
 }

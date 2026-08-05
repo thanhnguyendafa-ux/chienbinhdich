@@ -25,3 +25,25 @@ test('analytics flags paste and meaningful rapid replies without calling short w
   assert.deepEqual(analytics.attempts[1].flags, ['rapid']);
   assert.deepEqual(analytics.attempts[2].flags, ['paste', 'answer_seen']);
 });
+
+test('analytics accepts MCQ, true-false and sentence-order items without typing-only fields', () => {
+  const mixedSet = {
+    items: [
+      { id: 'q1', type: 'mcq', prompt: 'Pick one', choices: [{ id: 'a', text: 'A' }], correctChoiceId: 'a' },
+      { id: 'q2', type: 'true_false', statement: 'True?', answer: true },
+      { id: 'q3', type: 'sentence_order', prompt: 'Order', correctOrder: ['I', 'learn.'] }
+    ]
+  };
+  const mixedSession = {
+    attempts: [
+      { id: 'm1', itemId: 'q1', responseDurationMs: 120, pasteDetected: false, answerRevealedBeforeAttempt: false },
+      { id: 'm2', itemId: 'q2', responseDurationMs: 130, pasteDetected: false, answerRevealedBeforeAttempt: false },
+      { id: 'm3', itemId: 'q3', responseDurationMs: 140, pasteDetected: false, answerRevealedBeforeAttempt: false }
+    ]
+  };
+
+  const analytics = deriveAttemptAnalytics(mixedSession, mixedSet);
+  assert.equal(analytics.rapidCount, 0);
+  assert.equal(analytics.attempts.length, 3);
+  assert.deepEqual(analytics.attempts.map(attempt => attempt.flags), [[], [], []]);
+});

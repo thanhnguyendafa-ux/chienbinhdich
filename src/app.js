@@ -1,7 +1,7 @@
 import { validateSet } from './data/contentValidator.js';
 import { localSessionRepository as sessions } from './repositories/localSessionRepository.js';
 import { loadLessonSet } from './repositories/lessonRepository.js';
-import { abandonSession, createSession, submitAnswer, submitPassedSession } from './core/sessionMachine.js';
+import { abandonSession, continueQualifiedSession, createSession, submitAnswer, submitPassedSession } from './core/sessionMachine.js';
 import { buildSetShareUrl, resolveSetIdFromLocation } from './core/setRouting.js';
 import { renderLoading } from './ui/renderLoading.js';
 
@@ -40,7 +40,9 @@ async function ensureSet() {
 }
 
 function canResumeCurrentSet() {
-  return session?.status === 'active' && session.setId === activeSetId && (!set || session.setVersion === set.version);
+  return ['active', 'extended', 'passed'].includes(session?.status)
+    && session.setId === activeSetId
+    && (!set || session.setVersion === set.version);
 }
 
 async function showEntry() {
@@ -97,10 +99,12 @@ async function showDrill() {
       root,
       session,
       set: lesson,
-      onSubmit: async () => {
-        session = submitPassedSession(session);
-        sessions.saveReport(session);
-        await showReport();
+      onSubmit: finishQualified,
+      onContinue: async () => {
+        session = continueQualifiedSession(session, lesson);
+        sessions.saveActive(session);
+        feedback = null;
+        await showDrill();
       }
     });
   }
@@ -113,6 +117,7 @@ async function showDrill() {
     set: lesson,
     feedback,
     onExit: finishAbandoned,
+    onFinishQualified: session.status === 'extended' ? finishQualified : null,
     onSubmit: ({ response, attemptMeta }) => {
       const result = submitAnswer({ session, set: lesson, response, attemptMeta });
       session = result.session;
@@ -137,6 +142,14 @@ async function showDrill() {
   });
 }
 
+async function finishQualified() {
+  if (!session) return;
+  session = submitPassedSession(session);
+  sessions.saveReport(session);
+  feedback = null;
+  await showReport();
+}
+
 async function finishAbandoned() {
   if (!session) return;
   session = abandonSession(session);
@@ -148,22 +161,49 @@ async function finishAbandoned() {
 async function showReport() {
   if (!session) return showEntry();
   const lesson = await ensureSet();
-  const { renderReport } = await getScreen('report', 'Đang tổng hợp quá trình học...');
-  renderReport({
-    root,
-    session,
-    set: lesson,
-    onRetry: async () => {
-      renderLoading(root, 'Đang tạo lượt làm mới...');
-      session = createSession({ studentName: session.studentName, set: lesson });
-      sessions.saveActive(session);
-      await showDrill();
-    },
-    onHome: async () => {
-      currentStudentName = session.studentName;
-      session = null;
-      await showEntry();
-    }
+  try {
+    const { renderReport } = await getScreen('report', 'Đang tổng hợp quá trình học...');
+    renderReport({
+      root,
+      session,
+      set: lesson,
+      onRetry: async () => {
+        renderLoading(root, 'Đang tạo lượt làm mới...');
+        session = createSession({ studentName: session.studentName, set: lesson });
+        sessions.saveActive(session);
+        await showDrill();
+      },
+      onHome: async () => {
+        currentStudentName = session.studentName;
+        session = null;
+        await showEntry();
+      }
+    });
+  } catch (error) {
+    console.error('Report render failed', error);
+    moduleCache.delete('report');
+    renderReportError();
+  }
+}
+
+function renderReportError() {
+  root.innerHTML = `
+    <main class="loading-page report-error-page">
+      <section class="loading-panel error-panel report-error-panel">
+        <div class="brand-lockup"><span class="brand-seal">MRT</span><span>Chiến Binh Dịch</span></div>
+        <h1>Không thể mở báo cáo</h1>
+        <p>Dữ liệu làm bài vẫn đã được giữ. Con có thể thử mở lại báo cáo mà không cần làm lại bài.</p>
+        <div class="report-error-actions">
+          <button class="primary-btn" id="retry-report-btn" type="button">Thử mở lại báo cáo</button>
+          <button class="secondary-btn" id="report-home-btn" type="button">Về trang đầu</button>
+        </div>
+      </section>
+    </main>`;
+  root.querySelector('#retry-report-btn')?.addEventListener('click', showReport);
+  root.querySelector('#report-home-btn')?.addEventListener('click', async () => {
+    currentStudentName = session?.studentName ?? currentStudentName;
+    session = null;
+    await showEntry();
   });
 }
 

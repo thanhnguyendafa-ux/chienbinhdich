@@ -1,3 +1,4 @@
+import { orderForExposure } from '../../core/exposureOrder.js';
 import { questionPromptDisplay, questionTypeForItem } from '../../core/questionTypes.js';
 
 const registry = Object.freeze({
@@ -7,11 +8,11 @@ const registry = Object.freeze({
   sentence_order: { render: renderSentenceOrder, bind: bindSentenceOrder }
 });
 
-export function renderQuestionInteraction(item, { reviewMode = false } = {}) {
+export function renderQuestionInteraction(item, options = {}) {
   const type = questionTypeForItem(item);
   const definition = registry[type];
   if (!definition) throw new Error(`Unsupported question renderer: ${type}`);
-  return definition.render(item, { reviewMode });
+  return definition.render(item, options);
 }
 
 export function bindQuestionInteraction({ root, item, onSubmit, attemptStartedAt = Date.now() }) {
@@ -21,7 +22,7 @@ export function bindQuestionInteraction({ root, item, onSubmit, attemptStartedAt
   return definition.bind({ root, item, onSubmit, attemptStartedAt });
 }
 
-function renderTyping(item, { reviewMode }) {
+function renderTyping(item, { reviewMode = false } = {}) {
   return `
     <div class="prompt-block">
       <p class="prompt-label">${reviewMode ? 'Nhớ lại và tự gõ — không nhìn đáp án' : 'Gõ tiếng Anh'}</p>
@@ -48,14 +49,15 @@ function bindTyping({ root, onSubmit, attemptStartedAt }) {
   return () => focusInput(input);
 }
 
-function renderMcq(item) {
+function renderMcq(item, { exposureKey = item.id } = {}) {
+  const choices = orderForExposure(item.choices ?? [], `${exposureKey}:mcq`);
   return `
     <div class="prompt-block mixed-prompt-block">
       <p class="prompt-label">Chọn một đáp án</p>
       <h1>${esc(questionPromptDisplay(item))}</h1>
     </div>
     <div class="choice-grid mcq-grid" role="group" aria-label="Các lựa chọn">
-      ${(item.choices ?? []).map((choice, index) => `<button class="choice-btn" type="button" data-choice-id="${escAttr(choice.id)}"><span>${String.fromCharCode(65 + index)}</span><strong>${esc(choice.text)}</strong></button>`).join('')}
+      ${choices.map((choice, index) => `<button class="choice-btn" type="button" data-choice-id="${escAttr(choice.id)}"><span>${String.fromCharCode(65 + index)}</span><strong>${esc(choice.text)}</strong></button>`).join('')}
     </div>`;
 }
 
@@ -89,8 +91,8 @@ function bindTrueFalse({ root, onSubmit, attemptStartedAt }) {
   return () => root.querySelector('[data-boolean]')?.focus({ preventScroll: true });
 }
 
-function renderSentenceOrder(item) {
-  const tokens = shuffledTokens(item);
+function renderSentenceOrder(item, { exposureKey = item.id } = {}) {
+  const tokens = shuffledTokens(item, exposureKey);
   return `
     <div class="prompt-block mixed-prompt-block order-prompt">
       <p class="prompt-label">Chạm vào các từ để tạo câu đúng</p>
@@ -149,9 +151,10 @@ function bindSentenceOrder({ root, onSubmit, attemptStartedAt }) {
   return () => bank?.querySelector('button')?.focus({ preventScroll: true });
 }
 
-function shuffledTokens(item) {
-  const source = item.displayOrder ?? item.tokens ?? item.correctOrder ?? [];
-  return source.map((text, index) => ({ key: `${item.id}-${index}`, text: String(text) }));
+function shuffledTokens(item, exposureKey) {
+  const source = (item.displayOrder ?? item.tokens ?? item.correctOrder ?? [])
+    .map((text, index) => ({ key: `${item.id}-${index}`, text: String(text) }));
+  return orderForExposure(source, `${exposureKey}:order`);
 }
 
 function tokenButton(token, location) {

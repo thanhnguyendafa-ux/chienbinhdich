@@ -1,8 +1,8 @@
 import { evaluateQuestion, expectedResponseDisplay, questionTypeForItem } from './questionTypes.js';
 import { getMasteryCounts, masteryDisplayPercent, masteryPercentFromAttempts, masteryUnitPercent } from './masteryEngine.js';
-import { advanceLearningPrompt, queueRetry } from './retryScheduler.js';
+import { advanceLearningPrompt, beginExtendedPracticePrompt, queueRetry } from './retryScheduler.js';
 
-export const SESSION_SCHEMA_VERSION = 6;
+export const SESSION_SCHEMA_VERSION = 7;
 
 export function createSession({ studentName, set, now = Date.now() }) {
   const firstItem = set.items[0];
@@ -17,6 +17,9 @@ export function createSession({ studentName, set, now = Date.now() }) {
     startedAt: now,
     completedAt: null,
     submittedAt: null,
+    qualifiedAt: null,
+    extendedPracticeStartedAt: null,
+    extendedPracticeEndedAt: null,
     status: 'active',
     currentItemId: firstItem.id,
     currentPromptKind: 'main',
@@ -28,7 +31,7 @@ export function createSession({ studentName, set, now = Date.now() }) {
 }
 
 export function submitAnswer({ session, set, response, answer, attemptMeta = {}, now = Date.now() }) {
-  if (session.status !== 'active') return { session, event: { type: session.status } };
+  if (!['active', 'extended'].includes(session.status)) return { session, event: { type: session.status } };
   const item = set.items.find(candidate => candidate.id === session.currentItemId);
   if (!item) throw new Error(`Current item not found: ${session.currentItemId}`);
 
@@ -109,14 +112,33 @@ export function submitAnswer({ session, set, response, answer, attemptMeta = {},
   };
 }
 
+export function continueQualifiedSession(session, set, now = Date.now()) {
+  if (session.status !== 'passed') return session;
+  const extended = {
+    ...session,
+    status: 'extended',
+    qualifiedAt: session.qualifiedAt ?? now,
+    extendedPracticeStartedAt: session.extendedPracticeStartedAt ?? now,
+    completedAt: null,
+    submittedAt: null
+  };
+  return beginExtendedPracticePrompt(extended, set);
+}
+
 export function abandonSession(session, now = Date.now()) {
   if (session.status === 'submitted' || session.status === 'abandoned') return session;
   return { ...session, status: 'abandoned', completedAt: now };
 }
 
 export function submitPassedSession(session, now = Date.now()) {
-  if (session.status !== 'passed') return session;
-  return { ...session, status: 'submitted', submittedAt: now, completedAt: now };
+  if (!['passed', 'extended'].includes(session.status)) return session;
+  return {
+    ...session,
+    status: 'submitted',
+    submittedAt: now,
+    completedAt: now,
+    extendedPracticeEndedAt: session.status === 'extended' ? now : session.extendedPracticeEndedAt
+  };
 }
 
 export function getCurrentItem(session, set) {
@@ -140,6 +162,12 @@ export function getSessionMetrics(session, set, now = Date.now()) {
   const retryPromptIds = new Set(
     attempts.filter(attempt => attempt.promptKind === 'retry').map(attempt => attempt.promptIndex)
   );
+  const qualifiedAt = session.qualifiedAt ?? null;
+  const attemptsAtQualification = qualifiedAt
+    ? attempts.filter(attempt => Number(attempt.submittedAt) <= Number(qualifiedAt))
+    : [];
+  const extendedPractice = Boolean(session.extendedPracticeStartedAt);
+  const extraPracticeEnd = session.extendedPracticeEndedAt ?? session.submittedAt ?? (extendedPractice ? now : null);
 
   return {
     total: set.items.length,
@@ -154,8 +182,14 @@ export function getSessionMetrics(session, set, now = Date.now()) {
     mastery,
     masteryExact,
     masteryUnit: masteryUnitPercent(set.items.length),
-    thresholdReached: masteryExact >= set.passThreshold,
-    passed: session.status === 'passed' || session.status === 'submitted',
+    thresholdReached: Boolean(qualifiedAt) || masteryExact >= set.passThreshold,
+    qualifiedAt,
+    masteryAtQualification: qualifiedAt ? masteryPercentFromAttempts(attemptsAtQualification, set.items.length) : null,
+    extendedPractice,
+    extendedPracticeStartedAt: session.extendedPracticeStartedAt ?? null,
+    extendedPracticeDurationMs: extendedPractice && extraPracticeEnd ? Math.max(0, extraPracticeEnd - session.extendedPracticeStartedAt) : 0,
+    extendedAttempts: extendedPractice ? attempts.filter(attempt => attempt.submittedAt >= session.extendedPracticeStartedAt).length : 0,
+    passed: ['passed', 'extended', 'submitted'].includes(session.status) || Boolean(qualifiedAt),
     submitted: session.status === 'submitted',
     abandoned: session.status === 'abandoned',
     durationMs: (session.completedAt ?? now) - session.startedAt

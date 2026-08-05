@@ -7,13 +7,18 @@ const lessonRepository = readFileSync(new URL('../src/repositories/lessonReposit
 const localSessionRepository = readFileSync(new URL('../src/repositories/localSessionRepository.js', import.meta.url), 'utf8');
 const sessionMachine = readFileSync(new URL('../src/core/sessionMachine.js', import.meta.url), 'utf8');
 const questionTypes = readFileSync(new URL('../src/core/questionTypes.js', import.meta.url), 'utf8');
+const attemptAnalytics = readFileSync(new URL('../src/core/attemptAnalytics.js', import.meta.url), 'utf8');
+const exposureOrder = readFileSync(new URL('../src/core/exposureOrder.js', import.meta.url), 'utf8');
 const retryScheduler = readFileSync(new URL('../src/core/retryScheduler.js', import.meta.url), 'utf8');
+const entry = readFileSync(new URL('../src/features/entry/renderEntry.js', import.meta.url), 'utf8');
 const drill = readFileSync(new URL('../src/features/drill/renderDrill.js', import.meta.url), 'utf8');
 const questionRegistry = readFileSync(new URL('../src/features/drill/questionTypeRegistry.js', import.meta.url), 'utf8');
+const report = readFileSync(new URL('../src/features/report/renderReport.js', import.meta.url), 'utf8');
 const masteryProgress = readFileSync(new URL('../src/ui/masteryProgress.js', import.meta.url), 'utf8');
 const css = readFileSync(new URL('../styles/global.css', import.meta.url), 'utf8');
 const masteryCss = readFileSync(new URL('../styles/mastery-progress.css', import.meta.url), 'utf8');
 const questionCss = readFileSync(new URL('../styles/question-types.css', import.meta.url), 'utf8');
+const sessionFlowCss = readFileSync(new URL('../styles/session-flow.css', import.meta.url), 'utf8');
 const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const vercel = JSON.parse(readFileSync(new URL('../vercel.json', import.meta.url), 'utf8'));
 
@@ -58,6 +63,43 @@ test('Question Type Registry owns interactions for Sample A types', () => {
   assert.match(questionRegistry, /data-order-root/);
 });
 
+test('MCQ and sentence-order presentation is deterministic per exposure rather than answer-position SSOT', () => {
+  assert.match(questionRegistry, /orderForExposure/);
+  assert.match(drill, /session\.promptIndex/);
+  assert.match(drill, /exposureKey/);
+  assert.match(exposureOrder, /hashString/);
+  assert.doesNotMatch(exposureOrder, /Math\.random/);
+});
+
+test('mixed report analytics never assumes every item has an English typing answer', () => {
+  assert.match(attemptAnalytics, /questionTypeForItem\(item\) !== 'typing'/);
+  assert.match(attemptAnalytics, /expectedResponseDisplay/);
+  assert.doesNotMatch(attemptAnalytics, /item\.en\.length/);
+  assert.match(report, /Tổng lượt trả lời/);
+});
+
+test('report rendering has a recovery boundary instead of an infinite loading screen', () => {
+  assert.match(app, /try \{/);
+  assert.match(app, /Report render failed/);
+  assert.match(app, /renderReportError/);
+  assert.match(app, /Thử mở lại báo cáo/);
+});
+
+test('direct set entry uses generic test welcome copy and dynamic threshold', () => {
+  assert.match(entry, /Chào mừng con đến với bài test/);
+  assert.match(entry, /directSet\?\.passThreshold/);
+  assert.match(entry, /Bắt đầu bài test/);
+});
+
+test('qualification checkpoint offers submit and continue, while extended mode remains submittable', () => {
+  assert.match(drill, /Nộp bài/);
+  assert.match(drill, /Làm tiếp/);
+  assert.match(sessionMachine, /continueQualifiedSession/);
+  assert.match(sessionMachine, /status: 'extended'/);
+  assert.match(retryScheduler, /session\.status === 'extended'/);
+  assert.match(app, /onFinishQualified/);
+});
+
 test('mastery progress is CSP-safe, accessible and driven by set threshold', () => {
   assert.match(drill, /renderMasteryProgress/);
   assert.match(drill, /set\.passThreshold/);
@@ -76,6 +118,7 @@ test('security policy remains strict instead of enabling unsafe inline styles', 
   assert.doesNotMatch(csp, /unsafe-inline/);
   assert.match(index, /styles\/mastery-progress\.css/);
   assert.match(index, /styles\/question-types\.css/);
+  assert.match(index, /styles\/session-flow\.css/);
 });
 
 test('mastery animation supports gain, loss and reduced-motion users', () => {
@@ -92,10 +135,10 @@ test('student feedback distinguishes mastery loss, floor and neutral correction 
   assert.match(drill, /delta < 0/);
 });
 
-test('session persistence key advances for mixed response evidence', () => {
-  assert.match(sessionMachine, /SESSION_SCHEMA_VERSION = 6/);
-  assert.match(localSessionRepository, /cbd\.activeSession\.v6/);
-  assert.match(localSessionRepository, /cbd\.report\.v6\./);
+test('session persistence key advances for qualification and extended practice', () => {
+  assert.match(sessionMachine, /SESSION_SCHEMA_VERSION = 7/);
+  assert.match(localSessionRepository, /cbd\.activeSession\.v7/);
+  assert.match(localSessionRepository, /cbd\.report\.v7\./);
 });
 
 test('stable set deep links have a Vercel rewrite to the SPA shell', () => {
@@ -106,8 +149,11 @@ test('CSS explicitly protects classroom 1280x529 and iPhone-sized layouts', () =
   assert.match(css, /min-width:\s*900px[^}]*max-height:\s*620px/s);
   assert.match(masteryCss, /min-width:900px[^}]*max-height:620px/s);
   assert.match(questionCss, /min-width:900px[^}]*max-height:620px/s);
+  assert.match(sessionFlowCss, /min-width:900px[^}]*max-height:620px/s);
   assert.match(questionCss, /max-width:640px/);
+  assert.match(sessionFlowCss, /max-width:640px/);
   assert.match(questionCss, /max-height:500px[^}]*orientation:landscape/s);
+  assert.match(sessionFlowCss, /max-height:500px[^}]*orientation:landscape/s);
   assert.match(questionCss, /mcq-grid\{grid-template-columns:repeat\(2/);
   assert.match(questionCss, /@media \(max-width:640px\)[\s\S]*\.mcq-grid\{grid-template-columns:1fr\}/);
 });
@@ -118,4 +164,5 @@ test('raw hex colors live only inside the global design-token root block', () =>
   assert.doesNotMatch(afterRoot, /#[0-9a-fA-F]{3,8}\b/);
   assert.doesNotMatch(masteryCss, /#[0-9a-fA-F]{3,8}\b/);
   assert.doesNotMatch(questionCss, /#[0-9a-fA-F]{3,8}\b/);
+  assert.doesNotMatch(sessionFlowCss, /#[0-9a-fA-F]{3,8}\b/);
 });
