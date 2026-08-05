@@ -1,7 +1,7 @@
 import { validateSet } from './data/contentValidator.js';
 import { localSessionRepository as sessions } from './repositories/localSessionRepository.js';
 import { loadLessonSet } from './repositories/lessonRepository.js';
-import { abandonSession, createSession, getCurrentItem, submitAnswer, submitPassedSession } from './core/sessionMachine.js';
+import { abandonSession, createSession, submitAnswer, submitPassedSession } from './core/sessionMachine.js';
 import { buildSetShareUrl, resolveSetIdFromLocation } from './core/setRouting.js';
 import { renderLoading } from './ui/renderLoading.js';
 
@@ -101,8 +101,7 @@ async function showDrill() {
         session = submitPassedSession(session);
         sessions.saveReport(session);
         await showReport();
-      },
-      onAbandon: finishAbandoned
+      }
     });
   }
 
@@ -114,9 +113,8 @@ async function showDrill() {
     set: lesson,
     feedback,
     onExit: finishAbandoned,
-    onSubmit: ({ answer, attemptMeta }) => {
-      const currentItem = getCurrentItem(session, lesson);
-      const result = submitAnswer({ session, set: lesson, answer, attemptMeta });
+    onSubmit: ({ response, attemptMeta }) => {
+      const result = submitAnswer({ session, set: lesson, response, attemptMeta });
       session = result.session;
       sessions.saveActive(session);
 
@@ -129,7 +127,7 @@ async function showDrill() {
       showSuccess({
         root,
         type: result.event.type,
-        answer: currentItem?.en ?? result.event.answer,
+        answer: result.event.answer,
         mastery: result.event.mastery,
         masteryBefore: result.event.masteryBefore,
         masteryDeltaPercent: result.event.masteryDeltaPercent,

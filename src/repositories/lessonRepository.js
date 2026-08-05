@@ -1,5 +1,6 @@
 const loaders = Object.freeze({
-  'g7-u1-s1': () => import('../data/global7-unit1-set1.js').then(module => module.global7Unit1Set1)
+  'g7-u1-s1': () => import('../data/global7-unit1-set1.js').then(module => module.global7Unit1Set1),
+  'g7-u1-mixed-demo': () => import('../data/global7-unit1-mixed-demo.js').then(module => module.global7Unit1MixedDemo)
 });
 
 const cache = new Map();

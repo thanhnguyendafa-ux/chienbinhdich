@@ -25,7 +25,7 @@ function answer(session, value, t) {
 
 test('session keeps attempts as mastery evidence SSOT and scheduler state operational', () => {
   const session = createSession({ studentName: 'Test', set, now: 1 });
-  assert.equal(session.schemaVersion, 5);
+  assert.equal(session.schemaVersion, 6);
   assert.equal('mastery' in session, false);
   assert.equal('itemStates' in session, false);
   assert.equal(session.currentItemId, 'a');
