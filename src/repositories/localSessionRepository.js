@@ -1,8 +1,8 @@
 import { SESSION_SCHEMA_VERSION } from '../core/sessionMachine.js';
 
-const ACTIVE_KEY = 'cbd.activeSession.v3';
+const ACTIVE_KEY = 'cbd.activeSession.v4';
 const LAST_NAME_KEY = 'cbd.lastStudentName.v1';
-const REPORT_PREFIX = 'cbd.report.v3.';
+const REPORT_PREFIX = 'cbd.report.v4.';
 
 export const localSessionRepository = Object.freeze({
   saveActive(session) {
