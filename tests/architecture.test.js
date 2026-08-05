@@ -4,6 +4,9 @@ import { readFileSync } from 'node:fs';
 
 const app = readFileSync(new URL('../src/app.js', import.meta.url), 'utf8');
 const lessonRepository = readFileSync(new URL('../src/repositories/lessonRepository.js', import.meta.url), 'utf8');
+const lessonCatalog = readFileSync(new URL('../src/data/lessonCatalog.js', import.meta.url), 'utf8');
+const set1Content = readFileSync(new URL('../src/data/global7-unit1-set1.js', import.meta.url), 'utf8');
+const mixedContent = readFileSync(new URL('../src/data/global7-unit1-mixed-demo.js', import.meta.url), 'utf8');
 const localSessionRepository = readFileSync(new URL('../src/repositories/localSessionRepository.js', import.meta.url), 'utf8');
 const sessionMachine = readFileSync(new URL('../src/core/sessionMachine.js', import.meta.url), 'utf8');
 const questionTypes = readFileSync(new URL('../src/core/questionTypes.js', import.meta.url), 'utf8');
@@ -11,23 +14,55 @@ const attemptAnalytics = readFileSync(new URL('../src/core/attemptAnalytics.js',
 const exposureOrder = readFileSync(new URL('../src/core/exposureOrder.js', import.meta.url), 'utf8');
 const retryScheduler = readFileSync(new URL('../src/core/retryScheduler.js', import.meta.url), 'utf8');
 const entry = readFileSync(new URL('../src/features/entry/renderEntry.js', import.meta.url), 'utf8');
+const library = readFileSync(new URL('../src/features/library/renderLibrary.js', import.meta.url), 'utf8');
 const drill = readFileSync(new URL('../src/features/drill/renderDrill.js', import.meta.url), 'utf8');
 const questionRegistry = readFileSync(new URL('../src/features/drill/questionTypeRegistry.js', import.meta.url), 'utf8');
 const report = readFileSync(new URL('../src/features/report/renderReport.js', import.meta.url), 'utf8');
 const masteryProgress = readFileSync(new URL('../src/ui/masteryProgress.js', import.meta.url), 'utf8');
 const css = readFileSync(new URL('../styles/global.css', import.meta.url), 'utf8');
+const libraryCss = readFileSync(new URL('../styles/library.css', import.meta.url), 'utf8');
 const masteryCss = readFileSync(new URL('../styles/mastery-progress.css', import.meta.url), 'utf8');
 const questionCss = readFileSync(new URL('../styles/question-types.css', import.meta.url), 'utf8');
 const sessionFlowCss = readFileSync(new URL('../styles/session-flow.css', import.meta.url), 'utf8');
 const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const vercel = JSON.parse(readFileSync(new URL('../vercel.json', import.meta.url), 'utf8'));
 
-test('feature screens and lesson data stay lazy-loaded', () => {
+test('feature screens and lesson content stay lazy-loaded', () => {
   for (const path of ['entry/renderEntry.js', 'library/renderLibrary.js', 'drill/renderDrill.js', 'report/renderReport.js']) {
     assert.match(app, new RegExp(`import\\('./features/${path.replace('.', '\\.')}`));
   }
-  assert.match(lessonRepository, /global7-unit1-set1\.js/);
-  assert.match(lessonRepository, /global7-unit1-mixed-demo\.js/);
+  assert.match(lessonCatalog, /global7-unit1-set1\.js/);
+  assert.match(lessonCatalog, /global7-unit1-mixed-demo\.js/);
+  assert.match(lessonCatalog, /loadContent:\s*\(\) => import/);
+  assert.doesNotMatch(lessonRepository, /global7-unit1-set1\.js|global7-unit1-mixed-demo\.js/);
+});
+
+test('published catalog owns Set metadata while content files own questions only', () => {
+  for (const source of [set1Content, mixedContent]) {
+    assert.match(source, /items:\s*\[/);
+    assert.doesNotMatch(source, /course:\s*|unit:\s*|title:\s*|passThreshold:\s*|teacher:\s*|folderId:\s*/);
+  }
+  for (const field of ['folderId', 'course', 'unit', 'title', 'passThreshold', 'teacher', 'activityTypes', 'itemCount']) {
+    assert.match(lessonCatalog, new RegExp(`${field}:`));
+  }
+});
+
+test('homepage is catalog-first and direct Set links remain the only student entry route', () => {
+  assert.doesNotMatch(app, /DEFAULT_SET_ID/);
+  assert.match(app, /showCatalogHome/);
+  assert.match(app, /isDirectSetLink \? showEntry\(\) : showCatalogHome\(\)/);
+  assert.match(app, /window\.location\.assign\(buildSetShareUrl/);
+});
+
+test('library UI is data-driven rather than hard-coded to one Set or translation stages', () => {
+  assert.match(library, /folders\.map/);
+  assert.match(library, /sets\.map/);
+  assert.match(library, /data-folder-id/);
+  assert.match(library, /data-copy-set/);
+  assert.match(library, /Sao chép link/);
+  assert.match(library, /Tìm theo tên bài, Unit/);
+  assert.doesNotMatch(library, /SET 1|Vào Set 1|CỤM TỪ/);
+  assert.doesNotMatch(library, /textarea\.style\./);
 });
 
 test('attempt log remains mastery SSOT rather than storing derived mastery or item states', () => {
@@ -116,6 +151,7 @@ test('security policy remains strict instead of enabling unsafe inline styles', 
   const csp = vercel.headers.flatMap(entry => entry.headers).find(header => header.key === 'Content-Security-Policy')?.value ?? '';
   assert.match(csp, /style-src 'self'/);
   assert.doesNotMatch(csp, /unsafe-inline/);
+  assert.match(index, /styles\/library\.css/);
   assert.match(index, /styles\/mastery-progress\.css/);
   assert.match(index, /styles\/question-types\.css/);
   assert.match(index, /styles\/session-flow\.css/);
@@ -135,7 +171,7 @@ test('student feedback distinguishes mastery loss, floor and neutral correction 
   assert.match(drill, /delta < 0/);
 });
 
-test('session persistence key advances for qualification and extended practice', () => {
+test('session persistence key remains V7 for unchanged learning semantics', () => {
   assert.match(sessionMachine, /SESSION_SCHEMA_VERSION = 7/);
   assert.match(localSessionRepository, /cbd\.activeSession\.v7/);
   assert.match(localSessionRepository, /cbd\.report\.v7\./);
@@ -147,21 +183,25 @@ test('stable set deep links have a Vercel rewrite to the SPA shell', () => {
 
 test('CSS explicitly protects classroom 1280x529 and iPhone-sized layouts', () => {
   assert.match(css, /min-width:\s*900px[^}]*max-height:\s*620px/s);
+  assert.match(libraryCss, /min-width:900px[^}]*max-height:620px/s);
   assert.match(masteryCss, /min-width:900px[^}]*max-height:620px/s);
   assert.match(questionCss, /min-width:900px[^}]*max-height:620px/s);
   assert.match(sessionFlowCss, /min-width:900px[^}]*max-height:620px/s);
+  assert.match(libraryCss, /max-width:640px/);
   assert.match(questionCss, /max-width:640px/);
   assert.match(sessionFlowCss, /max-width:640px/);
+  assert.match(libraryCss, /max-height:500px[^}]*orientation:landscape/s);
   assert.match(questionCss, /max-height:500px[^}]*orientation:landscape/s);
   assert.match(sessionFlowCss, /max-height:500px[^}]*orientation:landscape/s);
-  assert.match(questionCss, /mcq-grid\{grid-template-columns:repeat\(2/);
-  assert.match(questionCss, /@media \(max-width:640px\)[\s\S]*\.mcq-grid\{grid-template-columns:1fr\}/);
+  assert.match(libraryCss, /folder-grid,.set-grid\{display:grid;grid-template-columns:repeat\(2/);
+  assert.match(libraryCss, /@media \(max-width:640px\)[\s\S]*\.folder-grid,.set-grid\{grid-template-columns:1fr\}/);
 });
 
 test('raw hex colors live only inside the global design-token root block', () => {
   const rootEnd = css.indexOf('\n}');
   const afterRoot = css.slice(rootEnd + 2);
   assert.doesNotMatch(afterRoot, /#[0-9a-fA-F]{3,8}\b/);
+  assert.doesNotMatch(libraryCss, /#[0-9a-fA-F]{3,8}\b/);
   assert.doesNotMatch(masteryCss, /#[0-9a-fA-F]{3,8}\b/);
   assert.doesNotMatch(questionCss, /#[0-9a-fA-F]{3,8}\b/);
   assert.doesNotMatch(sessionFlowCss, /#[0-9a-fA-F]{3,8}\b/);

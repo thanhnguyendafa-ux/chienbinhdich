@@ -1,13 +1,12 @@
 import { validateSet } from './data/contentValidator.js';
 import { localSessionRepository as sessions } from './repositories/localSessionRepository.js';
-import { loadLessonSet } from './repositories/lessonRepository.js';
+import { listFolders, listSetDescriptors, listSetsByFolder, loadLessonSet } from './repositories/lessonRepository.js';
 import { abandonSession, continueQualifiedSession, createSession, submitAnswer, submitPassedSession } from './core/sessionMachine.js';
 import { buildSetShareUrl, resolveSetIdFromLocation } from './core/setRouting.js';
 import { renderLoading } from './ui/renderLoading.js';
 
-const DEFAULT_SET_ID = 'g7-u1-s1';
 const requestedSetId = resolveSetIdFromLocation(window.location);
-const activeSetId = requestedSetId || DEFAULT_SET_ID;
+const activeSetId = requestedSetId;
 const isDirectSetLink = Boolean(requestedSetId);
 const root = document.querySelector('#app');
 const moduleCache = new Map();
@@ -32,6 +31,7 @@ async function getScreen(name, loadingMessage) {
 }
 
 async function ensureSet() {
+  if (!activeSetId) throw new Error('Không có Set đang hoạt động.');
   if (set) return set;
   set = await loadLessonSet(activeSetId);
   const contentErrors = validateSet(set);
@@ -45,8 +45,41 @@ function canResumeCurrentSet() {
     && (!set || session.setVersion === set.version);
 }
 
+async function showCatalogHome() {
+  const { renderLibraryHome } = await getScreen('library', 'Đang mở thư viện bài tập...');
+  const folders = listFolders();
+  const sets = listSetDescriptors();
+  renderLibraryHome({
+    root,
+    folders,
+    sets,
+    shareUrlFor: setId => buildSetShareUrl(window.location, setId),
+    onOpenFolder: showFolder,
+    onOpenSet: openPublishedSet
+  });
+}
+
+async function showFolder(folderId) {
+  const folder = listFolders().find(candidate => candidate.id === folderId);
+  if (!folder) return showCatalogHome();
+  const { renderFolderLibrary } = await getScreen('library', 'Đang mở thư mục...');
+  renderFolderLibrary({
+    root,
+    folder,
+    sets: listSetsByFolder(folderId),
+    shareUrlFor: setId => buildSetShareUrl(window.location, setId),
+    onBack: showCatalogHome,
+    onOpenSet: openPublishedSet
+  });
+}
+
+function openPublishedSet(setId) {
+  window.location.assign(buildSetShareUrl(window.location, setId));
+}
+
 async function showEntry() {
-  const lesson = isDirectSetLink ? await ensureSet() : null;
+  if (!isDirectSetLink) return showCatalogHome();
+  const lesson = await ensureSet();
   const { renderEntry } = await getScreen('entry', 'Đang mở trang học...');
   renderEntry({
     root,
@@ -55,36 +88,12 @@ async function showEntry() {
     resumeSession: canResumeCurrentSet() ? session : null,
     onStart: async name => {
       currentStudentName = name;
-      if (isDirectSetLink) {
-        renderLoading(root, 'Đang chuẩn bị bài luyện...');
-        session = createSession({ studentName: name, set: lesson });
-        sessions.saveActive(session);
-        await showDrill();
-      } else {
-        session = null;
-        await showLibrary();
-      }
-    },
-    onResume: showDrill
-  });
-}
-
-async function showLibrary() {
-  if (!set) renderLoading(root, 'Đang tải nội dung bài học...');
-  const lesson = await ensureSet();
-  const { renderLibrary } = await getScreen('library', 'Đang mở bài học...');
-  renderLibrary({
-    root,
-    studentName: currentStudentName,
-    set: lesson,
-    shareUrl: buildSetShareUrl(window.location, lesson.id),
-    onBegin: async () => {
       renderLoading(root, 'Đang chuẩn bị bài luyện...');
-      session = createSession({ studentName: currentStudentName, set: lesson });
+      session = createSession({ studentName: name, set: lesson });
       sessions.saveActive(session);
       await showDrill();
     },
-    onBack: showEntry
+    onResume: showDrill
   });
 }
 
@@ -207,7 +216,7 @@ function renderReportError() {
   });
 }
 
-showEntry().catch(showFatalError);
+(isDirectSetLink ? showEntry() : showCatalogHome()).catch(showFatalError);
 
 function showFatalError(error) {
   console.error(error);
