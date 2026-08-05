@@ -5,10 +5,11 @@ import { lessonFolders, lessonRegistry } from '../src/data/lessonCatalog.js';
 import { validateSet } from '../src/data/contentValidator.js';
 import { getSetDescriptor, listFolders, listSetDescriptors, listSetsByFolder, loadLessonSet } from '../src/repositories/lessonRepository.js';
 
-test('catalog has one valid sample folder with both published Sets', () => {
+test('catalog exposes sample and MRT lesson folders with their published Sets', () => {
   assert.deepEqual(validateCatalog(lessonFolders, lessonRegistry), []);
-  assert.deepEqual(listFolders().map(folder => folder.id), ['samples']);
+  assert.deepEqual(listFolders().map(folder => folder.id), ['samples', 'mrt-lessons']);
   assert.deepEqual(listSetsByFolder('samples').map(set => set.id), ['g7-u1-mixed-demo', 'g7-u1-s1']);
+  assert.deepEqual(listSetsByFolder('mrt-lessons').map(set => set.id), ['mrt-g6-gan-aura-action-01']);
 });
 
 test('published Set ids are unique and every descriptor resolves through repository', async () => {
