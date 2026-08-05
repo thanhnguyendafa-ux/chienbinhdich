@@ -7,7 +7,8 @@ export function renderDrill({ root, session, set, feedback = null, onSubmit, onE
   const metrics = getSessionMetrics(session, set);
   const stageItems = set.items.filter(candidate => candidate.stage === item.stage);
   const stagePosition = stageItems.findIndex(candidate => candidate.id === item.id) + 1;
-  const mainProgress = Math.round((metrics.completedMainItems / metrics.total) * 100);
+  const masteryProgress = clamp(metrics.mastery, 0, 100);
+  const masteryTarget = clamp(Number(set.passThreshold ?? 80), 0, 100);
   const revealAnswer = feedback?.type === 'incorrect_reveal';
   const reviewMode = session.currentPromptKind !== 'main';
 
@@ -18,10 +19,14 @@ export function renderDrill({ root, session, set, feedback = null, onSubmit, onE
         <div class="student-chip">${esc(session.studentName)}</div>
       </header>
 
-      <section class="shell metrics-row" aria-label="Tiến độ bài học">
-        <div class="metric"><span>${metrics.mainComplete ? 'Chuỗi chính' : 'Tiến độ'}</span><strong>${metrics.completedMainItems}/${metrics.total}</strong></div>
-        <div class="progress-track" aria-hidden="true"><div style="width:${mainProgress}%"></div></div>
-        <div class="metric score-metric"><span>Mastery</span><strong>${formatPercent(metrics.mastery)}%</strong></div>
+      <section class="shell metrics-row" aria-label="Tiến độ bài học và Mastery">
+        <div class="metric"><span>Chuỗi chính</span><strong>${metrics.completedMainItems}/${metrics.total}</strong></div>
+        <div class="mastery-progress-wrap" aria-label="Mastery ${formatPercent(masteryProgress)}%, mục tiêu ${formatPercent(masteryTarget)}%" style="position:relative;padding-bottom:18px">
+          <div class="progress-track" aria-hidden="true"><div style="width:${masteryProgress}%"></div></div>
+          <span class="mastery-target-marker" aria-hidden="true" style="position:absolute;left:${masteryTarget}%;top:-4px;height:15px;border-left:2px solid var(--color-accent)"></span>
+          <small class="mastery-target-label" style="position:absolute;left:${masteryTarget}%;top:9px;transform:translateX(-50%);white-space:nowrap;color:var(--color-muted);font-size:10px;font-weight:800">Mục tiêu ${formatPercent(masteryTarget)}%</small>
+        </div>
+        <div class="metric score-metric"><span>Mastery</span><strong>${formatPercent(masteryProgress)}%</strong></div>
       </section>
 
       <section class="drill-shell shell">
@@ -39,7 +44,7 @@ export function renderDrill({ root, session, set, feedback = null, onSubmit, onE
             <input id="answer-input" enterkeyhint="done" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Type English here..." required />
             <button class="primary-btn" type="submit">Kiểm tra</button>
           </form>
-          <p class="encouragement">${revealAnswer ? 'Nhìn kỹ rồi tự gõ lại đúng. Lần correction này không cộng Mastery.' : 'Gõ → Enter. App tự chuyển câu và tự đưa câu sai quay lại sau 2 item.'}</p>
+          <p class="encouragement">${revealAnswer ? 'Nhìn kỹ rồi tự gõ lại đúng. Các lần correction trong cùng lượt này không cộng hoặc trừ Mastery.' : 'Gõ → Enter. Chỉ lần gõ đầu tiên của mỗi lượt xuất hiện mới làm Mastery tăng hoặc giảm.'}</p>
         </article>
       </section>
 
@@ -122,18 +127,19 @@ export function renderPassed({ root, session, set, onSubmit }) {
 
 function renderFeedback(feedback) {
   if (!feedback) return '';
-  const masteryLoss = Math.abs(feedback.masteryDeltaPercent ?? 0);
+  const delta = Number(feedback.masteryDeltaPercent ?? 0);
+  const masteryMessage = delta < 0 ? `Mastery −${formatPercent(Math.abs(delta))}%` : 'Mastery không đổi';
   if (feedback.type === 'incorrect_reveal') {
     return `
       <div class="feedback reveal-feedback" role="alert">
-        <div><span class="feedback-kicker">Sai lần ${feedback.attemptNumber} · Mastery −${formatPercent(masteryLoss)}%</span><strong>Đáp án chuẩn</strong></div>
+        <div><span class="feedback-kicker">Sai lần ${feedback.attemptNumber} · ${masteryMessage}</span><strong>Đáp án chuẩn</strong></div>
         <code>${esc(feedback.revealAnswer)}</code>
         <p>Gõ lại đúng để hoàn thành correction. Câu này vẫn sẽ quay lại trong chuỗi.</p>
       </div>`;
   }
   return `
     <div class="feedback error-feedback" role="alert">
-      <div><span class="feedback-kicker">Sai · Mastery −${formatPercent(masteryLoss)}%</span><strong>Thử lại</strong></div>
+      <div><span class="feedback-kicker">Sai · ${masteryMessage}</span><strong>Thử lại</strong></div>
       <p>Em vừa nhập: <q>${esc(feedback.entered || '(trống)')}</q></p>
       <p>Chưa hiện đáp án. Hãy tự nhớ và gõ lại.</p>
     </div>`;
@@ -166,6 +172,10 @@ function createInputTracker(input) {
       return 'unknown';
     }
   };
+}
+
+function clamp(value, min, max) {
+  return Math.min(max, Math.max(min, Number(value ?? 0)));
 }
 
 function formatPercent(value) {
