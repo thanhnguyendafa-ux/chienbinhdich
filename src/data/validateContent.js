@@ -1,12 +1,22 @@
-import { global7Unit1Set1 } from './global7-unit1-set1.js';
-import { global7Unit1MixedDemo } from './global7-unit1-mixed-demo.js';
+import { validateCatalog } from './catalogValidator.js';
+import { lessonFolders, lessonRegistry } from './lessonCatalog.js';
 import { validateSet } from './contentValidator.js';
+import { loadLessonSet } from '../repositories/lessonRepository.js';
 
-const sets = [global7Unit1Set1, global7Unit1MixedDemo];
 let hasErrors = false;
+const catalogErrors = validateCatalog(lessonFolders, lessonRegistry);
 
-for (const set of sets) {
+if (catalogErrors.length) {
+  hasErrors = true;
+  console.error(`Catalog invalid:\n${catalogErrors.join('\n')}`);
+} else {
+  console.log(`Catalog valid: ${lessonFolders.length} folder(s), ${lessonRegistry.length} Set(s)`);
+}
+
+for (const descriptor of lessonRegistry) {
+  const set = await loadLessonSet(descriptor.id);
   const errors = validateSet(set);
+  if (set.items.length !== descriptor.itemCount) errors.push(`itemCount metadata ${descriptor.itemCount} không khớp ${set.items.length} items.`);
   if (errors.length) {
     hasErrors = true;
     console.error(`${set.id}:\n${errors.join('\n')}`);
