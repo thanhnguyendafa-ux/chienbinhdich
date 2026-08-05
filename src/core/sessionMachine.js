@@ -1,8 +1,8 @@
-import { evaluateAnswer } from './answerEvaluator.js';
+import { evaluateQuestion, expectedResponseDisplay, questionTypeForItem } from './questionTypes.js';
 import { getMasteryCounts, masteryDisplayPercent, masteryPercentFromAttempts, masteryUnitPercent } from './masteryEngine.js';
 import { advanceLearningPrompt, queueRetry } from './retryScheduler.js';
 
-export const SESSION_SCHEMA_VERSION = 5;
+export const SESSION_SCHEMA_VERSION = 6;
 
 export function createSession({ studentName, set, now = Date.now() }) {
   const firstItem = set.items[0];
@@ -27,7 +27,7 @@ export function createSession({ studentName, set, now = Date.now() }) {
   };
 }
 
-export function submitAnswer({ session, set, answer, attemptMeta = {}, now = Date.now() }) {
+export function submitAnswer({ session, set, response, answer, attemptMeta = {}, now = Date.now() }) {
   if (session.status !== 'active') return { session, event: { type: session.status } };
   const item = set.items.find(candidate => candidate.id === session.currentItemId);
   if (!item) throw new Error(`Current item not found: ${session.currentItemId}`);
@@ -39,21 +39,25 @@ export function submitAnswer({ session, set, answer, attemptMeta = {}, now = Dat
   const hadWrongThisExposure = exposureAttempts.some(attempt => !attempt.correct);
   const hasSeenAnswer = exposureAttempts.some(attempt => attempt.answerRevealedAfterAttempt === true);
   const failedAttemptsBefore = exposureAttempts.filter(attempt => !attempt.correct).length;
-  const result = evaluateAnswer(answer, item.en);
+  const submittedResponse = response === undefined ? answer : response;
+  const result = evaluateQuestion(item, submittedResponse);
   const submittedAt = finiteTime(attemptMeta.submittedAt, now);
   const startedAt = finiteTime(attemptMeta.startedAt, submittedAt);
   const revealAfterAttempt = !result.correct && (hasSeenAnswer || failedAttemptsBefore + 1 >= 2);
   const masteryDeltaUnits = attemptNumber === 1 ? (result.correct ? 1 : -1) : 0;
   const masteryBefore = masteryDisplayPercent(session.attempts, set.items.length);
+  const expectedDisplay = expectedResponseDisplay(item);
 
   const attempt = {
     id: `${session.id}-p${session.promptIndex}-a${attemptNumber}`,
     itemId: item.id,
+    questionType: questionTypeForItem(item),
     promptIndex: session.promptIndex,
     promptKind: session.currentPromptKind,
     attemptNumber,
     itemAttemptNumber,
-    submittedAnswer: result.normalizedInput,
+    submittedResponse: result.normalizedResponse,
+    submittedAnswer: result.displayResponse,
     correct: result.correct,
     result: resolveAttemptResult({ correct: result.correct, hadWrongThisExposure, revealAfterAttempt }),
     masteryDeltaUnits,
@@ -77,8 +81,8 @@ export function submitAnswer({ session, set, answer, attemptMeta = {}, now = Dat
       session: nextSession,
       event: {
         type: revealAfterAttempt ? 'incorrect_reveal' : 'incorrect_retry',
-        entered: result.normalizedInput,
-        revealAnswer: revealAfterAttempt ? item.en : null,
+        entered: result.displayResponse,
+        revealAnswer: revealAfterAttempt ? expectedDisplay : null,
         attemptNumber,
         masteryDeltaUnits,
         masteryBefore,
@@ -95,7 +99,7 @@ export function submitAnswer({ session, set, answer, attemptMeta = {}, now = Dat
     session: nextSession,
     event: {
       type: wasCorrection ? 'correction' : 'retrieval_success',
-      answer: item.en,
+      answer: expectedDisplay,
       masteryDeltaUnits,
       masteryBefore,
       masteryDeltaPercent,
@@ -107,21 +111,12 @@ export function submitAnswer({ session, set, answer, attemptMeta = {}, now = Dat
 
 export function abandonSession(session, now = Date.now()) {
   if (session.status === 'submitted' || session.status === 'abandoned') return session;
-  return {
-    ...session,
-    status: 'abandoned',
-    completedAt: now
-  };
+  return { ...session, status: 'abandoned', completedAt: now };
 }
 
 export function submitPassedSession(session, now = Date.now()) {
   if (session.status !== 'passed') return session;
-  return {
-    ...session,
-    status: 'submitted',
-    submittedAt: now,
-    completedAt: now
-  };
+  return { ...session, status: 'submitted', submittedAt: now, completedAt: now };
 }
 
 export function getCurrentItem(session, set) {
@@ -173,7 +168,7 @@ function resolveAttemptResult({ correct, hadWrongThisExposure, revealAfterAttemp
 }
 
 function normalizeInputMethod(value) {
-  return ['typed', 'paste', 'mixed', 'unknown'].includes(value) ? value : 'unknown';
+  return ['typed', 'paste', 'mixed', 'choice', 'tap', 'unknown'].includes(value) ? value : 'unknown';
 }
 
 function finiteTime(value, fallback) {
