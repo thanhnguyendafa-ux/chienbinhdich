@@ -60,6 +60,26 @@ test('MRT MCQ answer identity is semantic rather than A/B/C position', () => {
   }
 });
 
+test('MRT content graph is deeply immutable before and after repository caching', async () => {
+  const sourceItem = mrtG6GanAuraAction01Content.items[0];
+  const originalPrompt = sourceItem.prompt;
+  const originalChoice = sourceItem.choices[0].text;
+
+  assert.equal(Object.isFrozen(mrtG6GanAuraAction01Content), true);
+  assert.equal(Object.isFrozen(mrtG6GanAuraAction01Content.items), true);
+  assert.equal(Object.isFrozen(sourceItem), true);
+  assert.equal(Object.isFrozen(sourceItem.choices), true);
+  assert.equal(Object.isFrozen(sourceItem.choices[0]), true);
+  assert.throws(() => { sourceItem.prompt = 'mutated'; }, TypeError);
+  assert.throws(() => { sourceItem.choices[0].text = 'mutated'; }, TypeError);
+
+  const cachedSet = await loadLessonSet(SET_ID);
+  assert.equal(cachedSet.items[0].prompt, originalPrompt);
+  assert.equal(cachedSet.items[0].choices[0].text, originalChoice);
+  assert.equal(Object.isFrozen(cachedSet.items[0]), true);
+  assert.equal(Object.isFrozen(cachedSet.items[0].choices[0]), true);
+});
+
 test('published MRT Set resolves through catalog with 80 percent threshold and validates', async () => {
   const set = await loadLessonSet(SET_ID);
   assert.equal(set.folderId, 'mrt-lessons');
