@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { abandonSession, continueQualifiedSession, createSession, getCurrentItem, getSessionMetrics, submitAnswer, submitPassedSession } from '../src/core/sessionMachine.js';
+import { abandonSession, continueQualifiedSession, createSession, getCurrentItem, getSessionMetrics, qualifySessionIfEligible, submitAnswer, submitPassedSession } from '../src/core/sessionMachine.js';
 
 const set = {
   id: 'test',
@@ -19,8 +19,8 @@ function meta(startedAt, submittedAt, inputMethod = 'typed', pasteDetected = fal
   return { startedAt, submittedAt, inputMethod, pasteDetected };
 }
 
-function answer(session, value, t) {
-  return submitAnswer({ session, set, answer: value, attemptMeta: meta(t, t + 10), now: t + 10 });
+function answer(session, value, t, lesson = set) {
+  return submitAnswer({ session, set: lesson, answer: value, attemptMeta: meta(t, t + 10), now: t + 10 });
 }
 
 function passCleanly() {
@@ -29,7 +29,6 @@ function passCleanly() {
   session = answer(session, 'beta', 30).session;
   session = answer(session, 'gamma', 50).session;
   session = answer(session, 'delta', 70).session;
-  session = answer(session, 'echo', 90).session;
   return session;
 }
 
@@ -126,21 +125,22 @@ test('retry is a new exposure: first correct gains mastery and first wrong loses
   assert.equal(getSessionMetrics(retrySecondWrong.session, set).masteryExact, 20);
 });
 
-test('main sequence plus recovered retry passes once mastery is at least 80', () => {
+test('crossing 80 qualifies immediately before remaining main items advance', () => {
   let session = createSession({ studentName: 'Test', set, now: 1 });
-  session = answer(session, 'wrong', 10).session;
-  session = answer(session, 'alpha', 30).session;
-  session = answer(session, 'beta', 50).session;
-  session = answer(session, 'gamma', 70).session;
-  session = answer(session, 'alpha', 90).session;
-  session = answer(session, 'delta', 110).session;
-  const final = answer(session, 'echo', 130);
-  session = final.session;
+  session = answer(session, 'alpha', 10).session;
+  session = answer(session, 'beta', 30).session;
+  session = answer(session, 'gamma', 50).session;
+  const threshold = answer(session, 'delta', 70);
+  session = threshold.session;
+
+  assert.equal(threshold.event.passed, true);
   assert.equal(session.status, 'passed');
-  assert.equal(session.qualifiedAt, 140);
-  assert.equal(getSessionMetrics(session, set).masteryExact, 100);
-  assert.equal(getSessionMetrics(session, set).thresholdReached, true);
-  assert.equal(getSessionMetrics(session, set).mainComplete, true);
+  assert.equal(session.qualifiedAt, 80);
+  assert.equal(getSessionMetrics(session, set).masteryExact, 80);
+  assert.equal(getSessionMetrics(session, set).completedMainItems, 4);
+  assert.equal(getSessionMetrics(session, set).mainComplete, false);
+  assert.equal(session.currentItemId, 'd', 'checkpoint should preserve the just-completed prompt');
+  assert.equal(session.mainCursor, 4, 'next main item must remain pending until learner chooses Làm tiếp');
 });
 
 test('a completed main sequence at 60 stays active in review and passes at exactly 80', () => {
@@ -159,6 +159,7 @@ test('a completed main sequence at 60 stays active in review and passes at exact
       correct: true,
       result: index < 3 ? 'retrieval_success' : 'correction',
       masteryDeltaUnits: index < 3 ? 1 : 0,
+      submittedAt: 100 + index,
       answerRevealedAfterAttempt: index >= 3
     }))
   };
@@ -173,19 +174,21 @@ test('a completed main sequence at 60 stays active in review and passes at exact
   assert.equal(getSessionMetrics(recovered.session, set).masteryExact, 80);
 });
 
-test('qualified learner can continue without bouncing back to pass screen, then submit a full report', () => {
+test('qualified learner continues from preserved scheduler state before generic review', () => {
   const passed = passCleanly();
   assert.equal(passed.status, 'passed');
-  assert.equal(getSessionMetrics(passed, set).masteryExact, 100);
+  assert.equal(getSessionMetrics(passed, set).masteryExact, 80);
+  assert.equal(passed.mainCursor, 4);
 
   let extended = continueQualifiedSession(passed, set, 500);
   assert.equal(extended.status, 'extended');
   assert.equal(extended.extendedPracticeStartedAt, 500);
-  assert.equal(extended.currentPromptKind, 'review');
+  assert.equal(extended.currentPromptKind, 'main');
+  assert.equal(getCurrentItem(extended, set).id, 'e');
 
-  const reviewItem = getCurrentItem(extended, set);
-  extended = answer(extended, reviewItem.en, 600).session;
+  extended = answer(extended, 'echo', 600).session;
   assert.equal(extended.status, 'extended');
+  assert.equal(getSessionMetrics(extended, set).masteryExact, 100);
 
   const submitted = submitPassedSession(extended, 800);
   const metrics = getSessionMetrics(submitted, set, 800);
@@ -194,6 +197,47 @@ test('qualified learner can continue without bouncing back to pass screen, then 
   assert.equal(metrics.extendedPractice, true);
   assert.equal(metrics.extendedAttempts, 1);
   assert.equal(metrics.extendedPracticeDurationMs, 300);
+  assert.equal(metrics.completedMainItems, 5);
+});
+
+test('persisted active V7 session already above threshold reconciles to passed using first crossing time', () => {
+  const active = {
+    ...createSession({ studentName: 'Legacy', set, now: 1 }),
+    currentItemId: 'e',
+    mainCursor: 4,
+    promptIndex: 3,
+    attempts: ['a', 'b', 'c', 'd'].map((itemId, index) => ({
+      id: `legacy-${index}`,
+      itemId,
+      promptIndex: index,
+      promptKind: 'main',
+      attemptNumber: 1,
+      correct: true,
+      result: 'retrieval_success',
+      masteryDeltaUnits: 1,
+      submittedAt: 100 + index * 10
+    }))
+  };
+
+  assert.equal(active.status, 'active');
+  assert.equal(getSessionMetrics(active, set).masteryExact, 80);
+  const reconciled = qualifySessionIfEligible(active, set);
+  assert.equal(reconciled.status, 'passed');
+  assert.equal(reconciled.qualifiedAt, 130);
+  assert.equal(reconciled.currentItemId, active.currentItemId);
+  assert.equal(reconciled.mainCursor, active.mainCursor);
+});
+
+test('qualification remains valid after continued practice later lowers current mastery', () => {
+  const passed = passCleanly();
+  let extended = continueQualifiedSession(passed, set, 500);
+  const loss = answer(extended, 'wrong', 600);
+  extended = loss.session;
+  assert.equal(extended.status, 'extended');
+  assert.equal(getSessionMetrics(extended, set).masteryExact, 60);
+  assert.equal(getSessionMetrics(extended, set).passed, true);
+  assert.equal(getSessionMetrics(extended, set).qualifiedAt, passed.qualifiedAt);
+  assert.equal(submitPassedSession(extended, 800).status, 'submitted');
 });
 
 test('submission is gated by qualification, while abandon preserves evidence and duration', () => {

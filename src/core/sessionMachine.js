@@ -1,6 +1,6 @@
 import { evaluateQuestion, expectedResponseDisplay, questionTypeForItem } from './questionTypes.js';
-import { getMasteryCounts, masteryDisplayPercent, masteryPercentFromAttempts, masteryUnitPercent } from './masteryEngine.js';
-import { advanceLearningPrompt, beginExtendedPracticePrompt, queueRetry } from './retryScheduler.js';
+import { getMasteryCounts, getMasteryTransitions, masteryDisplayPercent, masteryPercentFromAttempts, masteryUnitPercent } from './masteryEngine.js';
+import { advanceLearningPrompt, queueRetry } from './retryScheduler.js';
 
 export const SESSION_SCHEMA_VERSION = 7;
 
@@ -96,7 +96,8 @@ export function submitAnswer({ session, set, response, answer, attemptMeta = {},
   }
 
   const wasCorrection = hadWrongThisExposure;
-  nextSession = advanceLearningPrompt(nextSession, set);
+  nextSession = qualifySessionIfEligible(nextSession, set);
+  if (nextSession.status !== 'passed') nextSession = advanceLearningPrompt(nextSession, set);
 
   return {
     session: nextSession,
@@ -112,6 +113,18 @@ export function submitAnswer({ session, set, response, answer, attemptMeta = {},
   };
 }
 
+export function qualifySessionIfEligible(session, set) {
+  if (session?.status !== 'active') return session;
+  const threshold = Number(set?.passThreshold ?? 80);
+  if (masteryPercentFromAttempts(session.attempts, set.items.length) < threshold) return session;
+
+  return {
+    ...session,
+    status: 'passed',
+    qualifiedAt: session.qualifiedAt ?? firstQualificationTimestamp(session.attempts, set.items.length, threshold)
+  };
+}
+
 export function continueQualifiedSession(session, set, now = Date.now()) {
   if (session.status !== 'passed') return session;
   const extended = {
@@ -122,7 +135,7 @@ export function continueQualifiedSession(session, set, now = Date.now()) {
     completedAt: null,
     submittedAt: null
   };
-  return beginExtendedPracticePrompt(extended, set);
+  return advanceLearningPrompt(extended, set);
 }
 
 export function abandonSession(session, now = Date.now()) {
@@ -194,6 +207,14 @@ export function getSessionMetrics(session, set, now = Date.now()) {
     abandoned: session.status === 'abandoned',
     durationMs: (session.completedAt ?? now) - session.startedAt
   };
+}
+
+function firstQualificationTimestamp(attempts, totalItems, threshold) {
+  const transitions = getMasteryTransitions(attempts, totalItems);
+  const crossingIndex = transitions.findIndex(transition => transition.after >= threshold);
+  if (crossingIndex < 0) return null;
+  const timestamp = Number(attempts[crossingIndex]?.submittedAt);
+  return Number.isFinite(timestamp) ? timestamp : null;
 }
 
 function resolveAttemptResult({ correct, hadWrongThisExposure, revealAfterAttempt }) {

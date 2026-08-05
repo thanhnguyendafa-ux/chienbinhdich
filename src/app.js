@@ -1,7 +1,7 @@
 import { validateSet } from './data/contentValidator.js';
 import { localSessionRepository as sessions } from './repositories/localSessionRepository.js';
 import { listFolders, listSetDescriptors, listSetsByFolder, loadLessonSet } from './repositories/lessonRepository.js';
-import { abandonSession, continueQualifiedSession, createSession, submitAnswer, submitPassedSession } from './core/sessionMachine.js';
+import { abandonSession, continueQualifiedSession, createSession, qualifySessionIfEligible, submitAnswer, submitPassedSession } from './core/sessionMachine.js';
 import { buildSetShareUrl, resolveSetIdFromLocation } from './core/setRouting.js';
 import { renderLoading } from './ui/renderLoading.js';
 
@@ -101,6 +101,14 @@ async function showDrill() {
   if (!session) return showEntry();
   if (!set) renderLoading(root, 'Đang tải bài luyện...');
   const lesson = await ensureSet();
+
+  const reconciled = qualifySessionIfEligible(session, lesson);
+  if (reconciled !== session) {
+    session = reconciled;
+    sessions.saveActive(session);
+    feedback = null;
+  }
+
   const { renderDrill, renderPassed, showSuccess } = await getScreen('drill', 'Đang tải bài luyện...');
 
   if (session.status === 'passed') {
