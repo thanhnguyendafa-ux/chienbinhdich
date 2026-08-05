@@ -1,35 +1,17 @@
-@media screen and (max-width:640px){
-  .report-actions{display:grid;grid-template-columns:1fr;width:100%}
-  .report-actions button{width:100%;min-height:48px}
-  .print-report-btn{order:-1}
-}
-
 @page{size:A4 portrait;margin:12mm}
 
 @media print{
-  html,body{background:white!important;color:black!important;width:auto!important;min-width:0!important;height:auto!important;overflow:visible!important}
+  html,body,#app,.report-page{width:auto!important;min-width:0!important;min-height:0!important;height:auto!important;margin:0!important;padding:0!important;overflow:visible!important;background:white!important;color:black!important}
   body{-webkit-print-color-adjust:exact;print-color-adjust:exact}
-  #app,.report-page,.report-shell{width:auto!important;max-width:none!important;min-height:0!important;margin:0!important;padding:0!important;background:white!important;box-shadow:none!important;border:0!important;overflow:visible!important}
-  .report-page{display:block!important}
-  .report-shell{color:black!important}
-  .report-header,.report-summary,.report-grid,.submission-callout,.integrity-note,.timeline-heading,.attempt-row,.report-footer{break-inside:avoid;page-break-inside:avoid}
-  .report-actions{display:none!important}
-  .report-footer{margin-top:8mm!important;padding-top:4mm!important;border-top:1px solid silver!important}
-  .report-footer code{font-size:8pt!important;color:dimgray!important;white-space:normal!important;overflow-wrap:anywhere!important}
-  .report-summary{margin-top:5mm!important}
-  .report-summary h1{font-size:24pt!important;color:black!important}
-  .score-hero{box-shadow:none!important;border:1px solid silver!important;background:white!important;color:black!important}
-  .score-hero strong{color:black!important}
-  .report-grid{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:3mm!important;margin-top:5mm!important}
-  .report-grid>div{min-height:0!important;padding:3mm!important;border:1px solid lightgray!important;background:white!important;box-shadow:none!important}
-  .submission-callout,.integrity-note{margin-top:5mm!important;padding:4mm!important;background:white!important;border:1px solid silver!important;box-shadow:none!important}
-  .timeline-section{margin-top:7mm!important}
-  .timeline-heading{margin-bottom:4mm!important}
-  .attempt-list{display:block!important;margin:0!important;padding:0!important}
-  .attempt-row{display:grid!important;grid-template-columns:24mm 1fr!important;gap:4mm!important;margin:0 0 3mm!important;padding:3mm!important;border:1px solid lightgray!important;background:white!important;box-shadow:none!important}
-  .attempt-body,.attempt-meta,.attempt-prompt,.attempt-answer{color:black!important}
-  .attempt-meta{display:flex!important;flex-wrap:wrap!important;gap:2mm!important}
-  .attempt-answer{white-space:pre-wrap!important;overflow-wrap:anywhere!important}
-  .attempt-flag{border:1px solid silver!important;background:white!important;color:black!important}
-  .brand-seal,.result-stamp,.eyebrow,.mastery-impact,.attempt-status{color:black!important}
+  .report-toolbar{display:none!important}
+  .report-document{width:auto!important;max-width:none!important;min-height:0!important;margin:0!important;padding:0!important;border:0!important;border-radius:0!important;background:white!important;color:black!important;box-shadow:none!important;font-family:Arial,"Segoe UI",sans-serif!important;font-size:10pt!important;overflow:visible!important}
+  .report-document *{background:white!important;color:black!important;box-shadow:none!important;text-shadow:none!important}
+  .report-document-header,.report-summary,.metric-section,.metric-line,.report-outcome,.process-note,.timeline-heading,.attempt-row,.report-document-footer{break-inside:avoid;page-break-inside:avoid}
+  .report-document-header{padding-bottom:3mm!important;border-bottom:2px solid black!important}
+  .report-brand{font-size:9pt!important}.result-stamp{padding:1.5mm 2mm!important;border:1px solid black!important;font-size:8pt!important}
+  .report-summary{gap:7mm!important;padding:5mm 0 4mm!important}.report-summary h1{font-size:22pt!important;line-height:1.15!important}.report-course{font-size:9pt!important}.report-score strong{font-size:30pt!important}.report-score span,.report-score small{font-size:8pt!important}
+  .metric-section{margin-top:4mm!important}.metric-section h2{margin-bottom:1.5mm!important;font-size:8.5pt!important}.metric-lines{border-bottom:1px solid black!important}.metric-line{border-top:1px solid black!important}.metric-item{padding:2mm 2.5mm!important;border-right:1px solid black!important}.metric-item:last-child{border-right:0!important}.metric-item span{font-size:8pt!important}.metric-item strong{font-size:8.5pt!important}
+  .report-outcome,.process-note{margin-top:4mm!important;padding:2.5mm 0!important;border-top:1px solid black!important;border-bottom:1px solid black!important}.report-outcome strong,.process-note strong{font-size:8.5pt!important}.report-outcome p,.process-note p{font-size:8pt!important;line-height:1.45!important}
+  .timeline-section{margin-top:6mm!important}.timeline-heading{margin-bottom:2mm!important}.timeline-heading h2{font-size:13pt!important}.timeline-heading>span,.report-kicker{font-size:8pt!important}.attempt-list{border-top:2px solid black!important}.attempt-row{grid-template-columns:22mm 1fr!important;gap:4mm!important;padding:2.5mm 0!important;border-bottom:1px solid black!important}.attempt-time strong{font-size:8pt!important}.attempt-time span{font-size:7.5pt!important}.attempt-meta{gap:1.5mm 2.5mm!important;font-size:7.5pt!important}.attempt-prompt{margin:1.5mm 0 1mm!important;font-size:9pt!important;line-height:1.35!important}.attempt-answer,.attempt-answer code{font-size:8pt!important;line-height:1.4!important}.attempt-flags{gap:1.5mm!important;margin-top:1.5mm!important}.attempt-flag{padding:.7mm 1.2mm!important;border:1px solid black!important;font-size:7pt!important}
+  .report-document-footer{margin-top:5mm!important;padding-top:2mm!important;border-top:1px solid black!important}.report-document-footer code{font-size:7pt!important;white-space:normal!important;overflow-wrap:anywhere!important}
 }
