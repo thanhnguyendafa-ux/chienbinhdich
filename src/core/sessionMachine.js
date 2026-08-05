@@ -2,7 +2,7 @@ import { evaluateAnswer } from './answerEvaluator.js';
 import { getMasteryCounts, masteryDisplayPercent, masteryPercentFromAttempts, masteryUnitPercent } from './masteryEngine.js';
 import { advanceLearningPrompt, queueRetry } from './retryScheduler.js';
 
-export const SESSION_SCHEMA_VERSION = 3;
+export const SESSION_SCHEMA_VERSION = 4;
 
 export function createSession({ studentName, set, now = Date.now() }) {
   const firstItem = set.items[0];
@@ -43,7 +43,7 @@ export function submitAnswer({ session, set, answer, attemptMeta = {}, now = Dat
   const submittedAt = finiteTime(attemptMeta.submittedAt, now);
   const startedAt = finiteTime(attemptMeta.startedAt, submittedAt);
   const revealAfterAttempt = !result.correct && (hasSeenAnswer || failedAttemptsBefore + 1 >= 2);
-  const masteryDeltaUnits = result.correct ? (hadWrongThisExposure ? 0 : 1) : -1;
+  const masteryDeltaUnits = attemptNumber === 1 ? (result.correct ? 1 : -1) : 0;
 
   const attempt = {
     id: `${session.id}-p${session.promptIndex}-a${attemptNumber}`,
