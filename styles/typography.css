@@ -1,0 +1,15 @@
+:root{
+  --font-body:"Segoe UI",Arial,sans-serif;
+  --font-display:"Segoe UI",Arial,sans-serif;
+  --font-report:Arial,"Segoe UI",sans-serif;
+}
+
+body,button,input{font-family:var(--font-body)}
+h1,h2{font-family:var(--font-display);line-height:1.16;letter-spacing:-.01em}
+.entry-card h1,.section-heading h1,.catalog-heading h1,.catalog-set-card h2,.folder-copy strong,.prompt-card h1,.passed-card h1{line-height:1.16;letter-spacing:-.01em}
+.prompt-card h1{line-height:1.13}
+.brand-lockup,.catalog-set-head,.eyebrow,.stage-badge{letter-spacing:.06em}
+
+@media (max-width:640px){
+  h1,h2,.entry-card h1,.section-heading h1,.catalog-heading h1,.prompt-card h1,.passed-card h1{line-height:1.18}
+}

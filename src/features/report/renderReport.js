@@ -14,67 +14,101 @@ export function renderReport({ root, session, set, onRetry, onHome }) {
 
   root.innerHTML = `
     <main class="report-page">
-      <section class="report-shell shell ${submitted ? 'passed' : 'not-passed'}">
-        <header class="report-header">
-          <div class="brand-lockup"><span class="brand-seal">MRT</span><span>Chiến Binh Dịch</span></div>
-          <span class="result-stamp">${submitted ? 'ĐÃ NỘP BÀI' : 'ĐÃ BỎ CUỘC'}</span>
+      <nav class="report-toolbar shell" aria-label="Tác vụ báo cáo">
+        <div class="report-toolbar-title">
+          <strong>Báo cáo học tập</strong>
+          <span>${esc(session.studentName)}</span>
+        </div>
+        <div class="report-toolbar-actions">
+          ${abandoned ? '<button id="retry-btn" class="secondary-btn" type="button">Làm lại Set</button>' : ''}
+          ${submitted ? '<button id="print-report-btn" class="primary-btn print-report-btn" type="button">In báo cáo</button>' : ''}
+          <button id="home-btn" class="secondary-btn" type="button">Về trang đầu</button>
+        </div>
+      </nav>
+
+      <article class="report-document shell ${submitted ? 'is-submitted' : 'is-abandoned'}">
+        <header class="report-document-header">
+          <div class="report-brand">MRT · CHIẾN BINH DỊCH</div>
+          <strong class="result-stamp">${submitted ? 'ĐÃ NỘP BÀI' : 'ĐÃ BỎ CUỘC'}</strong>
         </header>
 
         <section class="report-summary">
           <div>
-            <p class="eyebrow">BÁO CÁO HỌC TẬP</p>
+            <p class="report-kicker">BÁO CÁO HỌC TẬP</p>
             <h1>${esc(session.studentName)}</h1>
             <p class="report-course">${esc(set.course)} · ${esc(set.unit)} · ${esc(set.title)}</p>
           </div>
-          <div class="score-hero"><span>Mastery cuối</span><strong>${formatPercent(metrics.mastery)}%</strong><small>${submitted ? `Đã vượt mốc ${set.passThreshold}% và đã bấm Nộp bài` : `Chưa nộp · mốc yêu cầu ${set.passThreshold}%`}</small></div>
+          <div class="report-score">
+            <span>Mastery cuối</span>
+            <strong>${formatPercent(metrics.mastery)}%</strong>
+            <small>${submitted ? `Mục tiêu ${set.passThreshold}% · Đã nộp bài` : `Mục tiêu ${set.passThreshold}% · Chưa nộp`}</small>
+          </div>
         </section>
 
-        <section class="report-grid" aria-label="Tóm tắt buổi học">
-          ${summaryCell('Tổng lượt trả lời', metrics.totalAttempts)}
-          ${summaryCell('Retrieval đúng', metrics.retrievalSuccesses)}
-          ${summaryCell('Retrieval sai', metrics.retrievalErrors)}
-          ${summaryCell('Correction', metrics.corrections)}
-          ${summaryCell('Lượt gặp lại', metrics.retryCount)}
-          ${summaryCell('Đã hiện đáp án', metrics.revealedCount)}
-          ${summaryCell('Đạt mục tiêu', metrics.qualifiedAt ? formatDateTime(metrics.qualifiedAt) : 'Chưa đạt')}
-          ${summaryCell('Mastery lúc đạt', metrics.masteryAtQualification === null ? '—' : `${formatPercent(metrics.masteryAtQualification)}%`)}
-          ${summaryCell('Luyện thêm', metrics.extendedPractice ? 'Có' : 'Không')}
-          ${summaryCell('Lượt luyện thêm', metrics.extendedAttempts)}
-          ${summaryCell('Thời gian luyện thêm', metrics.extendedPractice ? formatDuration(metrics.extendedPracticeDurationMs) : '—')}
-          ${summaryCell('Paste detected', analytics.pasteCount)}
-          ${summaryCell('Phản hồi rất nhanh', analytics.rapidCount)}
-          ${summaryCell('Trung vị phản hồi', formatResponseDuration(analytics.medianResponseMs))}
-          ${summaryCell('Bắt đầu', formatDateTime(session.startedAt))}
-          ${summaryCell('Tổng thời gian', formatDuration(metrics.durationMs))}
-          ${summaryCell('Kết thúc', formatDateTime(session.completedAt))}
-        </section>
+        ${metricSection('Kết quả học tập', [
+          [
+            ['Tổng lượt trả lời', metrics.totalAttempts],
+            ['Retrieval đúng', metrics.retrievalSuccesses],
+            ['Retrieval sai', metrics.retrievalErrors]
+          ],
+          [
+            ['Correction', metrics.corrections],
+            ['Lượt gặp lại', metrics.retryCount],
+            ['Đã hiện đáp án', metrics.revealedCount]
+          ],
+          [
+            ['Mastery cuối', `${formatPercent(metrics.mastery)}%`],
+            ['Mục tiêu', `${set.passThreshold}%`],
+            ['Mastery lúc đạt', metrics.masteryAtQualification === null ? '—' : `${formatPercent(metrics.masteryAtQualification)}%`]
+          ],
+          [
+            ['Luyện thêm', metrics.extendedPractice ? 'Có' : 'Không'],
+            ['Lượt luyện thêm', metrics.extendedAttempts],
+            ['Trạng thái', submitted ? 'Đã nộp bài' : 'Đã bỏ cuộc']
+          ]
+        ])}
+
+        ${metricSection('Thời gian', [
+          [
+            ['Bắt đầu', formatDateTime(session.startedAt)],
+            ['Đạt mục tiêu', metrics.qualifiedAt ? formatDateTime(metrics.qualifiedAt) : 'Chưa đạt'],
+            ['Kết thúc', formatDateTime(session.completedAt)]
+          ],
+          [
+            ['Tổng thời gian', formatDuration(metrics.durationMs)],
+            ['Thời gian luyện thêm', metrics.extendedPractice ? formatDuration(metrics.extendedPracticeDurationMs) : '—']
+          ]
+        ])}
+
+        ${metricSection('Dấu hiệu quá trình', [
+          [
+            ['Paste detected', analytics.pasteCount],
+            ['Phản hồi rất nhanh', analytics.rapidCount],
+            ['Trung vị phản hồi', formatResponseDuration(analytics.medianResponseMs)]
+          ]
+        ])}
 
         ${renderOutcome({ submitted, abandoned, metrics, set })}
 
-        <section class="integrity-note">
-          <strong>Dấu hiệu cần xem lại</strong>
-          <p>Paste và phản hồi rất nhanh chỉ là dữ liệu quá trình. Các dạng chọn đáp án/tap token được ghi riêng theo input method và không tự động bị coi là gian lận.</p>
+        <section class="process-note">
+          <strong>Lưu ý khi đọc dữ liệu</strong>
+          <p>Paste và phản hồi rất nhanh chỉ là dữ liệu quá trình. Các dạng chọn đáp án hoặc tap token được ghi riêng theo input method và không tự động bị coi là gian lận.</p>
         </section>
 
         <section class="timeline-section">
           <div class="timeline-heading">
-            <div><p class="eyebrow">ACTIVITY TIMELINE</p><h2>Lịch sử từng lần trả lời</h2></div>
-            <span>${session.attempts.length} attempts</span>
+            <div><p class="report-kicker">ACTIVITY TIMELINE</p><h2>Lịch sử từng lần trả lời</h2></div>
+            <span>${session.attempts.length} lượt</span>
           </div>
           <ol class="attempt-list">
             ${analytics.attempts.map((attempt, index) => renderAttempt(attempt, itemById.get(attempt.itemId), transitions[index]?.delta ?? 0)).join('')}
           </ol>
         </section>
 
-        <footer class="report-footer">
+        <footer class="report-document-footer">
           <code>Session: ${esc(session.id)}</code>
-          <div class="report-actions">
-            ${abandoned ? '<button id="retry-btn" class="secondary-btn" type="button">Làm lại Set</button>' : ''}
-            ${submitted ? '<button id="print-report-btn" class="primary-btn print-report-btn" type="button">In báo cáo</button>' : ''}
-            <button id="home-btn" class="secondary-btn" type="button">Về trang đầu</button>
-          </div>
         </footer>
-      </section>
+      </article>
     </main>`;
 
   root.querySelector('#retry-btn')?.addEventListener('click', onRetry);
@@ -82,20 +116,39 @@ export function renderReport({ root, session, set, onRetry, onHome }) {
   root.querySelector('#home-btn')?.addEventListener('click', onHome);
 }
 
+function metricSection(title, rows) {
+  return `
+    <section class="metric-section">
+      <h2>${esc(title)}</h2>
+      <div class="metric-lines">
+        ${rows.map(row => `<div class="metric-line">${row.map(([label, value]) => metricItem(label, value)).join('')}</div>`).join('')}
+      </div>
+    </section>`;
+}
+
+function metricItem(label, value) {
+  return `<div class="metric-item"><span>${esc(label)}</span><strong>${esc(value)}</strong></div>`;
+}
+
 function renderAttempt(attempt, item, impact) {
   const correction = attempt.result === 'correction';
-  const status = correction ? 'Sửa đúng' : (attempt.correct ? 'Đúng' : 'Sai');
-  const statusClass = attempt.correct ? 'attempt-correct' : 'attempt-wrong';
-  const flags = (attempt.flags ?? []).map(flag => `<span class="attempt-flag ${flag}">${flagLabel(flag)}</span>`).join('');
+  const status = correction ? 'SỬA ĐÚNG' : (attempt.correct ? 'ĐÚNG' : 'SAI');
+  const flags = (attempt.flags ?? []).map(flag => `<span class="attempt-flag">${flagLabel(flag)}</span>`).join('');
   const impactLabel = impact > 0 ? `+${formatPercent(impact)}%` : impact < 0 ? `−${formatPercent(Math.abs(impact))}%` : '0%';
   const typeLabel = item?.stage ? stageLabel(item.stage) : questionTypeLabel(attempt.questionType ?? item);
   return `
-    <li class="attempt-row ${statusClass}">
+    <li class="attempt-row">
       <div class="attempt-time"><strong>${formatClockTime(attempt.submittedAt)}</strong><span>${formatResponseDuration(attempt.responseDurationMs)}</span></div>
       <div class="attempt-body">
-        <div class="attempt-meta"><span>${esc(typeLabel)}</span><span>${promptKindLabel(attempt.promptKind)}</span><span>Lần ${attempt.attemptNumber}</span><span class="attempt-status">${status}</span><span class="mastery-impact">Mastery ${impactLabel}</span></div>
+        <div class="attempt-meta">
+          <span>${esc(typeLabel)}</span>
+          <span>${promptKindLabel(attempt.promptKind)}</span>
+          <span>Lần ${attempt.attemptNumber}</span>
+          <strong class="attempt-status">${status}</strong>
+          <strong class="mastery-impact">Mastery ${impactLabel}</strong>
+        </div>
         <p class="attempt-prompt">${esc(questionPromptDisplay(item) || attempt.itemId)}</p>
-        <code class="attempt-answer">${esc(attempt.submittedAnswer || '(trống)')}</code>
+        <div class="attempt-answer"><span>Trả lời:</span> <code>${esc(attempt.submittedAnswer || '(trống)')}</code></div>
         ${flags ? `<div class="attempt-flags">${flags}</div>` : ''}
       </div>
     </li>`;
@@ -104,16 +157,12 @@ function renderAttempt(attempt, item, impact) {
 function renderOutcome({ submitted, abandoned, metrics, set }) {
   if (submitted) {
     const extra = metrics.extendedPractice
-      ? ` Học sinh đã chọn Làm tiếp sau khi đạt mục tiêu và luyện thêm ${metrics.extendedAttempts} lượt trước khi nộp.`
-      : ' Học sinh đã nộp ngay sau khi đạt mục tiêu.';
-    return `<section class="submission-callout"><strong>Bài đã được đánh dấu là ĐÃ NỘP</strong><p>Mastery cuối ${formatPercent(metrics.mastery)}%.${extra} Có thể bấm <b>In báo cáo</b> để in hoặc lưu PDF và gửi cho <b>${esc(set.teacher)}</b>.</p></section>`;
+      ? `Học sinh đã chọn Làm tiếp sau khi đạt mục tiêu và luyện thêm ${metrics.extendedAttempts} lượt trước khi nộp.`
+      : 'Học sinh đã nộp ngay sau khi đạt mục tiêu.';
+    return `<section class="report-outcome"><strong>Bài đã được đánh dấu là ĐÃ NỘP</strong><p>Mastery cuối ${formatPercent(metrics.mastery)}%. ${extra} Có thể bấm In báo cáo ở thanh công cụ phía trên để in hoặc lưu PDF và gửi cho ${esc(set.teacher)}.</p></section>`;
   }
-  if (abandoned) return `<section class="submission-callout retry-callout"><strong>Chưa được tính là nộp bài</strong><p>Học sinh đã chọn Bỏ cuộc ở Mastery ${formatPercent(metrics.mastery)}%. Báo cáo vẫn giữ tổng thời gian và toàn bộ lịch sử làm bài.</p></section>`;
+  if (abandoned) return `<section class="report-outcome"><strong>Chưa được tính là nộp bài</strong><p>Học sinh đã chọn Bỏ cuộc ở Mastery ${formatPercent(metrics.mastery)}%. Báo cáo vẫn giữ tổng thời gian và toàn bộ lịch sử làm bài.</p></section>`;
   return '';
-}
-
-function summaryCell(label, value) {
-  return `<div><span>${label}</span><strong>${value}</strong></div>`;
 }
 
 function flagLabel(flag) {
