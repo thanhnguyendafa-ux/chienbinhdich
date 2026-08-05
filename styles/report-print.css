@@ -1,35 +1,37 @@
-@media screen and (max-width:640px){
-  .report-actions{display:grid;grid-template-columns:1fr;width:100%}
-  .report-actions button{width:100%;min-height:48px}
-  .print-report-btn{order:-1}
-}
-
 @page{size:A4 portrait;margin:12mm}
 
 @media print{
-  html,body{background:white!important;color:black!important;width:auto!important;min-width:0!important;height:auto!important;overflow:visible!important}
+  html,body{width:auto!important;min-width:0!important;height:auto!important;overflow:visible!important;background:white!important;color:black!important;font-family:Arial,"Segoe UI",sans-serif!important}
   body{-webkit-print-color-adjust:exact;print-color-adjust:exact}
-  #app,.report-page,.report-shell{width:auto!important;max-width:none!important;min-height:0!important;margin:0!important;padding:0!important;background:white!important;box-shadow:none!important;border:0!important;overflow:visible!important}
-  .report-page{display:block!important}
-  .report-shell{color:black!important}
-  .report-header,.report-summary,.report-grid,.submission-callout,.integrity-note,.timeline-heading,.attempt-row,.report-footer{break-inside:avoid;page-break-inside:avoid}
-  .report-actions{display:none!important}
-  .report-footer{margin-top:8mm!important;padding-top:4mm!important;border-top:1px solid silver!important}
-  .report-footer code{font-size:8pt!important;color:dimgray!important;white-space:normal!important;overflow-wrap:anywhere!important}
-  .report-summary{margin-top:5mm!important}
-  .report-summary h1{font-size:24pt!important;color:black!important}
-  .score-hero{box-shadow:none!important;border:1px solid silver!important;background:white!important;color:black!important}
-  .score-hero strong{color:black!important}
-  .report-grid{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:3mm!important;margin-top:5mm!important}
-  .report-grid>div{min-height:0!important;padding:3mm!important;border:1px solid lightgray!important;background:white!important;box-shadow:none!important}
-  .submission-callout,.integrity-note{margin-top:5mm!important;padding:4mm!important;background:white!important;border:1px solid silver!important;box-shadow:none!important}
-  .timeline-section{margin-top:7mm!important}
-  .timeline-heading{margin-bottom:4mm!important}
-  .attempt-list{display:block!important;margin:0!important;padding:0!important}
-  .attempt-row{display:grid!important;grid-template-columns:24mm 1fr!important;gap:4mm!important;margin:0 0 3mm!important;padding:3mm!important;border:1px solid lightgray!important;background:white!important;box-shadow:none!important}
-  .attempt-body,.attempt-meta,.attempt-prompt,.attempt-answer{color:black!important}
-  .attempt-meta{display:flex!important;flex-wrap:wrap!important;gap:2mm!important}
-  .attempt-answer{white-space:pre-wrap!important;overflow-wrap:anywhere!important}
-  .attempt-flag{border:1px solid silver!important;background:white!important;color:black!important}
-  .brand-seal,.result-stamp,.eyebrow,.mastery-impact,.attempt-status{color:black!important}
+  .report-page{min-height:0!important;margin:0!important;padding:0!important;background:white!important;color:black!important}
+  .report-toolbar{display:none!important}
+  .report-document{width:auto!important;max-width:none!important;min-height:0!important;margin:0!important;padding:0!important;background:white!important;color:black!important;font-family:Arial,"Segoe UI",sans-serif!important;box-shadow:none!important;border:0!important;overflow:visible!important}
+  .report-document *{background:white!important;color:black!important;box-shadow:none!important;text-shadow:none!important}
+  .report-document-header{padding-bottom:4mm!important;border-bottom:2px solid black!important}
+  .report-document-header h1{font-size:22pt!important;line-height:1.15!important}
+  .result-stamp{border:1px solid black!important;border-radius:0!important}
+  .report-hero{padding:4mm 0!important;border-bottom:1px solid black!important}
+  .score-hero strong{font-size:30pt!important;color:black!important}
+  .metric-section{margin-top:5mm!important}
+  .metric-section-title{margin-bottom:2mm!important;font-size:10pt!important}
+  .metric-table{border-top:1px solid black!important}
+  .metric-line{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;border-bottom:1px solid black!important;break-inside:avoid;page-break-inside:avoid}
+  .metric-pair{padding:2.5mm 3mm!important;border-right:1px solid black!important;border-bottom:0!important}
+  .metric-pair:last-child{border-right:0!important}
+  .metric-pair span{font-size:8pt!important;color:black!important}
+  .metric-pair strong{font-size:9pt!important;color:black!important}
+  .submission-callout,.integrity-note{margin-top:5mm!important;padding:3mm 0!important;border-top:1px solid black!important;border-bottom:1px solid black!important;break-inside:avoid;page-break-inside:avoid}
+  .submission-callout p,.integrity-note p{font-size:8.5pt!important;color:black!important}
+  .timeline-section{margin-top:6mm!important}
+  .timeline-heading{margin-bottom:2mm!important;break-inside:avoid;page-break-inside:avoid}
+  .timeline-heading h2{font-size:13pt!important}
+  .attempt-list{border-top:2px solid black!important}
+  .attempt-row{padding:2.5mm 0!important;border-bottom:1px solid black!important;break-inside:avoid;page-break-inside:avoid}
+  .attempt-topline{display:grid!important;grid-template-columns:18mm minmax(0,1fr) auto auto!important;gap:2mm!important}
+  .attempt-time,.attempt-meta,.attempt-status,.mastery-impact{font-size:7.5pt!important;color:black!important}
+  .attempt-prompt{margin:1.5mm 0 1mm!important;font-size:9.5pt!important;line-height:1.35!important;color:black!important}
+  .attempt-response,.attempt-answer{font-size:8.5pt!important;color:black!important}
+  .attempt-flag{border:1px solid black!important;border-radius:0!important;background:white!important;color:black!important}
+  .report-document-footer{margin-top:5mm!important;padding-top:2mm!important;border-top:1px solid black!important;break-inside:avoid;page-break-inside:avoid}
+  .report-document-footer code{font-size:7pt!important;color:black!important}
 }
