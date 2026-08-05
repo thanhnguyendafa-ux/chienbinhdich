@@ -2,7 +2,7 @@ import { evaluateAnswer } from './answerEvaluator.js';
 import { getMasteryCounts, masteryDisplayPercent, masteryPercentFromAttempts, masteryUnitPercent } from './masteryEngine.js';
 import { advanceLearningPrompt, queueRetry } from './retryScheduler.js';
 
-export const SESSION_SCHEMA_VERSION = 4;
+export const SESSION_SCHEMA_VERSION = 5;
 
 export function createSession({ studentName, set, now = Date.now() }) {
   const firstItem = set.items[0];
@@ -44,6 +44,7 @@ export function submitAnswer({ session, set, answer, attemptMeta = {}, now = Dat
   const startedAt = finiteTime(attemptMeta.startedAt, submittedAt);
   const revealAfterAttempt = !result.correct && (hasSeenAnswer || failedAttemptsBefore + 1 >= 2);
   const masteryDeltaUnits = attemptNumber === 1 ? (result.correct ? 1 : -1) : 0;
+  const masteryBefore = masteryDisplayPercent(session.attempts, set.items.length);
 
   const attempt = {
     id: `${session.id}-p${session.promptIndex}-a${attemptNumber}`,
@@ -67,6 +68,8 @@ export function submitAnswer({ session, set, answer, attemptMeta = {}, now = Dat
 
   let nextSession = structuredClone(session);
   nextSession.attempts.push(attempt);
+  const mastery = masteryDisplayPercent(nextSession.attempts, set.items.length);
+  const masteryDeltaPercent = round2(mastery - masteryBefore);
 
   if (!result.correct) {
     nextSession.retryQueue = queueRetry(nextSession.retryQueue, item.id, session.promptIndex);
@@ -78,15 +81,15 @@ export function submitAnswer({ session, set, answer, attemptMeta = {}, now = Dat
         revealAnswer: revealAfterAttempt ? item.en : null,
         attemptNumber,
         masteryDeltaUnits,
-        masteryDeltaPercent: round2(masteryDeltaUnits * masteryUnitPercent(set.items.length)),
-        mastery: masteryDisplayPercent(nextSession.attempts, set.items.length)
+        masteryBefore,
+        masteryDeltaPercent,
+        mastery
       }
     };
   }
 
   const wasCorrection = hadWrongThisExposure;
   nextSession = advanceLearningPrompt(nextSession, set);
-  const mastery = masteryDisplayPercent(nextSession.attempts, set.items.length);
 
   return {
     session: nextSession,
@@ -94,7 +97,8 @@ export function submitAnswer({ session, set, answer, attemptMeta = {}, now = Dat
       type: wasCorrection ? 'correction' : 'retrieval_success',
       answer: item.en,
       masteryDeltaUnits,
-      masteryDeltaPercent: round2(masteryDeltaUnits * masteryUnitPercent(set.items.length)),
+      masteryBefore,
+      masteryDeltaPercent,
       mastery,
       passed: nextSession.status === 'passed'
     }
