@@ -1,5 +1,6 @@
 import { getSessionMetrics } from '../../core/sessionMachine.js';
 import { getMasteryTransitions } from '../../core/masteryEngine.js';
+import { questionPromptDisplay, questionTypeLabel } from '../../core/questionTypes.js';
 import { deriveAttemptAnalytics } from '../../core/attemptAnalytics.js';
 import { formatClockTime, formatDateTime, formatDuration, formatResponseDuration, stageLabel } from '../../core/formatters.js';
 
@@ -23,13 +24,13 @@ export function renderReport({ root, session, set, onRetry, onHome }) {
           <div>
             <p class="eyebrow">BÁO CÁO HỌC TẬP</p>
             <h1>${esc(session.studentName)}</h1>
-            <p class="report-course">${esc(set.course)} · ${esc(set.unit)} · Set 1</p>
+            <p class="report-course">${esc(set.course)} · ${esc(set.unit)} · ${esc(set.title)}</p>
           </div>
           <div class="score-hero"><span>Mastery cuối</span><strong>${formatPercent(metrics.mastery)}%</strong><small>${submitted ? `Đạt mốc ${set.passThreshold}% và đã bấm Nộp bài` : `Chưa nộp · mốc yêu cầu ${set.passThreshold}%`}</small></div>
         </section>
 
         <section class="report-grid" aria-label="Tóm tắt buổi học">
-          ${summaryCell('Tổng lượt gõ', metrics.totalAttempts)}
+          ${summaryCell('Tổng lượt trả lời', metrics.totalAttempts)}
           ${summaryCell('Retrieval đúng', metrics.retrievalSuccesses)}
           ${summaryCell('Retrieval sai', metrics.retrievalErrors)}
           ${summaryCell('Correction', metrics.corrections)}
@@ -47,12 +48,12 @@ export function renderReport({ root, session, set, onRetry, onHome }) {
 
         <section class="integrity-note">
           <strong>Dấu hiệu cần xem lại</strong>
-          <p>Paste và phản hồi rất nhanh chỉ là dữ liệu để thầy/phụ huynh xem quá trình làm bài, không tự động kết luận học sinh gian lận.</p>
+          <p>Paste và phản hồi rất nhanh chỉ là dữ liệu quá trình. Các dạng chọn đáp án/tap token được ghi riêng theo input method và không tự động bị coi là gian lận.</p>
         </section>
 
         <section class="timeline-section">
           <div class="timeline-heading">
-            <div><p class="eyebrow">ACTIVITY TIMELINE</p><h2>Lịch sử từng lần gõ</h2></div>
+            <div><p class="eyebrow">ACTIVITY TIMELINE</p><h2>Lịch sử từng lần trả lời</h2></div>
             <span>${session.attempts.length} attempts</span>
           </div>
           <ol class="attempt-list">
@@ -62,7 +63,7 @@ export function renderReport({ root, session, set, onRetry, onHome }) {
 
         <footer class="report-footer">
           <code>Session: ${esc(session.id)}</code>
-          <div class="report-actions">${abandoned ? '<button id="retry-btn" class="secondary-btn">Làm lại Set 1</button>' : ''}<button id="home-btn" class="secondary-btn">Về trang đầu</button></div>
+          <div class="report-actions">${abandoned ? '<button id="retry-btn" class="secondary-btn">Làm lại Set</button>' : ''}<button id="home-btn" class="secondary-btn">Về trang đầu</button></div>
         </footer>
       </section>
     </main>`;
@@ -75,14 +76,15 @@ function renderAttempt(attempt, item, impact) {
   const correction = attempt.result === 'correction';
   const status = correction ? 'Sửa đúng' : (attempt.correct ? 'Đúng' : 'Sai');
   const statusClass = attempt.correct ? 'attempt-correct' : 'attempt-wrong';
-  const flags = attempt.flags.map(flag => `<span class="attempt-flag ${flag}">${flagLabel(flag)}</span>`).join('');
+  const flags = (attempt.flags ?? []).map(flag => `<span class="attempt-flag ${flag}">${flagLabel(flag)}</span>`).join('');
   const impactLabel = impact > 0 ? `+${formatPercent(impact)}%` : impact < 0 ? `−${formatPercent(Math.abs(impact))}%` : '0%';
+  const typeLabel = item?.stage ? stageLabel(item.stage) : questionTypeLabel(attempt.questionType ?? item);
   return `
     <li class="attempt-row ${statusClass}">
       <div class="attempt-time"><strong>${formatClockTime(attempt.submittedAt)}</strong><span>${formatResponseDuration(attempt.responseDurationMs)}</span></div>
       <div class="attempt-body">
-        <div class="attempt-meta"><span>${stageLabel(item?.stage)}</span><span>${promptKindLabel(attempt.promptKind)}</span><span>Lần ${attempt.attemptNumber}</span><span class="attempt-status">${status}</span><span class="mastery-impact">Mastery ${impactLabel}</span></div>
-        <p class="attempt-prompt">${esc(item?.vi ?? attempt.itemId)}</p>
+        <div class="attempt-meta"><span>${esc(typeLabel)}</span><span>${promptKindLabel(attempt.promptKind)}</span><span>Lần ${attempt.attemptNumber}</span><span class="attempt-status">${status}</span><span class="mastery-impact">Mastery ${impactLabel}</span></div>
+        <p class="attempt-prompt">${esc(questionPromptDisplay(item) || attempt.itemId)}</p>
         <code class="attempt-answer">${esc(attempt.submittedAnswer || '(trống)')}</code>
         ${flags ? `<div class="attempt-flags">${flags}</div>` : ''}
       </div>
@@ -90,12 +92,8 @@ function renderAttempt(attempt, item, impact) {
 }
 
 function renderOutcome({ submitted, abandoned, metrics, set }) {
-  if (submitted) {
-    return `<section class="submission-callout"><strong>Bài đã được đánh dấu là ĐÃ NỘP</strong><p>Mastery ${formatPercent(metrics.mastery)}%. Chụp báo cáo này và gửi cho <b>${esc(set.teacher)}</b> nếu lớp đang dùng quy trình nộp bằng ảnh.</p></section>`;
-  }
-  if (abandoned) {
-    return `<section class="submission-callout retry-callout"><strong>Chưa được tính là nộp bài</strong><p>Học sinh đã chọn Bỏ cuộc ở Mastery ${formatPercent(metrics.mastery)}%. Báo cáo vẫn giữ tổng thời gian và toàn bộ lịch sử gõ để thầy/phụ huynh nhìn thấy mức độ cố gắng.</p></section>`;
-  }
+  if (submitted) return `<section class="submission-callout"><strong>Bài đã được đánh dấu là ĐÃ NỘP</strong><p>Mastery ${formatPercent(metrics.mastery)}%. Chụp báo cáo này và gửi cho <b>${esc(set.teacher)}</b> nếu lớp đang dùng quy trình nộp bằng ảnh.</p></section>`;
+  if (abandoned) return `<section class="submission-callout retry-callout"><strong>Chưa được tính là nộp bài</strong><p>Học sinh đã chọn Bỏ cuộc ở Mastery ${formatPercent(metrics.mastery)}%. Báo cáo vẫn giữ tổng thời gian và toàn bộ lịch sử làm bài.</p></section>`;
   return '';
 }
 
