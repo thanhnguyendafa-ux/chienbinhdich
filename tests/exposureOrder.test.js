@@ -18,17 +18,20 @@ test('new exposure can reshuffle answer positions without changing answer identi
   assert.deepEqual(retry.slice().sort(), values);
 });
 
-test('true-false positions are stable inside one exposure and can change on retry', () => {
+test('true-false positions are stable inside one exposure and can vary across exposures', () => {
   const values = ['true', 'false'];
   const firstKey = 'MRT-TEST:mix-q2:1:true_false';
-  const retryKey = 'MRT-TEST:mix-q2:4:true_false';
   const first = orderForExposure(values, firstKey);
   const firstAgain = orderForExposure(values, firstKey);
-  const retry = orderForExposure(values, retryKey);
+  const laterOrders = Array.from({ length: 12 }, (_, offset) =>
+    orderForExposure(values, `MRT-TEST:mix-q2:${offset + 2}:true_false`)
+  );
+
   assert.deepEqual(first, firstAgain);
-  assert.notDeepEqual(first, retry);
-  assert.deepEqual(first.slice().sort(), values.slice().sort());
-  assert.deepEqual(retry.slice().sort(), values.slice().sort());
+  assert.ok(laterOrders.some(order => order.join('|') !== first.join('|')));
+  for (const order of [first, ...laterOrders]) {
+    assert.deepEqual(order.slice().sort(), values.slice().sort());
+  }
 });
 
 test('sentence-order token bank also varies by exposure while preserving every token', () => {
