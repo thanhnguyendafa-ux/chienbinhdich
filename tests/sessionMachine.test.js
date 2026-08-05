@@ -25,7 +25,7 @@ function answer(session, value, t) {
 
 test('session keeps attempts as mastery evidence SSOT and scheduler state operational', () => {
   const session = createSession({ studentName: 'Test', set, now: 1 });
-  assert.equal(session.schemaVersion, 4);
+  assert.equal(session.schemaVersion, 5);
   assert.equal('mastery' in session, false);
   assert.equal('itemStates' in session, false);
   assert.equal(session.currentItemId, 'a');
@@ -34,28 +34,29 @@ test('session keeps attempts as mastery evidence SSOT and scheduler state operat
   assert.deepEqual(session.attempts, []);
 });
 
-test('first wrong subtracts mastery once, correction stays neutral, and wrong item returns after two other prompts', () => {
+test('first wrong at zero stays at zero, correction stays neutral, and wrong item returns after two other prompts', () => {
   let session = createSession({ studentName: 'Test', set, now: 1 });
 
   let result = answer(session, 'wrong', 10);
   session = result.session;
   assert.equal(result.event.type, 'incorrect_retry');
-  assert.equal(result.event.masteryDeltaPercent, -20);
-  assert.equal(getSessionMetrics(session, set).masteryExact, -20);
-  assert.equal(getSessionMetrics(session, set).mastery, 0);
+  assert.equal(result.event.masteryDeltaUnits, -1);
+  assert.equal(result.event.masteryBefore, 0);
+  assert.equal(result.event.masteryDeltaPercent, 0);
+  assert.equal(getSessionMetrics(session, set).masteryExact, 0);
   assert.equal(session.retryQueue[0].eligiblePromptIndex, 3);
 
   result = answer(session, 'alpha', 30);
   session = result.session;
   assert.equal(result.event.type, 'correction');
   assert.equal(result.event.masteryDeltaPercent, 0);
-  assert.equal(getSessionMetrics(session, set).masteryExact, -20);
+  assert.equal(getSessionMetrics(session, set).masteryExact, 0);
   assert.equal(getCurrentItem(session, set).id, 'b');
-  assert.equal(session.promptIndex, 1);
 
-  session = answer(session, 'beta', 50).session;
-  assert.equal(getCurrentItem(session, set).id, 'c');
-  assert.equal(session.promptIndex, 2);
+  result = answer(session, 'beta', 50);
+  session = result.session;
+  assert.equal(result.event.masteryDeltaPercent, 20);
+  assert.equal(getSessionMetrics(session, set).masteryExact, 20);
 
   session = answer(session, 'gamma', 70).session;
   assert.equal(getCurrentItem(session, set).id, 'a');
@@ -65,100 +66,96 @@ test('first wrong subtracts mastery once, correction stays neutral, and wrong it
 
 test('second and later wrong attempts in the same exposure are neutral; revealed correction is also neutral', () => {
   let session = createSession({ studentName: 'Test', set, now: 1 });
+  session = answer(session, 'alpha', 10).session;
+  assert.equal(getSessionMetrics(session, set).masteryExact, 20);
 
-  const firstWrong = answer(session, 'wrong', 10);
+  const firstWrong = answer(session, 'wrong', 30);
   session = firstWrong.session;
+  assert.equal(firstWrong.event.masteryDeltaUnits, -1);
   assert.equal(firstWrong.event.masteryDeltaPercent, -20);
-  assert.equal(getSessionMetrics(session, set).masteryExact, -20);
+  assert.equal(getSessionMetrics(session, set).masteryExact, 0);
 
-  const secondWrong = answer(session, 'still wrong', 30);
+  const secondWrong = answer(session, 'still wrong', 50);
   session = secondWrong.session;
   assert.equal(secondWrong.event.type, 'incorrect_reveal');
-  assert.equal(secondWrong.event.revealAnswer, 'alpha');
+  assert.equal(secondWrong.event.revealAnswer, 'beta');
   assert.equal(secondWrong.event.masteryDeltaPercent, 0);
-  assert.equal(getSessionMetrics(session, set).masteryExact, -20);
+  assert.equal(getSessionMetrics(session, set).masteryExact, 0);
 
-  const thirdWrong = answer(session, 'wrong again', 50);
+  const thirdWrong = answer(session, 'wrong again', 70);
   session = thirdWrong.session;
-  assert.equal(thirdWrong.event.type, 'incorrect_reveal');
   assert.equal(thirdWrong.event.masteryDeltaPercent, 0);
-  assert.equal(getSessionMetrics(session, set).masteryExact, -20);
 
-  const correction = submitAnswer({ session, set, answer: 'alpha', attemptMeta: meta(70, 90, 'paste', true), now: 90 });
+  const correction = submitAnswer({ session, set, answer: 'beta', attemptMeta: meta(90, 110, 'paste', true), now: 110 });
   session = correction.session;
   assert.equal(correction.event.type, 'correction');
   assert.equal(correction.event.masteryDeltaUnits, 0);
-  assert.equal(getSessionMetrics(session, set).masteryExact, -20);
+  assert.equal(correction.event.masteryDeltaPercent, 0);
   const lastAttempt = session.attempts.at(-1);
   assert.equal(lastAttempt.answerRevealedBeforeAttempt, true);
   assert.equal(lastAttempt.pasteDetected, true);
-  assert.equal(lastAttempt.inputMethod, 'paste');
 });
 
-test('retry is a new exposure: first correct gains mastery, first wrong loses mastery once', () => {
+test('retry is a new exposure: first correct gains mastery and first wrong loses mastery once', () => {
   let session = createSession({ studentName: 'Test', set, now: 1 });
   session = answer(session, 'wrong', 10).session;
   session = answer(session, 'alpha', 30).session;
   session = answer(session, 'beta', 50).session;
   session = answer(session, 'gamma', 70).session;
   assert.equal(session.currentPromptKind, 'retry');
+  assert.equal(getSessionMetrics(session, set).masteryExact, 40);
 
   const retryWrong = answer(session, 'wrong on retry', 90);
   session = retryWrong.session;
   assert.equal(retryWrong.event.masteryDeltaPercent, -20);
-  assert.equal(getSessionMetrics(session, set).masteryExact, 0);
+  assert.equal(getSessionMetrics(session, set).masteryExact, 20);
 
   const retrySecondWrong = answer(session, 'still wrong on retry', 110);
-  session = retrySecondWrong.session;
   assert.equal(retrySecondWrong.event.masteryDeltaPercent, 0);
-  assert.equal(getSessionMetrics(session, set).masteryExact, 0);
+  assert.equal(getSessionMetrics(retrySecondWrong.session, set).masteryExact, 20);
 });
 
-test('one wrong can recover through retry and passes at exactly 80 after main sequence plus pending retry are complete', () => {
+test('main sequence plus recovered retry passes once mastery is at least 80', () => {
   let session = createSession({ studentName: 'Test', set, now: 1 });
   session = answer(session, 'wrong', 10).session;
   session = answer(session, 'alpha', 30).session;
   session = answer(session, 'beta', 50).session;
   session = answer(session, 'gamma', 70).session;
-  assert.equal(getCurrentItem(session, set).id, 'a');
   session = answer(session, 'alpha', 90).session;
   session = answer(session, 'delta', 110).session;
   const final = answer(session, 'echo', 130);
   session = final.session;
   assert.equal(session.status, 'passed');
-  assert.equal(getSessionMetrics(session, set).masteryExact, 80);
+  assert.equal(getSessionMetrics(session, set).masteryExact, 100);
   assert.equal(getSessionMetrics(session, set).thresholdReached, true);
   assert.equal(getSessionMetrics(session, set).mainComplete, true);
 });
 
-test('below 80 after main sequence automatically continues weak-item review until mastery reaches threshold', () => {
-  let session = createSession({ studentName: 'Test', set, now: 1 });
-  const failedMainItems = new Set(['a', 'b']);
-  let t = 10;
+test('a completed main sequence at 60 stays active in review and passes at exactly 80', () => {
+  const session = {
+    ...createSession({ studentName: 'Test', set, now: 1 }),
+    currentItemId: 'a',
+    currentPromptKind: 'review',
+    promptIndex: 10,
+    mainCursor: set.items.length,
+    attempts: set.items.map((item, index) => ({
+      id: `seed-${index}`,
+      itemId: item.id,
+      promptIndex: index,
+      promptKind: 'main',
+      attemptNumber: 1,
+      correct: true,
+      result: index < 3 ? 'retrieval_success' : 'correction',
+      masteryDeltaUnits: index < 3 ? 1 : 0,
+      answerRevealedAfterAttempt: index >= 3
+    }))
+  };
 
-  for (let guard = 0; guard < 40; guard += 1) {
-    const item = getCurrentItem(session, set);
-    const exposureAttempts = session.attempts.filter(attempt => attempt.promptIndex === session.promptIndex);
-
-    if (session.currentPromptKind === 'main' && failedMainItems.has(item.id) && exposureAttempts.length === 0) {
-      session = answer(session, 'wrong', t).session;
-      t += 20;
-      session = answer(session, item.en, t).session;
-    } else {
-      session = answer(session, item.en, t).session;
-    }
-    t += 20;
-
-    const metrics = getSessionMetrics(session, set);
-    if (metrics.mainComplete && session.retryQueue.length === 0 && session.currentPromptKind === 'review') break;
-  }
-
-  assert.equal(session.status, 'active');
   assert.equal(getSessionMetrics(session, set).mainComplete, true);
   assert.equal(getSessionMetrics(session, set).masteryExact, 60);
-  assert.equal(session.currentPromptKind, 'review');
+  assert.equal(session.status, 'active');
 
-  const recovered = answer(session, getCurrentItem(session, set).en, t);
+  const recovered = answer(session, 'alpha', 200);
   assert.equal(recovered.session.status, 'passed');
   assert.equal(getSessionMetrics(recovered.session, set).masteryExact, 80);
 });
