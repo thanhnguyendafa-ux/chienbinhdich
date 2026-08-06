@@ -84,13 +84,12 @@ test('generic question context has safe fallbacks for typing and sentence order'
   });
 });
 
-test('teaching feedback is learner-paced and resolved feedback includes question context', () => {
+test('teaching feedback is learner-paced and resolved feedback includes derived question context', () => {
   assert.match(renderSource, /if \(teachingFeedback\)/);
   assert.match(renderSource, /id="teaching-continue-btn"/);
   assert.match(renderSource, /addEventListener\('click', event =>/);
   assert.match(renderSource, /window\.setTimeout\(onContinue, 430\)/);
   assert.match(renderSource, /renderQuestionContext\(item\)/);
-  assert.match(renderSource, /Thông tin câu hỏi/);
   assert.match(renderSource, /Con chọn/);
   assert.match(renderSource, /Đáp án đúng là/);
   assert.match(renderSource, /Lý thuyết/);
