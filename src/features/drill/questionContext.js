@@ -52,11 +52,24 @@ function row(label, value) {
 }
 
 function splitQuotedPrompt(prompt) {
-  const match = String(prompt ?? '').match(/^\s*Cho câu:\s*[“"]([^”"]+)[”"]\s*(.*)$/u);
-  if (!match) return null;
+  const prefix = 'Cho câu:';
+  const text = String(prompt ?? '').trim();
+  if (!text.startsWith(prefix)) return null;
+
+  const quotedText = text.slice(prefix.length).trimStart();
+  const openingQuote = quotedText[0];
+  const closingQuote = openingQuote === '“' ? '”' : openingQuote === '"' ? '"' : null;
+  if (!closingQuote) return null;
+
+  const closingIndex = quotedText.indexOf(closingQuote, 1);
+  if (closingIndex < 0) return null;
+
+  const sentence = quotedText.slice(1, closingIndex).trim();
+  if (!sentence) return null;
+
   return {
-    sentence: match[1].trim(),
-    remainder: match[2].trim()
+    sentence,
+    remainder: quotedText.slice(closingIndex + 1).trim()
   };
 }
 
