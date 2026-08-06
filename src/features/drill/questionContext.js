@@ -52,7 +52,7 @@ function row(label, value) {
 }
 
 function splitQuotedPrompt(prompt) {
-  const match = String(prompt ?? '').match(/^\s*Cho câu:\s*[“\"]([^”\"]+)[”\"]\s*(.*)$/u);
+  const match = String(prompt ?? '').match(/^\s*Cho câu:\s*[“"]([^”"]+)[”"]\s*(.*)$/u);
   if (!match) return null;
   return {
     sentence: match[1].trim(),
