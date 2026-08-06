@@ -177,7 +177,7 @@ function renderFeedback(feedback, item) {
     <div class="feedback error-feedback" role="alert">
       <div><span class="feedback-kicker">Sai · ${masteryMessage}</span><strong>Thử lại</strong></div>
       ${item?.teachingFeedback ? renderQuestionContext(item) : ''}
-      <p>${item?.teachingFeedback ? 'Con chọn' : 'Câu trả lời vừa chọn/làm'}: <q>${esc(feedback.entered || '(trống)')}</q></p>
+      <p>${item?.teachingFeedback ? learnerResponseLabel(item) : 'Câu trả lời vừa chọn/làm'}: <q>${esc(feedback.entered || '(trống)')}</q></p>
       <p>Đáp án đúng chưa được hiện. Hãy đọc lại câu hỏi và thử lại bằng trí nhớ của con.</p>
     </div>`;
 }
@@ -186,14 +186,19 @@ function renderTeachingFeedback({ item = null, entered, answer, teachingFeedback
   const conceptLine = sameText(answer, teachingFeedback.correctLabel)
     ? ''
     : `<div class="teaching-row"><span>Loại đúng</span><strong>${esc(teachingFeedback.correctLabel)}</strong></div>`;
+  const workedExample = teachingFeedback.workedExample;
+  const workedLine = workedExample
+    ? `<div class="teaching-copy teaching-worked"><span>${esc(workedExample.label)}</span><p>${esc(workedExample.text)}</p></div>`
+    : '';
   return `
     <section class="teaching-feedback" aria-label="Giải thích đáp án">
       ${item ? renderQuestionContext(item) : ''}
-      <div class="teaching-row"><span>Con chọn</span><strong>${esc(entered || '(trống)')}</strong></div>
+      <div class="teaching-row"><span>${esc(learnerResponseLabel(item))}</span><strong>${esc(entered || '(trống)')}</strong></div>
       <div class="teaching-row"><span>Đáp án đúng là</span><strong>${esc(answer)}</strong></div>
       ${conceptLine}
       <div class="teaching-copy"><span>Vì</span><p>${esc(teachingFeedback.reason)}</p></div>
       <div class="teaching-copy"><span>Lý thuyết</span><p>${esc(teachingFeedback.theory)}</p></div>
+      ${workedLine}
       <div class="teaching-copy teaching-example"><span>Ví dụ</span><p>${esc(teachingFeedback.example)}</p></div>
       ${includeContinue ? '<button class="primary-btn teaching-continue-btn" id="teaching-continue-btn" type="button">Tiếp tục</button>' : ''}
     </section>`;
@@ -210,6 +215,10 @@ function renderQuestionContext(item) {
           <p>${esc(contextRow.value)}</p>
         </div>`).join('')}
     </section>`;
+}
+
+function learnerResponseLabel(item) {
+  return questionTypeForItem(item) === 'typing' ? 'Con gõ' : 'Con chọn';
 }
 
 function sameText(left, right) {

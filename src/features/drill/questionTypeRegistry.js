@@ -1,5 +1,5 @@
 import { orderForExposure } from '../../core/exposureOrder.js';
-import { questionPromptDisplay, questionTypeForItem } from '../../core/questionTypes.js';
+import { questionPromptDisplay, questionTypeForItem, typingUiForItem } from '../../core/questionTypes.js';
 
 const registry = Object.freeze({
   typing: { render: renderTyping, bind: bindTyping },
@@ -23,14 +23,16 @@ export function bindQuestionInteraction({ root, item, onSubmit, attemptStartedAt
 }
 
 function renderTyping(item, { reviewMode = false } = {}) {
+  const typingUi = typingUiForItem(item);
+  const promptLabel = reviewMode ? `${typingUi.promptLabel} — không nhìn đáp án` : typingUi.promptLabel;
   return `
     <div class="prompt-block">
-      <p class="prompt-label">${reviewMode ? 'Nhớ lại và tự gõ — không nhìn đáp án' : 'Gõ tiếng Anh'}</p>
+      <p class="prompt-label">${esc(promptLabel)}</p>
       <h1>${esc(questionPromptDisplay(item))}</h1>
     </div>
     <form id="question-form" class="answer-form typing-question" novalidate>
-      <label class="sr-only" for="answer-input">Câu trả lời tiếng Anh</label>
-      <input id="answer-input" enterkeyhint="done" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Type English here..." required />
+      <label class="sr-only" for="answer-input">${esc(typingUi.inputLabel)}</label>
+      <input id="answer-input" enterkeyhint="done" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="${escAttr(typingUi.placeholder)}" required />
       <button class="primary-btn" type="submit">Kiểm tra</button>
     </form>`;
 }

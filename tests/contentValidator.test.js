@@ -14,3 +14,28 @@ test('Global 7 Unit 1 Set 1 dependency order is valid', () => {
     ...Array(3).fill('sentence')
   ]);
 });
+
+test('generic Typing can omit stage and provide complete custom UI metadata', () => {
+  const set = {
+    id: 'generic-typing-ui',
+    passThreshold: 80,
+    items: [{
+      id: 'typing-left',
+      type: 'typing',
+      vi: 'The library user checks the shelf mark.',
+      en: 'The library user',
+      typingUi: {
+        promptLabel: 'Gõ phần TRÁI / SUBJECT',
+        contextLabel: 'Câu',
+        instruction: 'Gõ phần TRÁI / SUBJECT.',
+        inputLabel: 'Phần TRÁI / SUBJECT',
+        placeholder: 'Gõ phần TRÁI...'
+      }
+    }]
+  };
+  assert.deepEqual(validateSet(set), []);
+
+  const invalid = structuredClone(set);
+  invalid.items[0].typingUi.placeholder = '';
+  assert.ok(validateSet(invalid).some(error => error.includes('thiếu placeholder')));
+});

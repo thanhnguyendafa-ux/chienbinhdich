@@ -9,7 +9,10 @@ test('catalog exposes sample and MRT lesson folders with their published Sets', 
   assert.deepEqual(validateCatalog(lessonFolders, lessonRegistry), []);
   assert.deepEqual(listFolders().map(folder => folder.id), ['samples', 'mrt-lessons']);
   assert.deepEqual(listSetsByFolder('samples').map(set => set.id), ['g7-u1-mixed-demo', 'g7-u1-s1']);
-  assert.deepEqual(listSetsByFolder('mrt-lessons').map(set => set.id), ['mrt-g6-gan-aura-action-01']);
+  assert.deepEqual(listSetsByFolder('mrt-lessons').map(set => set.id), [
+    'mrt-g6-gan-aura-action-01',
+    'mrt-left-cut-right-01'
+  ]);
 });
 
 test('published Set ids are unique and every descriptor resolves through repository', async () => {

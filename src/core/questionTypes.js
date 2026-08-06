@@ -7,6 +7,14 @@ const evaluators = Object.freeze({
   sentence_order: evaluateSentenceOrder
 });
 
+const DEFAULT_TYPING_UI = Object.freeze({
+  promptLabel: 'Gõ tiếng Anh',
+  contextLabel: 'Tiếng Việt',
+  instruction: 'Dịch sang tiếng Anh.',
+  inputLabel: 'Câu trả lời tiếng Anh',
+  placeholder: 'Type English here...'
+});
+
 export const SUPPORTED_QUESTION_TYPES = Object.freeze(Object.keys(evaluators));
 
 export function questionTypeForItem(item) {
@@ -34,6 +42,17 @@ export function questionPromptDisplay(item) {
   if (type === 'typing') return String(item.vi ?? '');
   if (type === 'true_false') return String(item.statement ?? '');
   return String(item.prompt ?? '');
+}
+
+export function typingUiForItem(item) {
+  const custom = item?.typingUi ?? {};
+  return Object.freeze({
+    promptLabel: String(custom.promptLabel ?? DEFAULT_TYPING_UI.promptLabel),
+    contextLabel: String(custom.contextLabel ?? DEFAULT_TYPING_UI.contextLabel),
+    instruction: String(custom.instruction ?? DEFAULT_TYPING_UI.instruction),
+    inputLabel: String(custom.inputLabel ?? DEFAULT_TYPING_UI.inputLabel),
+    placeholder: String(custom.placeholder ?? DEFAULT_TYPING_UI.placeholder)
+  });
 }
 
 export function questionTypeLabel(itemOrType) {

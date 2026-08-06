@@ -61,5 +61,21 @@ export const lessonRegistry = Object.freeze([
     activityTypes: Object.freeze(['mcq', 'true_false']),
     itemCount: 20,
     loadContent: () => import('./mrt-g6-gan-aura-action-01.js').then(module => module.mrtG6GanAuraAction01Content)
+  }),
+  Object.freeze({
+    id: 'mrt-left-cut-right-01',
+    folderId: 'mrt-lessons',
+    order: 2,
+    version: 1,
+    course: 'Mister Thành MRT',
+    unit: 'Reading Tool · LEFT | CUT | RIGHT',
+    title: 'Trái | Cắt | Phải — Chặt câu để hiểu nghĩa',
+    subtitle: 'MCQ · True/False · Typing LEFT',
+    passThreshold: 80,
+    teacher: 'Thầy Thành MRT',
+    description: 'Luyện tìm LEFT / SUBJECT, đặt CUT trước Predicate và xác định toàn bộ RIGHT / PREDICATE. Sáu câu Typing buộc học sinh tự gõ phần TRÁI thay vì đoán từ lựa chọn.',
+    activityTypes: Object.freeze(['mcq', 'true_false', 'typing']),
+    itemCount: 20,
+    loadContent: () => import('./mrt-left-cut-right-01.js').then(module => module.mrtLeftCutRight01Content)
   })
 ]);
