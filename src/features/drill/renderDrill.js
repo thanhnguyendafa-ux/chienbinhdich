@@ -3,6 +3,7 @@ import { questionTypeForItem, questionTypeLabel } from '../../core/questionTypes
 import { stageLabel } from '../../core/formatters.js';
 import { animateMasteryProgress, formatMasteryPercent, renderMasteryProgress } from '../../ui/masteryProgress.js';
 import { bindQuestionInteraction, renderQuestionInteraction } from './questionTypeRegistry.js';
+import { getQuestionContext } from './questionContext.js';
 
 export function renderDrill({ root, session, set, feedback = null, onSubmit, onExit, onFinishQualified }) {
   const item = getCurrentItem(session, set);
@@ -79,7 +80,7 @@ export function renderDrill({ root, session, set, feedback = null, onSubmit, onE
   dialog?.addEventListener('cancel', () => window.setTimeout(() => refocus?.(), 0));
 }
 
-export function showSuccess({ root, type, entered, answer, teachingFeedback = null, mastery, masteryBefore, masteryDeltaPercent, onContinue }) {
+export function showSuccess({ root, type, item = null, entered, answer, teachingFeedback = null, mastery, masteryBefore, masteryDeltaPercent, onContinue }) {
   const card = root.querySelector('.prompt-card');
   const interaction = card?.querySelector('.question-interaction');
   if (!card || !interaction) return onContinue();
@@ -102,7 +103,7 @@ export function showSuccess({ root, type, entered, answer, teachingFeedback = nu
         <strong>${correction ? 'Đã sửa chính xác' : 'Retrieval chính xác'}</strong>
         <small>${masteryMessage}</small>
       </div>
-      ${renderTeachingFeedback({ entered, answer, teachingFeedback, includeContinue: true })}`;
+      ${renderTeachingFeedback({ item, entered, answer, teachingFeedback, includeContinue: true })}`;
     root.querySelector('#teaching-continue-btn')?.addEventListener('click', event => {
       event.currentTarget.disabled = true;
       event.currentTarget.textContent = 'Đang sang câu tiếp...';
@@ -166,7 +167,7 @@ function renderFeedback(feedback, item) {
       <div class="feedback reveal-feedback" role="alert">
         <div><span class="feedback-kicker">Sai lần ${feedback.attemptNumber} · ${masteryMessage}</span><strong>Đã mở đáp án để con học lại</strong></div>
         ${item?.teachingFeedback
-          ? renderTeachingFeedback({ entered: feedback.entered, answer: feedback.revealAnswer, teachingFeedback: item.teachingFeedback })
+          ? renderTeachingFeedback({ item, entered: feedback.entered, answer: feedback.revealAnswer, teachingFeedback: item.teachingFeedback })
           : `<code>${esc(feedback.revealAnswer)}</code>`}
         <p>Tự làm lại đúng để hoàn thành correction. Câu này vẫn sẽ quay lại trong chuỗi.</p>
       </div>`;
@@ -175,17 +176,19 @@ function renderFeedback(feedback, item) {
   return `
     <div class="feedback error-feedback" role="alert">
       <div><span class="feedback-kicker">Sai · ${masteryMessage}</span><strong>Thử lại</strong></div>
+      ${item?.teachingFeedback ? renderQuestionContext(item) : ''}
       <p>${item?.teachingFeedback ? 'Con chọn' : 'Câu trả lời vừa chọn/làm'}: <q>${esc(feedback.entered || '(trống)')}</q></p>
       <p>Đáp án đúng chưa được hiện. Hãy đọc lại câu hỏi và thử lại bằng trí nhớ của con.</p>
     </div>`;
 }
 
-function renderTeachingFeedback({ entered, answer, teachingFeedback, includeContinue = false }) {
+function renderTeachingFeedback({ item = null, entered, answer, teachingFeedback, includeContinue = false }) {
   const conceptLine = sameText(answer, teachingFeedback.correctLabel)
     ? ''
     : `<div class="teaching-row"><span>Loại đúng</span><strong>${esc(teachingFeedback.correctLabel)}</strong></div>`;
   return `
     <section class="teaching-feedback" aria-label="Giải thích đáp án">
+      ${item ? renderQuestionContext(item) : ''}
       <div class="teaching-row"><span>Con chọn</span><strong>${esc(entered || '(trống)')}</strong></div>
       <div class="teaching-row"><span>Đáp án đúng là</span><strong>${esc(answer)}</strong></div>
       ${conceptLine}
@@ -193,6 +196,19 @@ function renderTeachingFeedback({ entered, answer, teachingFeedback, includeCont
       <div class="teaching-copy"><span>Lý thuyết</span><p>${esc(teachingFeedback.theory)}</p></div>
       <div class="teaching-copy teaching-example"><span>Ví dụ</span><p>${esc(teachingFeedback.example)}</p></div>
       ${includeContinue ? '<button class="primary-btn teaching-continue-btn" id="teaching-continue-btn" type="button">Tiếp tục</button>' : ''}
+    </section>`;
+}
+
+function renderQuestionContext(item) {
+  const questionContext = getQuestionContext(item);
+  return `
+    <section class="question-context" aria-label="${esc(questionContext.heading)}">
+      <div class="question-context-heading">${esc(questionContext.heading)}</div>
+      ${questionContext.rows.map(contextRow => `
+        <div class="question-context-row">
+          <span>${esc(contextRow.label)}</span>
+          <p>${esc(contextRow.value)}</p>
+        </div>`).join('')}
     </section>`;
 }
 
