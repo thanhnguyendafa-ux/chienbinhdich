@@ -1,13 +1,14 @@
-import { questionPromptDisplay, questionTypeForItem } from '../../core/questionTypes.js';
+import { questionPromptDisplay, questionTypeForItem, typingUiForItem } from '../../core/questionTypes.js';
 
 export function getQuestionContext(item) {
   const type = questionTypeForItem(item);
   const prompt = questionPromptDisplay(item).trim();
 
   if (type === 'typing') {
+    const typingUi = typingUiForItem(item);
     return context([
-      row('Tiếng Việt', prompt),
-      row('Yêu cầu', 'Dịch sang tiếng Anh.')
+      row(typingUi.contextLabel, prompt),
+      row('Yêu cầu', typingUi.instruction)
     ]);
   }
 
