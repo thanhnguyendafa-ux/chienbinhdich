@@ -58,7 +58,9 @@ function splitQuotedPrompt(prompt) {
 
   const quotedText = text.slice(prefix.length).trimStart();
   const openingQuote = quotedText[0];
-  const closingQuote = openingQuote === '“' ? '”' : openingQuote === '"' ? '"' : null;
+  let closingQuote = null;
+  if (openingQuote === '“') closingQuote = '”';
+  else if (openingQuote === '"') closingQuote = '"';
   if (!closingQuote) return null;
 
   const closingIndex = quotedText.indexOf(closingQuote, 1);
