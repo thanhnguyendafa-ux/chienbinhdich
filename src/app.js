@@ -150,6 +150,7 @@ async function showDrill() {
       showSuccess({
         root,
         type: result.event.type,
+        item: answeredItem,
         entered: result.event.entered,
         answer: result.event.answer,
         teachingFeedback: answeredItem?.teachingFeedback ?? null,
