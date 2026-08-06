@@ -136,6 +136,7 @@ async function showDrill() {
     onExit: finishAbandoned,
     onFinishQualified: session.status === 'extended' ? finishQualified : null,
     onSubmit: ({ response, attemptMeta }) => {
+      const answeredItem = lesson.items.find(candidate => candidate.id === session.currentItemId) ?? null;
       const result = submitAnswer({ session, set: lesson, response, attemptMeta });
       session = result.session;
       sessions.saveActive(session);
@@ -149,7 +150,9 @@ async function showDrill() {
       showSuccess({
         root,
         type: result.event.type,
+        entered: result.event.entered,
         answer: result.event.answer,
+        teachingFeedback: answeredItem?.teachingFeedback ?? null,
         mastery: result.event.mastery,
         masteryBefore: result.event.masteryBefore,
         masteryDeltaPercent: result.event.masteryDeltaPercent,

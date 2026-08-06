@@ -40,7 +40,7 @@ export function renderDrill({ root, session, set, feedback = null, onSubmit, onE
         <article class="prompt-card question-card type-${questionTypeForItem(item)} ${feedback ? 'has-error' : ''} ${revealAnswer ? 'is-reveal' : ''}">
           <div class="stage-line"><span class="stage-badge">${esc(badge)}</span><span>${extendedMode ? 'LUYỆN THÊM' : reviewMode ? reviewLabel(session.currentPromptKind) : `${mainPosition}/${set.items.length}`}</span></div>
 
-          ${renderFeedback(feedback)}
+          ${renderFeedback(feedback, item)}
 
           <div class="question-interaction">
             ${renderQuestionInteraction(item, { reviewMode, exposureKey })}
@@ -79,7 +79,7 @@ export function renderDrill({ root, session, set, feedback = null, onSubmit, onE
   dialog?.addEventListener('cancel', () => window.setTimeout(() => refocus?.(), 0));
 }
 
-export function showSuccess({ root, type, answer, mastery, masteryBefore, masteryDeltaPercent, onContinue }) {
+export function showSuccess({ root, type, entered, answer, teachingFeedback = null, mastery, masteryBefore, masteryDeltaPercent, onContinue }) {
   const card = root.querySelector('.prompt-card');
   const interaction = card?.querySelector('.question-interaction');
   if (!card || !interaction) return onContinue();
@@ -94,6 +94,23 @@ export function showSuccess({ root, type, answer, mastery, masteryBefore, master
     : actualGain > 0
       ? `Mastery +${formatMasteryPercent(actualGain)}% → ${formatMasteryPercent(mastery)}%`
       : `Mastery giữ ở ${formatMasteryPercent(mastery)}%`;
+
+  if (teachingFeedback) {
+    interaction.innerHTML = `
+      <div class="success-panel teaching-success-heading" role="status">
+        <span class="success-mark">ĐÚNG</span>
+        <strong>${correction ? 'Đã sửa chính xác' : 'Retrieval chính xác'}</strong>
+        <small>${masteryMessage}</small>
+      </div>
+      ${renderTeachingFeedback({ entered, answer, teachingFeedback, includeContinue: true })}`;
+    root.querySelector('#teaching-continue-btn')?.addEventListener('click', event => {
+      event.currentTarget.disabled = true;
+      event.currentTarget.textContent = 'Đang sang câu tiếp...';
+      onContinue();
+    });
+    root.querySelector('#teaching-continue-btn')?.focus({ preventScroll: true });
+    return;
+  }
 
   interaction.innerHTML = `
     <div class="success-panel" role="status">
@@ -134,7 +151,7 @@ export function renderPassed({ root, session, set, onSubmit, onContinue }) {
   });
 }
 
-function renderFeedback(feedback) {
+function renderFeedback(feedback, item) {
   if (!feedback) return '';
   const delta = Number(feedback.masteryDeltaPercent ?? 0);
   const hitFloor = Number(feedback.masteryDeltaUnits ?? 0) < 0 && delta === 0 && Number(feedback.mastery ?? 0) === 0;
@@ -147,17 +164,40 @@ function renderFeedback(feedback) {
   if (feedback.type === 'incorrect_reveal') {
     return `
       <div class="feedback reveal-feedback" role="alert">
-        <div><span class="feedback-kicker">Sai lần ${feedback.attemptNumber} · ${masteryMessage}</span><strong>Đáp án chuẩn</strong></div>
-        <code>${esc(feedback.revealAnswer)}</code>
+        <div><span class="feedback-kicker">Sai lần ${feedback.attemptNumber} · ${masteryMessage}</span><strong>Đã mở đáp án để con học lại</strong></div>
+        ${item?.teachingFeedback
+          ? renderTeachingFeedback({ entered: feedback.entered, answer: feedback.revealAnswer, teachingFeedback: item.teachingFeedback })
+          : `<code>${esc(feedback.revealAnswer)}</code>`}
         <p>Tự làm lại đúng để hoàn thành correction. Câu này vẫn sẽ quay lại trong chuỗi.</p>
       </div>`;
   }
+
   return `
     <div class="feedback error-feedback" role="alert">
       <div><span class="feedback-kicker">Sai · ${masteryMessage}</span><strong>Thử lại</strong></div>
-      <p>Câu trả lời vừa chọn/làm: <q>${esc(feedback.entered || '(trống)')}</q></p>
-      <p>Chưa hiện đáp án. Hãy tự nhớ và thử lại.</p>
+      <p>${item?.teachingFeedback ? 'Con chọn' : 'Câu trả lời vừa chọn/làm'}: <q>${esc(feedback.entered || '(trống)')}</q></p>
+      <p>Đáp án đúng chưa được hiện. Hãy đọc lại câu hỏi và thử lại bằng trí nhớ của con.</p>
     </div>`;
+}
+
+function renderTeachingFeedback({ entered, answer, teachingFeedback, includeContinue = false }) {
+  const conceptLine = sameText(answer, teachingFeedback.correctLabel)
+    ? ''
+    : `<div class="teaching-row"><span>Loại đúng</span><strong>${esc(teachingFeedback.correctLabel)}</strong></div>`;
+  return `
+    <section class="teaching-feedback" aria-label="Giải thích đáp án">
+      <div class="teaching-row"><span>Con chọn</span><strong>${esc(entered || '(trống)')}</strong></div>
+      <div class="teaching-row"><span>Đáp án đúng là</span><strong>${esc(answer)}</strong></div>
+      ${conceptLine}
+      <div class="teaching-copy"><span>Vì</span><p>${esc(teachingFeedback.reason)}</p></div>
+      <div class="teaching-copy"><span>Lý thuyết</span><p>${esc(teachingFeedback.theory)}</p></div>
+      <div class="teaching-copy teaching-example"><span>Ví dụ</span><p>${esc(teachingFeedback.example)}</p></div>
+      ${includeContinue ? '<button class="primary-btn teaching-continue-btn" id="teaching-continue-btn" type="button">Tiếp tục</button>' : ''}
+    </section>`;
+}
+
+function sameText(left, right) {
+  return String(left ?? '').trim().toLocaleLowerCase('vi') === String(right ?? '').trim().toLocaleLowerCase('vi');
 }
 
 function reviewLabel(kind) {

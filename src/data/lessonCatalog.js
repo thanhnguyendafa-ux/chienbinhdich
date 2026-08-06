@@ -4,6 +4,12 @@ export const lessonFolders = Object.freeze([
     name: 'Bài tập mẫu',
     description: 'Các Set mẫu dùng để thử luồng Mastery, nhiều dạng câu và link giao bài.',
     order: 1
+  }),
+  Object.freeze({
+    id: 'mrt-lessons',
+    name: 'Bài học Thầy Thành MRT',
+    description: 'Các bài luyện theo hệ tư duy ngữ pháp Mister Thành MRT.',
+    order: 2
   })
 ]);
 
@@ -39,5 +45,21 @@ export const lessonRegistry = Object.freeze([
     activityTypes: Object.freeze(['typing']),
     itemCount: 16,
     loadContent: () => import('./global7-unit1-set1.js').then(module => module.global7Unit1Set1Content)
+  }),
+  Object.freeze({
+    id: 'mrt-g6-gan-aura-action-01',
+    folderId: 'mrt-lessons',
+    order: 1,
+    version: 1,
+    course: 'Global Success 6',
+    unit: 'Units 1–3 · My New School · My House · My Friends',
+    title: 'Bài tập Phân loại gán - aura - hành động',
+    subtitle: 'MCQ · True/False · Mister Thành',
+    passThreshold: 80,
+    teacher: 'Thầy Thành MRT',
+    description: 'Phân loại câu tiếng Việt theo ba hệ Mister Thành: Gán TO BE, Aura TO BE và Hành động VERB. Mỗi câu có giải thích và lý thuyết sau khi được giải quyết.',
+    activityTypes: Object.freeze(['mcq', 'true_false']),
+    itemCount: 20,
+    loadContent: () => import('./mrt-g6-gan-aura-action-01.js').then(module => module.mrtG6GanAuraAction01Content)
   })
 ]);
