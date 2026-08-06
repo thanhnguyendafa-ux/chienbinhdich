@@ -45,7 +45,8 @@ export function validateSet(set) {
 
 function validateItemByType(item, type, errors) {
   if (type === 'typing') {
-    if (!nonEmpty(item.vi) || !nonEmpty(item.en) || !(item.stage in stageRank)) errors.push(`Typing item không hợp lệ: ${item.id}`);
+    if (!nonEmpty(item.vi) || !nonEmpty(item.en)) errors.push(`Typing item không hợp lệ: ${item.id}`);
+    validateTypingUi(item, errors);
     return;
   }
 
@@ -79,6 +80,17 @@ function validateItemByType(item, type, errors) {
   }
 }
 
+function validateTypingUi(item, errors) {
+  if (item.typingUi === undefined) return;
+  if (!item.typingUi || typeof item.typingUi !== 'object' || Array.isArray(item.typingUi)) {
+    errors.push(`Typing UI không hợp lệ tại ${item.id}`);
+    return;
+  }
+  for (const field of ['promptLabel', 'contextLabel', 'instruction', 'inputLabel', 'placeholder']) {
+    if (!nonEmpty(item.typingUi[field])) errors.push(`Typing UI ${item.id} thiếu ${field}`);
+  }
+}
+
 function validateTeachingFeedback(item, errors) {
   if (item.teachingFeedback === undefined) return;
   const value = item.teachingFeedback;
@@ -89,6 +101,17 @@ function validateTeachingFeedback(item, errors) {
   for (const field of ['correctLabel', 'reason', 'theory', 'example']) {
     if (!nonEmpty(value[field])) errors.push(`Teaching feedback ${item.id} thiếu ${field}`);
   }
+  validateWorkedExample(item.id, value.workedExample, errors);
+}
+
+function validateWorkedExample(itemId, workedExample, errors) {
+  if (workedExample === undefined) return;
+  if (!workedExample || typeof workedExample !== 'object' || Array.isArray(workedExample)) {
+    errors.push(`Worked example không hợp lệ tại ${itemId}`);
+    return;
+  }
+  if (!nonEmpty(workedExample.label)) errors.push(`Worked example ${itemId} thiếu label`);
+  if (!nonEmpty(workedExample.text)) errors.push(`Worked example ${itemId} thiếu text`);
 }
 
 function sameMultiset(left = [], right = []) {
