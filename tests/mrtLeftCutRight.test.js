@@ -59,7 +59,8 @@ test('LEFT CUT RIGHT content has the locked 20-question blueprint', () => {
 test('all LEFT CUT RIGHT items have semantic answers and complete worked teaching feedback', () => {
   for (const item of mrtLeftCutRight01Content.items) {
     assert.ok(Number.isInteger(item.sourceItem));
-    assert.ok(item.sourceItem >= 1 && item.sourceItem <= 18);
+    assert.ok(item.sourceItem >= 1);
+    assert.ok(item.sourceItem <= 18);
     assert.ok(item.teachingFeedback);
     for (const field of ['correctLabel', 'reason', 'theory', 'example']) {
       assert.equal(typeof item.teachingFeedback[field], 'string');
