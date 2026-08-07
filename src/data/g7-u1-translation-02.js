@@ -1,314 +1,50 @@
 const THEORY = 'Dịch theo từng cụm nghĩa: chủ ngữ → hành động/ý chính → đối tượng → nơi chốn/thời gian/mức độ. Đừng chọn vì câu tiếng Anh nhìn quen; hãy kiểm tra xem từng cụm có giữ đúng nghĩa câu Việt hay không.';
 
-function itemId(number) {
-  return `g7-u1-translation-02-q${String(number).padStart(2, '0')}`;
+// Keep the lesson corpus as data, not repeated question-construction code. Each row is:
+// [Vietnamese target, canonical English, three [semantic id, near-miss] pairs, chunk explanation, phrase to remember].
+const rows = JSON.parse(`[
+["Bạn có sở thích nào không?","Do you have any hobbies?",[["wrong-object-books","Do you have any books?"],["wrong-subject-brother","Does your brother have any hobbies?"],["wrong-quantity-many","Do you have many hobbies?"]],"Tách nghĩa: you = bạn, have = có, any hobbies = sở thích nào. Các câu nhiễu đổi đồ vật, đổi chủ ngữ hoặc đổi any thành many.","Cụm cần nhớ: any hobbies = sở thích nào; many hobbies = nhiều sở thích."],
+["Những người chưa có sở thích nên bắt đầu một sở thích.","People without a hobby should start a hobby.",[["wrong-with-hobby","People with a hobby should start another hobby."],["wrong-action-stop","People without a hobby should stop a hobby."],["wrong-object-sport","People without a hobby should start a new sport."]],"Tách nghĩa: people without a hobby = những người chưa có sở thích; should start = nên bắt đầu; a hobby = một sở thích. Bẫy đổi without thành with, start thành stop hoặc hobby thành sport.","Cụm cần nhớ: without a hobby = chưa/không có sở thích; start a hobby = bắt đầu một sở thích."],
+["Có một sở thích rất có lợi.","Having a hobby is very beneficial.",[["wrong-adjective-interesting","Having a hobby is very interesting."],["wrong-quantity-many","Having many hobbies is very beneficial."],["wrong-degree-sometimes","Having a hobby is sometimes beneficial."]],"Tách nghĩa: having a hobby = có một sở thích; very beneficial = rất có lợi. Interesting là thú vị, many là nhiều và sometimes là đôi khi nên đều làm đổi nghĩa.","Cụm cần nhớ: beneficial = có lợi; very beneficial = rất có lợi."],
+["Một sở thích cho bạn một việc thú vị để làm.","A hobby gives you something fun to do.",[["wrong-recipient-friends","A hobby gives your friends something fun to do."],["wrong-quality-difficult","A hobby gives you something difficult to do."],["wrong-action-read","A hobby gives you something fun to read."]],"Tách nghĩa: a hobby = một sở thích; gives you = cho bạn; something fun to do = một việc thú vị để làm. Bẫy đổi người nhận, tính chất hoặc hành động.","Cụm cần nhớ: something fun to do = một việc thú vị để làm."],
+["Bạn có thể tận hưởng một sở thích trong thời gian rảnh.","You can enjoy a hobby during your leisure time.",[["wrong-time-after-school","You can enjoy a hobby after school every day."],["wrong-action-start","You can start a hobby during your leisure time."],["wrong-object-homework","You can enjoy your homework during your leisure time."]],"Tách nghĩa: can enjoy = có thể tận hưởng; a hobby = một sở thích; during your leisure time = trong thời gian rảnh. Các lựa chọn khác đổi thời gian, động từ hoặc đối tượng.","Cụm cần nhớ: leisure time = thời gian rảnh; enjoy a hobby = tận hưởng một sở thích."],
+["Một sở thích cho bạn một việc thú vị để làm trong thời gian có dịch bệnh.","A hobby gives you something fun to do during pandemics.",[["wrong-quality-useful","A hobby gives you something useful to do during pandemics."],["wrong-time-after","A hobby gives you something fun to do after pandemics."],["wrong-recipient-family","A hobby gives your family something fun to do during pandemics."]],"Tách nghĩa: something fun = một việc thú vị; during pandemics = trong thời gian có dịch bệnh; gives you = cho bạn. Useful, after và your family đều thay một chunk nghĩa.","Cụm cần nhớ: during = trong suốt/trong thời gian; after = sau."],
+["Gia đình tôi đọc sách cùng nhau trong thời gian phong tỏa do Covid-19.","My family reads books together during the Covid-19 lockdown.",[["wrong-action-films","My family watches films together during the Covid-19 lockdown."],["wrong-subject-classmates","My classmates read books together during the Covid-19 lockdown."],["wrong-time-after","My family reads books together after the Covid-19 lockdown."]],"Tách nghĩa: my family = gia đình tôi; reads books together = đọc sách cùng nhau; during the lockdown = trong thời gian phong tỏa. Bẫy đổi hoạt động, chủ ngữ hoặc during thành after.","Cụm cần nhớ: read books together = đọc sách cùng nhau; during the lockdown = trong thời gian phong tỏa."],
+["Gia đình tôi xem phim cùng nhau trong thời gian phong tỏa do Covid-19.","My family watches films together during the Covid-19 lockdown.",[["wrong-time-after","My family watches films together after the Covid-19 lockdown."],["wrong-action-books","My family reads books together during the Covid-19 lockdown."],["wrong-subject-friends","My friends watch films together during the Covid-19 lockdown."]],"Tách nghĩa: my family = gia đình tôi; watches films together = xem phim cùng nhau; during = trong thời gian. After, reads books và my friends đều làm sai một cụm.","Cụm cần nhớ: watch films = xem phim; during ≠ after."],
+["Việc đọc sách và xem phim cùng nhau khiến gia đình tôi cảm thấy tốt hơn.","Reading books and watching films together makes my family feel better.",[["wrong-together-alone","Reading books and watching films alone makes my family feel better."],["wrong-object-friends","Reading books and watching films together makes my friends feel better."],["wrong-feeling-tired","Reading books and watching films together makes my family feel tired."]],"Tách nghĩa: reading books and watching films together = việc đọc sách và xem phim cùng nhau; makes my family feel better = khiến gia đình tôi cảm thấy tốt hơn. Alone, my friends và tired đều đổi nghĩa.","Cụm cần nhớ: make someone feel better = khiến ai cảm thấy tốt hơn."],
+["Gia đình tôi phải ở nhà trong thời gian phong tỏa.","My family has to stay at home during the lockdown.",[["wrong-modality-likes","My family likes to stay at home during the lockdown."],["wrong-place-school","My family has to stay at school during the lockdown."],["wrong-time-after","My family has to stay at home after the lockdown."]],"Tách nghĩa: has to = phải; stay at home = ở nhà; during the lockdown = trong thời gian phong tỏa. Likes to chỉ sở thích, at school sai nơi và after sai thời gian.","Cụm cần nhớ: have to = phải; stay at home = ở nhà."],
+["Một sở thích khiến bạn trở thành một người thú vị hơn.","A hobby makes you a more interesting person.",[["wrong-adjective-happier","A hobby makes you a happier person."],["wrong-object-friend","A hobby makes your friend a more interesting person."],["wrong-structure-meet","A hobby helps you meet an interesting person."]],"Tách nghĩa: makes you = khiến bạn trở thành; a more interesting person = một người thú vị hơn. Happier đổi tính chất, your friend đổi người và meet đổi toàn bộ quan hệ nghĩa.","Cụm cần nhớ: make someone + adjective/noun phrase = khiến ai trở nên/trở thành..."],
+["Những người có nhiều kinh nghiệm và kỹ năng có thể chia sẻ kinh nghiệm và kỹ năng của mình với người khác.","People with a lot of experience and skills can share their experience and skills with others.",[["wrong-object-hobbies","People with a lot of experience and skills can share their hobbies with others."],["wrong-recipient-classmates","People with a lot of experience and skills can share their experience and skills with classmates."],["wrong-quantity-little","People with little experience and few skills can share their experience and skills with others."]],"Tách nghĩa: a lot of experience and skills = nhiều kinh nghiệm và kỹ năng; share their experience and skills = chia sẻ kinh nghiệm và kỹ năng; with others = với người khác. Hobbies, classmates và little/few đều thay nghĩa.","Cụm cần nhớ: share something with others = chia sẻ điều gì với người khác."],
+["Tôi rất thích đi du lịch.","I love travelling.",[["wrong-activity-swimming","I love swimming."],["wrong-subject-sister","My sister loves travelling."],["wrong-frequency-usually","I usually go travelling."]],"Tách nghĩa: I = tôi; love = rất thích; travelling = đi du lịch. Swimming đổi hoạt động, my sister đổi chủ ngữ và usually chỉ tần suất chứ không diễn tả “rất thích”.","Cụm cần nhớ: love + V-ing = rất thích làm việc gì."],
+["Tôi thường chia sẻ những trải nghiệm du lịch của mình với các bạn cùng lớp.","I usually share my travel experiences with my classmates.",[["wrong-frequency-always","I always share my travel experiences with my classmates."],["wrong-recipient-family","I usually share my travel experiences with my family."],["wrong-object-plans","I usually share my travel plans with my classmates."]],"Tách nghĩa: usually = thường; travel experiences = trải nghiệm du lịch; with my classmates = với các bạn cùng lớp. Always, family và travel plans lần lượt đổi tần suất, người nhận và nội dung chia sẻ.","Cụm cần nhớ: travel experiences = trải nghiệm du lịch; travel plans = kế hoạch du lịch."],
+["Việc chia sẻ những trải nghiệm du lịch giúp tôi có thêm nhiều bạn bè.","Sharing my travel experiences helps me have more friends.",[["wrong-object-sister","Sharing my travel experiences helps my sister have more friends."],["wrong-benefit-skills","Sharing my travel experiences helps me develop more skills."],["wrong-experience-school","Sharing my school experiences helps me have more friends."]],"Tách nghĩa: sharing my travel experiences = việc chia sẻ trải nghiệm du lịch; helps me = giúp tôi; have more friends = có thêm nhiều bạn bè. Các bẫy đổi người hưởng lợi, kết quả hoặc loại trải nghiệm.","Cụm cần nhớ: help someone have more friends = giúp ai có thêm bạn bè."],
+["Bây giờ chúng tôi có một nhóm du lịch trong lớp.","Now we have a travel group in our class.",[["wrong-group-reading","Now we have a reading group in our class."],["wrong-subject-they","Now they have a travel group in our class."],["wrong-place-school","Now we have a travel group in our school."]],"Tách nghĩa: now = bây giờ; we have = chúng tôi có; a travel group = một nhóm du lịch; in our class = trong lớp. Reading, they và school đều đổi một chunk.","Cụm cần nhớ: travel group = nhóm du lịch; in our class = trong lớp của chúng tôi."],
+["Một sở thích có thể giúp bạn phát triển những kỹ năng mới.","A hobby can help you develop new skills.",[["wrong-object-hobbies","A hobby can help you develop new hobbies."],["wrong-recipient-friends","A hobby can help your friends develop new skills."],["wrong-action-share","A hobby can help you share new skills."]],"Tách nghĩa: can help you = có thể giúp bạn; develop = phát triển; new skills = những kỹ năng mới. New hobbies, your friends và share làm sai đối tượng, người nhận hoặc hành động.","Cụm cần nhớ: develop new skills = phát triển kỹ năng mới."],
+["Việc dành nhiều thời gian cho sở thích có thể giúp các kỹ năng của bạn tiến bộ.","Spending a lot of time on your hobby can improve your skills.",[["wrong-quantity-little","Spending a little time on your hobby can improve your skills."],["wrong-result-health","Spending a lot of time on your hobby can improve your health."],["wrong-focus-friends","Spending a lot of time with your friends can improve your skills."]],"Tách nghĩa: spending a lot of time = dành nhiều thời gian; on your hobby = cho sở thích; improve your skills = làm kỹ năng tiến bộ. A little, health và with your friends là ba bẫy thay chunk.","Cụm cần nhớ: spend time on something = dành thời gian cho việc gì; improve your skills = cải thiện kỹ năng."],
+["Chị/em gái của tôi rất thích may vá.","My sister loves sewing.",[["wrong-activity-drawing","My sister loves drawing."],["wrong-relative-brother","My brother loves sewing."],["wrong-degree-sometimes","My sister sometimes sews."]],"Tách nghĩa: my sister = chị/em gái của tôi; loves = rất thích; sewing = may vá. Drawing đổi hoạt động, brother đổi người và sometimes sews chỉ thói quen chứ không mang nghĩa “rất thích”.","Cụm cần nhớ: love sewing = rất thích may vá."],
+["Chị/em gái của tôi đã may vá được hai năm.","My sister has been sewing for two years.",[["wrong-duration-months","My sister has been sewing for two months."],["wrong-activity-travelling","My sister has been travelling for two years."],["wrong-subject-brother","My brother has been sewing for two years."]],"Tách nghĩa: my sister = chị/em gái tôi; has been sewing = đã may vá liên tục/được một thời gian; for two years = được hai năm. Months, travelling và brother đều đổi thông tin cốt lõi.","Cụm cần nhớ: for two years = trong/được hai năm; has been sewing = đã may vá trong một khoảng thời gian."],
+["Bây giờ chị/em gái của tôi có thể may những bộ quần áo búp bê đẹp.","My sister can now sew beautiful doll clothes.",[["wrong-action-buy","My sister can now buy beautiful doll clothes."],["wrong-object-own-clothes","My sister can now sew beautiful clothes for herself."],["wrong-relative-brother","My brother can now sew beautiful doll clothes."]],"Tách nghĩa: my sister = chị/em gái tôi; can now sew = bây giờ có thể may; beautiful doll clothes = quần áo búp bê đẹp. Buy, clothes for herself và brother đều làm đổi nghĩa.","Cụm cần nhớ: sew doll clothes = may quần áo búp bê; buy doll clothes = mua quần áo búp bê."],
+["Những hoạt động thú vị, nhiều bạn bè hơn và những kỹ năng mới là những lợi ích của việc có sở thích.","Fun activities, more friends, and new skills are benefits of having hobbies.",[["wrong-item-books","Fun activities, more books, and new skills are benefits of having hobbies."],["wrong-relation-skills","Fun activities, more friends, and new hobbies are benefits of having skills."],["wrong-quality-difficult","Difficult activities, more friends, and new skills are benefits of having hobbies."]],"Tách nghĩa: fun activities = hoạt động thú vị; more friends = nhiều bạn bè hơn; new skills = kỹ năng mới; benefits of having hobbies = lợi ích của việc có sở thích. Books, having skills và difficult đều đánh tráo nghĩa.","Cụm cần nhớ: benefits of having hobbies = lợi ích của việc có sở thích."],
+["Bạn nên có sở thích vì sở thích mang lại nhiều lợi ích.","You should have hobbies because hobbies are beneficial.",[["wrong-reason-interesting","You should have hobbies because hobbies are interesting."],["wrong-action-share","You should share hobbies because hobbies are beneficial."],["wrong-subject-friends","Your friends should have hobbies because hobbies are beneficial."]],"Tách nghĩa: you should have hobbies = bạn nên có sở thích; because = vì; hobbies are beneficial = sở thích có lợi. Interesting, share và your friends đều thay một ý quan trọng.","Cụm cần nhớ: should have = nên có; beneficial = có lợi."]
+]`);
+
+const items = rows.map(([vi, answer, traps, reason, remember], index) => ({
+  id: `g7-u1-translation-02-q${String(index + 1).padStart(2, '0')}`,
+  type: 'mcq',
+  skill: 'translation-discrimination',
+  vi,
+  prompt: `Cho câu: “${vi}” Chọn bản dịch tiếng Anh chính xác nhất.`,
+  choices: [{ id: 'target-translation', text: answer }, ...traps.map(([id, text]) => ({ id, text }))],
+  correctChoiceId: 'target-translation',
+  teachingFeedback: { correctLabel: answer, reason, theory: THEORY, example: remember }
+}));
+
+function freezeTree(value) {
+  if (value && typeof value === 'object' && !Object.isFrozen(value)) {
+    for (const nested of Object.values(value)) freezeTree(nested);
+    Object.freeze(value);
+  }
+  return value;
 }
 
-function choices(entries) {
-  return entries.map(([id, text]) => ({ id, text }));
-}
-
-function mcq(number, vi, correctEnglish, choiceEntries, reason, example) {
-  return {
-    id: itemId(number),
-    type: 'mcq',
-    skill: 'translation-discrimination',
-    vi,
-    prompt: `Cho câu: “${vi}” Chọn bản dịch tiếng Anh chính xác nhất.`,
-    choices: choices(choiceEntries),
-    correctChoiceId: 'target-translation',
-    teachingFeedback: {
-      correctLabel: correctEnglish,
-      reason,
-      theory: THEORY,
-      example
-    }
-  };
-}
-
-function deepFreeze(value) {
-  if (!value || typeof value !== 'object' || Object.isFrozen(value)) return value;
-  for (const child of Object.values(value)) deepFreeze(child);
-  return Object.freeze(value);
-}
-
-const items = [
-  mcq(1,
-    'Bạn có sở thích nào không?',
-    'Do you have any hobbies?',
-    [
-      ['target-translation', 'Do you have any hobbies?'],
-      ['wrong-object-books', 'Do you have any books?'],
-      ['wrong-subject-brother', 'Does your brother have any hobbies?'],
-      ['wrong-quantity-many', 'Do you have many hobbies?']
-    ],
-    'Tách nghĩa: you = bạn, have = có, any hobbies = sở thích nào. Các câu nhiễu đổi đồ vật, đổi chủ ngữ hoặc đổi any thành many.',
-    'Cụm cần nhớ: any hobbies = sở thích nào; many hobbies = nhiều sở thích.'
-  ),
-  mcq(2,
-    'Những người chưa có sở thích nên bắt đầu một sở thích.',
-    'People without a hobby should start a hobby.',
-    [
-      ['target-translation', 'People without a hobby should start a hobby.'],
-      ['wrong-with-hobby', 'People with a hobby should start another hobby.'],
-      ['wrong-action-stop', 'People without a hobby should stop a hobby.'],
-      ['wrong-object-sport', 'People without a hobby should start a new sport.']
-    ],
-    'Tách nghĩa: people without a hobby = những người chưa có sở thích; should start = nên bắt đầu; a hobby = một sở thích. Bẫy đổi without thành with, start thành stop hoặc hobby thành sport.',
-    'Cụm cần nhớ: without a hobby = chưa/không có sở thích; start a hobby = bắt đầu một sở thích.'
-  ),
-  mcq(3,
-    'Có một sở thích rất có lợi.',
-    'Having a hobby is very beneficial.',
-    [
-      ['target-translation', 'Having a hobby is very beneficial.'],
-      ['wrong-adjective-interesting', 'Having a hobby is very interesting.'],
-      ['wrong-quantity-many', 'Having many hobbies is very beneficial.'],
-      ['wrong-degree-sometimes', 'Having a hobby is sometimes beneficial.']
-    ],
-    'Tách nghĩa: having a hobby = có một sở thích; very beneficial = rất có lợi. Interesting là thú vị, many là nhiều và sometimes là đôi khi nên đều làm đổi nghĩa.',
-    'Cụm cần nhớ: beneficial = có lợi; very beneficial = rất có lợi.'
-  ),
-  mcq(4,
-    'Một sở thích cho bạn một việc thú vị để làm.',
-    'A hobby gives you something fun to do.',
-    [
-      ['target-translation', 'A hobby gives you something fun to do.'],
-      ['wrong-recipient-friends', 'A hobby gives your friends something fun to do.'],
-      ['wrong-quality-difficult', 'A hobby gives you something difficult to do.'],
-      ['wrong-action-read', 'A hobby gives you something fun to read.']
-    ],
-    'Tách nghĩa: a hobby = một sở thích; gives you = cho bạn; something fun to do = một việc thú vị để làm. Bẫy đổi người nhận, tính chất hoặc hành động.',
-    'Cụm cần nhớ: something fun to do = một việc thú vị để làm.'
-  ),
-  mcq(5,
-    'Bạn có thể tận hưởng một sở thích trong thời gian rảnh.',
-    'You can enjoy a hobby during your leisure time.',
-    [
-      ['target-translation', 'You can enjoy a hobby during your leisure time.'],
-      ['wrong-time-after-school', 'You can enjoy a hobby after school every day.'],
-      ['wrong-action-start', 'You can start a hobby during your leisure time.'],
-      ['wrong-object-homework', 'You can enjoy your homework during your leisure time.']
-    ],
-    'Tách nghĩa: can enjoy = có thể tận hưởng; a hobby = một sở thích; during your leisure time = trong thời gian rảnh. Các lựa chọn khác đổi thời gian, động từ hoặc đối tượng.',
-    'Cụm cần nhớ: leisure time = thời gian rảnh; enjoy a hobby = tận hưởng một sở thích.'
-  ),
-  mcq(6,
-    'Một sở thích cho bạn một việc thú vị để làm trong thời gian có dịch bệnh.',
-    'A hobby gives you something fun to do during pandemics.',
-    [
-      ['target-translation', 'A hobby gives you something fun to do during pandemics.'],
-      ['wrong-quality-useful', 'A hobby gives you something useful to do during pandemics.'],
-      ['wrong-time-after', 'A hobby gives you something fun to do after pandemics.'],
-      ['wrong-recipient-family', 'A hobby gives your family something fun to do during pandemics.']
-    ],
-    'Tách nghĩa: something fun = một việc thú vị; during pandemics = trong thời gian có dịch bệnh; gives you = cho bạn. Useful, after và your family đều thay một chunk nghĩa.',
-    'Cụm cần nhớ: during = trong suốt/trong thời gian; after = sau.'
-  ),
-  mcq(7,
-    'Gia đình tôi đọc sách cùng nhau trong thời gian phong tỏa do Covid-19.',
-    'My family reads books together during the Covid-19 lockdown.',
-    [
-      ['target-translation', 'My family reads books together during the Covid-19 lockdown.'],
-      ['wrong-action-films', 'My family watches films together during the Covid-19 lockdown.'],
-      ['wrong-subject-classmates', 'My classmates read books together during the Covid-19 lockdown.'],
-      ['wrong-time-after', 'My family reads books together after the Covid-19 lockdown.']
-    ],
-    'Tách nghĩa: my family = gia đình tôi; reads books together = đọc sách cùng nhau; during the lockdown = trong thời gian phong tỏa. Bẫy đổi hoạt động, chủ ngữ hoặc during thành after.',
-    'Cụm cần nhớ: read books together = đọc sách cùng nhau; during the lockdown = trong thời gian phong tỏa.'
-  ),
-  mcq(8,
-    'Gia đình tôi xem phim cùng nhau trong thời gian phong tỏa do Covid-19.',
-    'My family watches films together during the Covid-19 lockdown.',
-    [
-      ['target-translation', 'My family watches films together during the Covid-19 lockdown.'],
-      ['wrong-time-after', 'My family watches films together after the Covid-19 lockdown.'],
-      ['wrong-action-books', 'My family reads books together during the Covid-19 lockdown.'],
-      ['wrong-subject-friends', 'My friends watch films together during the Covid-19 lockdown.']
-    ],
-    'Tách nghĩa: my family = gia đình tôi; watches films together = xem phim cùng nhau; during = trong thời gian. After, reads books và my friends đều làm sai một cụm.',
-    'Cụm cần nhớ: watch films = xem phim; during ≠ after.'
-  ),
-  mcq(9,
-    'Việc đọc sách và xem phim cùng nhau khiến gia đình tôi cảm thấy tốt hơn.',
-    'Reading books and watching films together makes my family feel better.',
-    [
-      ['target-translation', 'Reading books and watching films together makes my family feel better.'],
-      ['wrong-together-alone', 'Reading books and watching films alone makes my family feel better.'],
-      ['wrong-object-friends', 'Reading books and watching films together makes my friends feel better.'],
-      ['wrong-feeling-tired', 'Reading books and watching films together makes my family feel tired.']
-    ],
-    'Tách nghĩa: reading books and watching films together = việc đọc sách và xem phim cùng nhau; makes my family feel better = khiến gia đình tôi cảm thấy tốt hơn. Alone, my friends và tired đều đổi nghĩa.',
-    'Cụm cần nhớ: make someone feel better = khiến ai cảm thấy tốt hơn.'
-  ),
-  mcq(10,
-    'Gia đình tôi phải ở nhà trong thời gian phong tỏa.',
-    'My family has to stay at home during the lockdown.',
-    [
-      ['target-translation', 'My family has to stay at home during the lockdown.'],
-      ['wrong-modality-likes', 'My family likes to stay at home during the lockdown.'],
-      ['wrong-place-school', 'My family has to stay at school during the lockdown.'],
-      ['wrong-time-after', 'My family has to stay at home after the lockdown.']
-    ],
-    'Tách nghĩa: has to = phải; stay at home = ở nhà; during the lockdown = trong thời gian phong tỏa. Likes to chỉ sở thích, at school sai nơi và after sai thời gian.',
-    'Cụm cần nhớ: have to = phải; stay at home = ở nhà.'
-  ),
-  mcq(11,
-    'Một sở thích khiến bạn trở thành một người thú vị hơn.',
-    'A hobby makes you a more interesting person.',
-    [
-      ['target-translation', 'A hobby makes you a more interesting person.'],
-      ['wrong-adjective-happier', 'A hobby makes you a happier person.'],
-      ['wrong-object-friend', 'A hobby makes your friend a more interesting person.'],
-      ['wrong-structure-meet', 'A hobby helps you meet an interesting person.']
-    ],
-    'Tách nghĩa: makes you = khiến bạn trở thành; a more interesting person = một người thú vị hơn. Happier đổi tính chất, your friend đổi người và meet đổi toàn bộ quan hệ nghĩa.',
-    'Cụm cần nhớ: make someone + adjective/noun phrase = khiến ai trở nên/trở thành...'
-  ),
-  mcq(12,
-    'Những người có nhiều kinh nghiệm và kỹ năng có thể chia sẻ kinh nghiệm và kỹ năng của mình với người khác.',
-    'People with a lot of experience and skills can share their experience and skills with others.',
-    [
-      ['target-translation', 'People with a lot of experience and skills can share their experience and skills with others.'],
-      ['wrong-object-hobbies', 'People with a lot of experience and skills can share their hobbies with others.'],
-      ['wrong-recipient-classmates', 'People with a lot of experience and skills can share their experience and skills with classmates.'],
-      ['wrong-quantity-little', 'People with little experience and few skills can share their experience and skills with others.']
-    ],
-    'Tách nghĩa: a lot of experience and skills = nhiều kinh nghiệm và kỹ năng; share their experience and skills = chia sẻ kinh nghiệm và kỹ năng; with others = với người khác. Hobbies, classmates và little/few đều thay nghĩa.',
-    'Cụm cần nhớ: share something with others = chia sẻ điều gì với người khác.'
-  ),
-  mcq(13,
-    'Tôi rất thích đi du lịch.',
-    'I love travelling.',
-    [
-      ['target-translation', 'I love travelling.'],
-      ['wrong-activity-swimming', 'I love swimming.'],
-      ['wrong-subject-sister', 'My sister loves travelling.'],
-      ['wrong-frequency-usually', 'I usually go travelling.']
-    ],
-    'Tách nghĩa: I = tôi; love = rất thích; travelling = đi du lịch. Swimming đổi hoạt động, my sister đổi chủ ngữ và usually chỉ tần suất chứ không diễn tả “rất thích”.',
-    'Cụm cần nhớ: love + V-ing = rất thích làm việc gì.'
-  ),
-  mcq(14,
-    'Tôi thường chia sẻ những trải nghiệm du lịch của mình với các bạn cùng lớp.',
-    'I usually share my travel experiences with my classmates.',
-    [
-      ['target-translation', 'I usually share my travel experiences with my classmates.'],
-      ['wrong-frequency-always', 'I always share my travel experiences with my classmates.'],
-      ['wrong-recipient-family', 'I usually share my travel experiences with my family.'],
-      ['wrong-object-plans', 'I usually share my travel plans with my classmates.']
-    ],
-    'Tách nghĩa: usually = thường; travel experiences = trải nghiệm du lịch; with my classmates = với các bạn cùng lớp. Always, family và travel plans lần lượt đổi tần suất, người nhận và nội dung chia sẻ.',
-    'Cụm cần nhớ: travel experiences = trải nghiệm du lịch; travel plans = kế hoạch du lịch.'
-  ),
-  mcq(15,
-    'Việc chia sẻ những trải nghiệm du lịch giúp tôi có thêm nhiều bạn bè.',
-    'Sharing my travel experiences helps me have more friends.',
-    [
-      ['target-translation', 'Sharing my travel experiences helps me have more friends.'],
-      ['wrong-object-sister', 'Sharing my travel experiences helps my sister have more friends.'],
-      ['wrong-benefit-skills', 'Sharing my travel experiences helps me develop more skills.'],
-      ['wrong-experience-school', 'Sharing my school experiences helps me have more friends.']
-    ],
-    'Tách nghĩa: sharing my travel experiences = việc chia sẻ trải nghiệm du lịch; helps me = giúp tôi; have more friends = có thêm nhiều bạn bè. Các bẫy đổi người hưởng lợi, kết quả hoặc loại trải nghiệm.',
-    'Cụm cần nhớ: help someone have more friends = giúp ai có thêm bạn bè.'
-  ),
-  mcq(16,
-    'Bây giờ chúng tôi có một nhóm du lịch trong lớp.',
-    'Now we have a travel group in our class.',
-    [
-      ['target-translation', 'Now we have a travel group in our class.'],
-      ['wrong-group-reading', 'Now we have a reading group in our class.'],
-      ['wrong-subject-they', 'Now they have a travel group in our class.'],
-      ['wrong-place-school', 'Now we have a travel group in our school.']
-    ],
-    'Tách nghĩa: now = bây giờ; we have = chúng tôi có; a travel group = một nhóm du lịch; in our class = trong lớp. Reading, they và school đều đổi một chunk.',
-    'Cụm cần nhớ: travel group = nhóm du lịch; in our class = trong lớp của chúng tôi.'
-  ),
-  mcq(17,
-    'Một sở thích có thể giúp bạn phát triển những kỹ năng mới.',
-    'A hobby can help you develop new skills.',
-    [
-      ['target-translation', 'A hobby can help you develop new skills.'],
-      ['wrong-object-hobbies', 'A hobby can help you develop new hobbies.'],
-      ['wrong-recipient-friends', 'A hobby can help your friends develop new skills.'],
-      ['wrong-action-share', 'A hobby can help you share new skills.']
-    ],
-    'Tách nghĩa: can help you = có thể giúp bạn; develop = phát triển; new skills = những kỹ năng mới. New hobbies, your friends và share làm sai đối tượng, người nhận hoặc hành động.',
-    'Cụm cần nhớ: develop new skills = phát triển kỹ năng mới.'
-  ),
-  mcq(18,
-    'Việc dành nhiều thời gian cho sở thích có thể giúp các kỹ năng của bạn tiến bộ.',
-    'Spending a lot of time on your hobby can improve your skills.',
-    [
-      ['target-translation', 'Spending a lot of time on your hobby can improve your skills.'],
-      ['wrong-quantity-little', 'Spending a little time on your hobby can improve your skills.'],
-      ['wrong-result-health', 'Spending a lot of time on your hobby can improve your health.'],
-      ['wrong-focus-friends', 'Spending a lot of time with your friends can improve your skills.']
-    ],
-    'Tách nghĩa: spending a lot of time = dành nhiều thời gian; on your hobby = cho sở thích; improve your skills = làm kỹ năng tiến bộ. A little, health và with your friends là ba bẫy thay chunk.',
-    'Cụm cần nhớ: spend time on something = dành thời gian cho việc gì; improve your skills = cải thiện kỹ năng.'
-  ),
-  mcq(19,
-    'Chị/em gái của tôi rất thích may vá.',
-    'My sister loves sewing.',
-    [
-      ['target-translation', 'My sister loves sewing.'],
-      ['wrong-activity-drawing', 'My sister loves drawing.'],
-      ['wrong-relative-brother', 'My brother loves sewing.'],
-      ['wrong-degree-sometimes', 'My sister sometimes sews.']
-    ],
-    'Tách nghĩa: my sister = chị/em gái của tôi; loves = rất thích; sewing = may vá. Drawing đổi hoạt động, brother đổi người và sometimes sews chỉ thói quen chứ không mang nghĩa “rất thích”.',
-    'Cụm cần nhớ: love sewing = rất thích may vá.'
-  ),
-  mcq(20,
-    'Chị/em gái của tôi đã may vá được hai năm.',
-    'My sister has been sewing for two years.',
-    [
-      ['target-translation', 'My sister has been sewing for two years.'],
-      ['wrong-duration-months', 'My sister has been sewing for two months.'],
-      ['wrong-activity-travelling', 'My sister has been travelling for two years.'],
-      ['wrong-subject-brother', 'My brother has been sewing for two years.']
-    ],
-    'Tách nghĩa: my sister = chị/em gái tôi; has been sewing = đã may vá liên tục/được một thời gian; for two years = được hai năm. Months, travelling và brother đều đổi thông tin cốt lõi.',
-    'Cụm cần nhớ: for two years = trong/được hai năm; has been sewing = đã may vá trong một khoảng thời gian.'
-  ),
-  mcq(21,
-    'Bây giờ chị/em gái của tôi có thể may những bộ quần áo búp bê đẹp.',
-    'My sister can now sew beautiful doll clothes.',
-    [
-      ['target-translation', 'My sister can now sew beautiful doll clothes.'],
-      ['wrong-action-buy', 'My sister can now buy beautiful doll clothes.'],
-      ['wrong-object-own-clothes', 'My sister can now sew beautiful clothes for herself.'],
-      ['wrong-relative-brother', 'My brother can now sew beautiful doll clothes.']
-    ],
-    'Tách nghĩa: my sister = chị/em gái tôi; can now sew = bây giờ có thể may; beautiful doll clothes = quần áo búp bê đẹp. Buy, clothes for herself và brother đều làm đổi nghĩa.',
-    'Cụm cần nhớ: sew doll clothes = may quần áo búp bê; buy doll clothes = mua quần áo búp bê.'
-  ),
-  mcq(22,
-    'Những hoạt động thú vị, nhiều bạn bè hơn và những kỹ năng mới là những lợi ích của việc có sở thích.',
-    'Fun activities, more friends, and new skills are benefits of having hobbies.',
-    [
-      ['target-translation', 'Fun activities, more friends, and new skills are benefits of having hobbies.'],
-      ['wrong-item-books', 'Fun activities, more books, and new skills are benefits of having hobbies.'],
-      ['wrong-relation-skills', 'Fun activities, more friends, and new hobbies are benefits of having skills.'],
-      ['wrong-quality-difficult', 'Difficult activities, more friends, and new skills are benefits of having hobbies.']
-    ],
-    'Tách nghĩa: fun activities = hoạt động thú vị; more friends = nhiều bạn bè hơn; new skills = kỹ năng mới; benefits of having hobbies = lợi ích của việc có sở thích. Books, having skills và difficult đều đánh tráo nghĩa.',
-    'Cụm cần nhớ: benefits of having hobbies = lợi ích của việc có sở thích.'
-  ),
-  mcq(23,
-    'Bạn nên có sở thích vì sở thích mang lại nhiều lợi ích.',
-    'You should have hobbies because hobbies are beneficial.',
-    [
-      ['target-translation', 'You should have hobbies because hobbies are beneficial.'],
-      ['wrong-reason-interesting', 'You should have hobbies because hobbies are interesting.'],
-      ['wrong-action-share', 'You should share hobbies because hobbies are beneficial.'],
-      ['wrong-subject-friends', 'Your friends should have hobbies because hobbies are beneficial.']
-    ],
-    'Tách nghĩa: you should have hobbies = bạn nên có sở thích; because = vì; hobbies are beneficial = sở thích có lợi. Interesting, share và your friends đều thay một ý quan trọng.',
-    'Cụm cần nhớ: should have = nên có; beneficial = có lợi.'
-  )
-];
-
-export const g7U1Translation02Content = deepFreeze({ items });
+export const g7U1Translation02Content = freezeTree({ items });
