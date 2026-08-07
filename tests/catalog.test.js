@@ -9,7 +9,10 @@ test('catalog exposes sample, Global 7 Unit 1 and MRT lesson folders with their 
   assert.deepEqual(validateCatalog(lessonFolders, lessonRegistry), []);
   assert.deepEqual(listFolders().map(folder => folder.id), ['samples', 'global7-unit1', 'mrt-lessons']);
   assert.deepEqual(listSetsByFolder('samples').map(set => set.id), ['g7-u1-mixed-demo', 'g7-u1-s1']);
-  assert.deepEqual(listSetsByFolder('global7-unit1').map(set => set.id), ['g7-u1-translation-01']);
+  assert.deepEqual(listSetsByFolder('global7-unit1').map(set => set.id), [
+    'g7-u1-translation-01',
+    'g7-u1-translation-02'
+  ]);
   assert.deepEqual(listSetsByFolder('mrt-lessons').map(set => set.id), [
     'mrt-g6-gan-aura-action-01',
     'mrt-left-cut-right-01'
