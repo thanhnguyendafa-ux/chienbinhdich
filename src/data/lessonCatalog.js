@@ -6,10 +6,16 @@ export const lessonFolders = Object.freeze([
     order: 1
   }),
   Object.freeze({
+    id: 'global7-unit1',
+    name: 'Global 7 - Unit 1',
+    description: 'Bài luyện Global Success 7 Unit 1 · Hobbies, tập trung dịch và sử dụng ngôn ngữ theo từng bước.',
+    order: 2
+  }),
+  Object.freeze({
     id: 'mrt-lessons',
     name: 'Bài học Thầy Thành MRT',
     description: 'Các bài luyện theo hệ tư duy ngữ pháp Mister Thành MRT.',
-    order: 2
+    order: 3
   })
 ]);
 
@@ -45,6 +51,22 @@ export const lessonRegistry = Object.freeze([
     activityTypes: Object.freeze(['typing']),
     itemCount: 16,
     loadContent: () => import('./global7-unit1-set1.js').then(module => module.global7Unit1Set1Content)
+  }),
+  Object.freeze({
+    id: 'g7-u1-translation-01',
+    folderId: 'global7-unit1',
+    order: 1,
+    version: 1,
+    course: 'Global Success 7',
+    unit: 'Unit 1 · Hobbies',
+    title: 'Bài tập dịch 1',
+    subtitle: 'MCQ · Việt → Anh · Bẫy nghĩa gần đúng',
+    passThreshold: 80,
+    teacher: 'Thầy Thành MRT',
+    description: '15 câu dịch Việt → Anh. Mỗi câu có bốn bản dịch tiếng Anh tự nhiên; học sinh phải đối chiếu từng cụm nghĩa để loại ba đáp án gần đúng nhưng sai chi tiết.',
+    activityTypes: Object.freeze(['mcq']),
+    itemCount: 15,
+    loadContent: () => import('./g7-u1-translation-01.js').then(module => module.g7U1Translation01Content)
   }),
   Object.freeze({
     id: 'mrt-g6-gan-aura-action-01',
