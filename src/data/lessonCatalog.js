@@ -69,6 +69,22 @@ export const lessonRegistry = Object.freeze([
     loadContent: () => import('./g7-u1-translation-01.js').then(module => module.g7U1Translation01Content)
   }),
   Object.freeze({
+    id: 'g7-u1-translation-02',
+    folderId: 'global7-unit1',
+    order: 2,
+    version: 1,
+    course: 'Global Success 7',
+    unit: 'Unit 1 · Hobbies',
+    title: 'Bài tập dịch 2',
+    subtitle: 'MCQ · Việt → Anh · Reading clauses',
+    passThreshold: 80,
+    teacher: 'Thầy Thành MRT',
+    description: '23 clause độc lập từ bài Reading Unit 1. Mỗi câu có một bản dịch chính xác, ba bẫy nghĩa gần đúng và giải thích theo từng chunk cho học sinh.',
+    activityTypes: Object.freeze(['mcq']),
+    itemCount: 23,
+    loadContent: () => import('./g7-u1-translation-02.js').then(module => module.g7U1Translation02Content)
+  }),
+  Object.freeze({
     id: 'mrt-g6-gan-aura-action-01',
     folderId: 'mrt-lessons',
     order: 1,
