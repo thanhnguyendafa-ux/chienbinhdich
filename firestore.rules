@@ -20,26 +20,11 @@ service cloud.firestore {
       allow list, create, update, delete: if false;
     }
 
+    // Compatibility only: previously-issued random assignment links may still be opened,
+    // but the fixed-link architecture never creates or mutates assignment documents.
     match /assignments/{assignmentId} {
       allow get: if isAdmin() || (signedIn() && resource.data.active == true);
-      allow list: if isAdmin();
-
-      allow create: if isAdmin()
-        && request.resource.data.id == assignmentId
-        && request.resource.data.code == assignmentId
-        && request.resource.data.createdBy == request.auth.uid
-        && request.resource.data.active == true;
-
-      allow update: if isAdmin()
-        && request.resource.data.id == resource.data.id
-        && request.resource.data.code == resource.data.code
-        && request.resource.data.slug == resource.data.slug
-        && request.resource.data.setId == resource.data.setId
-        && request.resource.data.setVersion == resource.data.setVersion
-        && request.resource.data.createdBy == resource.data.createdBy
-        && request.resource.data.createdAt == resource.data.createdAt;
-
-      allow delete: if false;
+      allow list, create, update, delete: if false;
     }
 
     match /sessions/{sessionId} {
@@ -61,6 +46,14 @@ service cloud.firestore {
         && (
           (!('assignmentId' in request.resource.data) && !('assignmentId' in resource.data))
           || request.resource.data.assignmentId == resource.data.assignmentId
+        )
+        && (
+          (!('accessSlug' in request.resource.data) && !('accessSlug' in resource.data))
+          || request.resource.data.accessSlug == resource.data.accessSlug
+        )
+        && (
+          (!('entryMode' in request.resource.data) && !('entryMode' in resource.data))
+          || request.resource.data.entryMode == resource.data.entryMode
         );
 
       allow delete: if false;
