@@ -19,6 +19,14 @@ const drill = readFileSync(new URL('../src/features/drill/renderDrill.js', impor
 const questionRegistry = readFileSync(new URL('../src/features/drill/questionTypeRegistry.js', import.meta.url), 'utf8');
 const report = readFileSync(new URL('../src/features/report/renderReport.js', import.meta.url), 'utf8');
 const masteryProgress = readFileSync(new URL('../src/ui/masteryProgress.js', import.meta.url), 'utf8');
+const adminFacade = readFileSync(new URL('../src/features/admin/renderAdmin.js', import.meta.url), 'utf8');
+const adminDashboard = readFileSync(new URL('../src/features/admin/explorer/renderAdminDashboard.js', import.meta.url), 'utf8');
+const splitPane = readFileSync(new URL('../src/features/admin/explorer/splitPane.js', import.meta.url), 'utf8');
+const previewRenderer = readFileSync(new URL('../src/features/admin/preview/renderLessonPreview.js', import.meta.url), 'utf8');
+const previewController = readFileSync(new URL('../src/features/admin/preview/lessonPreviewController.js', import.meta.url), 'utf8');
+const sharedLessonContent = readFileSync(new URL('../src/features/admin/shared/renderLessonContent.js', import.meta.url), 'utf8');
+const adminRepository = readFileSync(new URL('../src/repositories/adminRepository.js', import.meta.url), 'utf8');
+const legacyAssignmentRepository = readFileSync(new URL('../src/repositories/legacyAssignmentRepository.js', import.meta.url), 'utf8');
 const css = readFileSync(new URL('../styles/global.css', import.meta.url), 'utf8');
 const libraryCss = readFileSync(new URL('../styles/library.css', import.meta.url), 'utf8');
 const adminCss = readFileSync(new URL('../styles/admin.css', import.meta.url), 'utf8');
@@ -43,24 +51,44 @@ test('published catalog owns Set metadata while content files own questions only
     assert.match(source, /items:\s*\[/);
     assert.doesNotMatch(source, /course:\s*|unit:\s*|title:\s*|passThreshold:\s*|teacher:\s*|folderId:\s*/);
   }
-  for (const field of ['folderId', 'course', 'unit', 'title', 'assignmentSlug', 'passThreshold', 'teacher', 'activityTypes', 'itemCount']) {
+  for (const field of ['folderId', 'course', 'unit', 'title', 'lessonSlug', 'passThreshold', 'teacher', 'activityTypes', 'itemCount']) {
     assert.match(lessonCatalog, new RegExp(`${field}:`));
   }
+  assert.doesNotMatch(lessonCatalog, /assignmentSlug:/);
 });
 
-test('public homepage is student-safe and assignment links are the learner entry route', () => {
+test('public homepage is student-safe and fixed lesson links are the primary learner entry route', () => {
   assert.doesNotMatch(app, /DEFAULT_SET_ID/);
   assert.match(app, /route\.kind === 'home'/);
-  assert.match(app, /route\.kind === 'assignment'/);
-  assert.match(app, /getStudentAssignment\(route\.code\)/);
+  assert.match(app, /route\.kind === 'lesson-link'/);
+  assert.match(app, /getSetDescriptorBySlug\(route\.slug\)/);
+  assert.match(app, /entryMode: 'fixed-link'/);
   assert.doesNotMatch(app, /showCatalogHome/);
   assert.doesNotMatch(app, /listSetDescriptors\(\).*renderLibraryHome/s);
 });
 
-test('legacy direct Set links are redirected behind the Admin gate', () => {
+test('legacy random assignment and direct Set links remain isolated compatibility paths', () => {
+  assert.match(app, /route\.kind === 'legacy-assignment'/);
+  assert.match(app, /getLegacyAssignmentRepository/);
   assert.match(app, /route\.kind === 'legacy-set'/);
   assert.match(app, /url\.searchParams\.set\('preview', route\.setId\)/);
-  assert.match(app, /window\.location\.replace/);
+  assert.doesNotMatch(adminRepository, /assignments|createAssignment|enableAssignment|disableAssignment/);
+  assert.match(legacyAssignmentRepository, /getStudentAssignment/);
+  assert.doesNotMatch(legacyAssignmentRepository, /setDoc|updateDoc|createAssignment/);
+});
+
+test('Admin renderer is a facade rather than a god component', () => {
+  const meaningfulLines = adminFacade.split('\n').filter(line => line.trim());
+  assert.ok(meaningfulLines.length <= 8);
+  assert.match(adminFacade, /explorer\/renderAdminDashboard/);
+  assert.match(adminFacade, /inspector\/renderLessonInspector/);
+  assert.match(adminFacade, /results\/renderAdminSessionDetail/);
+  assert.match(adminDashboard, /createLessonPreviewController/);
+  assert.match(splitPane, /attachPreviewSplitter/);
+  assert.doesNotMatch(splitPane, /Firebase|loadLesson|question/);
+  assert.match(previewRenderer, /renderLessonContent/);
+  assert.match(sharedLessonContent, /expectedResponseDisplay/);
+  assert.match(previewController, /requestId/);
 });
 
 test('library UI remains data-driven rather than hard-coded to one Set or translation stages', () => {
@@ -161,6 +189,9 @@ test('security policy remains strict instead of enabling unsafe inline styles', 
   const csp = vercel.headers.flatMap(entry => entry.headers).find(header => header.key === 'Content-Security-Policy')?.value ?? '';
   assert.match(csp, /style-src 'self'/);
   assert.doesNotMatch(csp, /unsafe-inline/);
+  assert.doesNotMatch(adminDashboard, /style=/);
+  assert.doesNotMatch(previewRenderer, /style=/);
+  assert.doesNotMatch(splitPane, /\.style\./);
   assert.match(index, /styles\/admin\.css/);
   assert.match(index, /styles\/mastery-progress\.css/);
   assert.match(index, /styles\/question-types\.css/);
@@ -185,9 +216,11 @@ test('session persistence key remains V7 for unchanged learning semantics', () =
   assert.match(sessionMachine, /SESSION_SCHEMA_VERSION = 7/);
   assert.match(localSessionRepository, /cbd\.activeSession\.v7/);
   assert.match(localSessionRepository, /cbd\.report\.v7\./);
+  assert.match(app, /entryMode: 'fixed-link'/);
+  assert.match(app, /accessSlug:/);
 });
 
-test('Admin, assignment and legacy Set deep links rewrite to the SPA shell', () => {
+test('Admin, fixed lesson and legacy Set deep links rewrite to the SPA shell', () => {
   assert.deepEqual(vercel.rewrites, [
     { source: '/admin', destination: '/' },
     { source: '/a/:assignment', destination: '/' },
@@ -210,6 +243,7 @@ test('CSS explicitly protects classroom 1280x529 and iPhone-sized layouts', () =
   assert.match(libraryCss, /folder-grid,.set-grid\{display:grid;grid-template-columns:repeat\(2/);
   assert.match(libraryCss, /@media \(max-width:640px\)[\s\S]*\.folder-grid,.set-grid\{grid-template-columns:1fr\}/);
   assert.match(adminCss, /@media \(max-width:760px\)/);
+  assert.match(adminCss, /preview-size-70/);
 });
 
 test('raw hex colors live only inside the global design-token root block', () => {
