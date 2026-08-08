@@ -1,9 +1,10 @@
-export function renderEntry({ root, lastName, directSet = null, resumeSession, onStart, onResume }) {
+export function renderEntry({ root, lastName, directSet = null, resumeSession, previewMode = false, onBack = null, onStart, onResume }) {
   const threshold = Number(directSet?.passThreshold ?? 80);
   const teacher = directSet?.teacher ?? 'Thầy Thành MRT';
   root.innerHTML = `
     <main class="page page-centered entry-page">
       <section class="entry-card ${directSet ? 'direct-entry-card' : ''}">
+        ${previewMode ? `<div class="preview-mode-bar"><span>ADMIN PREVIEW</span><button class="ghost-btn" id="preview-back-btn" type="button">← Quay lại</button></div>` : ''}
         <div class="brand-lockup centered"><span class="brand-seal">MRT</span><span>Chiến Binh Dịch</span></div>
         <p class="eyebrow">${directSet ? esc(directSet.course) : 'GLOBAL SUCCESS · OUTPUT TRAINING'}</p>
         <h1>Chiến Binh Dịch</h1>
@@ -18,8 +19,8 @@ export function renderEntry({ root, lastName, directSet = null, resumeSession, o
         <form id="name-form" class="entry-form">
           <label for="student-name">Tên của em</label>
           <input id="student-name" maxlength="50" autocomplete="name" value="${esc(lastName)}" placeholder="Ví dụ: Minh Anh" required />
-          <p class="input-note">${directSet ? 'Nhập tên rồi bắt đầu ngay đúng bài thầy đã gửi.' : 'Tên và thời gian làm bài sẽ xuất hiện trong báo cáo cuối.'}</p>
-          <button class="primary-btn" type="submit">${directSet ? 'Bắt đầu bài test' : 'Bắt đầu học'}</button>
+          <p class="input-note">${previewMode ? 'Chế độ Preview không gửi session lên Firebase.' : directSet ? 'Nhập tên rồi bắt đầu ngay đúng bài thầy đã gửi.' : 'Tên và thời gian làm bài sẽ xuất hiện trong báo cáo cuối.'}</p>
+          <button class="primary-btn" type="submit">${previewMode ? 'Bắt đầu Preview' : directSet ? 'Bắt đầu bài test' : 'Bắt đầu học'}</button>
         </form>
       </section>
     </main>`;
@@ -27,6 +28,8 @@ export function renderEntry({ root, lastName, directSet = null, resumeSession, o
   const input = root.querySelector('#student-name');
   const submitButton = root.querySelector('#name-form .primary-btn');
   input?.focus();
+
+  root.querySelector('#preview-back-btn')?.addEventListener('click', () => onBack?.());
 
   root.querySelector('#name-form')?.addEventListener('submit', async event => {
     event.preventDefault();

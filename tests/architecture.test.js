@@ -21,6 +21,7 @@ const report = readFileSync(new URL('../src/features/report/renderReport.js', im
 const masteryProgress = readFileSync(new URL('../src/ui/masteryProgress.js', import.meta.url), 'utf8');
 const css = readFileSync(new URL('../styles/global.css', import.meta.url), 'utf8');
 const libraryCss = readFileSync(new URL('../styles/library.css', import.meta.url), 'utf8');
+const adminCss = readFileSync(new URL('../styles/admin.css', import.meta.url), 'utf8');
 const masteryCss = readFileSync(new URL('../styles/mastery-progress.css', import.meta.url), 'utf8');
 const questionCss = readFileSync(new URL('../styles/question-types.css', import.meta.url), 'utf8');
 const sessionFlowCss = readFileSync(new URL('../styles/session-flow.css', import.meta.url), 'utf8');
@@ -28,7 +29,7 @@ const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const vercel = JSON.parse(readFileSync(new URL('../vercel.json', import.meta.url), 'utf8'));
 
 test('feature screens and lesson content stay lazy-loaded', () => {
-  for (const path of ['entry/renderEntry.js', 'library/renderLibrary.js', 'drill/renderDrill.js', 'report/renderReport.js']) {
+  for (const path of ['access/renderAccess.js', 'admin/renderAdmin.js', 'entry/renderEntry.js', 'drill/renderDrill.js', 'report/renderReport.js']) {
     assert.match(app, new RegExp(`import\\('./features/${path.replace('.', '\\.')}`));
   }
   assert.match(lessonCatalog, /global7-unit1-set1\.js/);
@@ -42,19 +43,27 @@ test('published catalog owns Set metadata while content files own questions only
     assert.match(source, /items:\s*\[/);
     assert.doesNotMatch(source, /course:\s*|unit:\s*|title:\s*|passThreshold:\s*|teacher:\s*|folderId:\s*/);
   }
-  for (const field of ['folderId', 'course', 'unit', 'title', 'passThreshold', 'teacher', 'activityTypes', 'itemCount']) {
+  for (const field of ['folderId', 'course', 'unit', 'title', 'assignmentSlug', 'passThreshold', 'teacher', 'activityTypes', 'itemCount']) {
     assert.match(lessonCatalog, new RegExp(`${field}:`));
   }
 });
 
-test('homepage is catalog-first and direct Set links remain the only student entry route', () => {
+test('public homepage is student-safe and assignment links are the learner entry route', () => {
   assert.doesNotMatch(app, /DEFAULT_SET_ID/);
-  assert.match(app, /showCatalogHome/);
-  assert.match(app, /isDirectSetLink \? showEntry\(\) : showCatalogHome\(\)/);
-  assert.match(app, /window\.location\.assign\(buildSetShareUrl/);
+  assert.match(app, /route\.kind === 'home'/);
+  assert.match(app, /route\.kind === 'assignment'/);
+  assert.match(app, /getStudentAssignment\(route\.code\)/);
+  assert.doesNotMatch(app, /showCatalogHome/);
+  assert.doesNotMatch(app, /listSetDescriptors\(\).*renderLibraryHome/s);
 });
 
-test('library UI is data-driven rather than hard-coded to one Set or translation stages', () => {
+test('legacy direct Set links are redirected behind the Admin gate', () => {
+  assert.match(app, /route\.kind === 'legacy-set'/);
+  assert.match(app, /url\.searchParams\.set\('preview', route\.setId\)/);
+  assert.match(app, /window\.location\.replace/);
+});
+
+test('library UI remains data-driven rather than hard-coded to one Set or translation stages', () => {
   assert.match(library, /folders\.map/);
   assert.match(library, /sets\.map/);
   assert.match(library, /data-folder-id/);
@@ -124,6 +133,7 @@ test('direct set entry uses generic test welcome copy and dynamic threshold', ()
   assert.match(entry, /Chào mừng con đến với bài test/);
   assert.match(entry, /directSet\?\.passThreshold/);
   assert.match(entry, /Bắt đầu bài test/);
+  assert.match(entry, /ADMIN PREVIEW/);
 });
 
 test('qualification checkpoint offers submit and continue, while extended mode remains submittable', () => {
@@ -138,10 +148,10 @@ test('qualification checkpoint offers submit and continue, while extended mode r
 test('mastery progress is CSP-safe, accessible and driven by set threshold', () => {
   assert.match(drill, /renderMasteryProgress/);
   assert.match(drill, /set\.passThreshold/);
-  assert.match(masteryProgress, /role=\"progressbar\"/);
+  assert.match(masteryProgress, /role="progressbar"/);
   assert.match(masteryProgress, /aria-valuenow/);
-  assert.match(masteryProgress, /x1=\"\$\{target\}\"/);
-  assert.match(masteryProgress, /width=\"\$\{before\}\"/);
+  assert.match(masteryProgress, /x1="\$\{target\}"/);
+  assert.match(masteryProgress, /width="\$\{before\}"/);
   assert.doesNotMatch(drill, /style=/);
   assert.doesNotMatch(questionRegistry, /style=/);
   assert.doesNotMatch(masteryProgress, /style=/);
@@ -151,7 +161,7 @@ test('security policy remains strict instead of enabling unsafe inline styles', 
   const csp = vercel.headers.flatMap(entry => entry.headers).find(header => header.key === 'Content-Security-Policy')?.value ?? '';
   assert.match(csp, /style-src 'self'/);
   assert.doesNotMatch(csp, /unsafe-inline/);
-  assert.match(index, /styles\/library\.css/);
+  assert.match(index, /styles\/admin\.css/);
   assert.match(index, /styles\/mastery-progress\.css/);
   assert.match(index, /styles\/question-types\.css/);
   assert.match(index, /styles\/session-flow\.css/);
@@ -177,8 +187,12 @@ test('session persistence key remains V7 for unchanged learning semantics', () =
   assert.match(localSessionRepository, /cbd\.report\.v7\./);
 });
 
-test('stable set deep links have a Vercel rewrite to the SPA shell', () => {
-  assert.deepEqual(vercel.rewrites, [{ source: '/s/:setId', destination: '/' }]);
+test('Admin, assignment and legacy Set deep links rewrite to the SPA shell', () => {
+  assert.deepEqual(vercel.rewrites, [
+    { source: '/admin', destination: '/' },
+    { source: '/a/:assignment', destination: '/' },
+    { source: '/s/:setId', destination: '/' }
+  ]);
 });
 
 test('CSS explicitly protects classroom 1280x529 and iPhone-sized layouts', () => {
@@ -195,6 +209,7 @@ test('CSS explicitly protects classroom 1280x529 and iPhone-sized layouts', () =
   assert.match(sessionFlowCss, /max-height:500px[^}]*orientation:landscape/s);
   assert.match(libraryCss, /folder-grid,.set-grid\{display:grid;grid-template-columns:repeat\(2/);
   assert.match(libraryCss, /@media \(max-width:640px\)[\s\S]*\.folder-grid,.set-grid\{grid-template-columns:1fr\}/);
+  assert.match(adminCss, /@media \(max-width:760px\)/);
 });
 
 test('raw hex colors live only inside the global design-token root block', () => {
@@ -202,6 +217,7 @@ test('raw hex colors live only inside the global design-token root block', () =>
   const afterRoot = css.slice(rootEnd + 2);
   assert.doesNotMatch(afterRoot, /#[0-9a-fA-F]{3,8}\b/);
   assert.doesNotMatch(libraryCss, /#[0-9a-fA-F]{3,8}\b/);
+  assert.doesNotMatch(adminCss, /#[0-9a-fA-F]{3,8}\b/);
   assert.doesNotMatch(masteryCss, /#[0-9a-fA-F]{3,8}\b/);
   assert.doesNotMatch(questionCss, /#[0-9a-fA-F]{3,8}\b/);
   assert.doesNotMatch(sessionFlowCss, /#[0-9a-fA-F]{3,8}\b/);
