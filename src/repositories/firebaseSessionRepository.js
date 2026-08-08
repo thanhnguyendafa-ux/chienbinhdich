@@ -1,11 +1,13 @@
-const FIREBASE_SDK_VERSION = '12.16.0';
-const FIREBASE_SDK_BASE = `https://www.gstatic.com/firebasejs/${FIREBASE_SDK_VERSION}`;
+import {
+  FIREBASE_SDK_VERSION,
+  ensureAnonymousFirebaseUser,
+  getFirebaseClient,
+  validateFirebaseProjectConfig
+} from './firebaseClient.js';
+
 const ATTEMPT_BATCH_SIZE = 400;
 
-export function validateFirebaseProjectConfig(project) {
-  const required = ['apiKey', 'authDomain', 'projectId', 'appId'];
-  return required.filter(key => typeof project?.[key] !== 'string' || project[key].trim() === '');
-}
+export { validateFirebaseProjectConfig };
 
 export function sessionDocumentFor(session, ownerUid, syncedAt = Date.now()) {
   if (!session?.id) throw new Error('Session id is required for Firebase persistence.');
@@ -60,28 +62,15 @@ export function createFirebaseSessionRepository(project) {
 }
 
 async function initializeFirebase(project) {
-  const missing = validateFirebaseProjectConfig(project);
-  if (missing.length) throw new Error(`Firebase config is missing: ${missing.join(', ')}`);
-
-  const [appSdk, authSdk, firestoreSdk] = await Promise.all([
-    import(`${FIREBASE_SDK_BASE}/firebase-app.js`),
-    import(`${FIREBASE_SDK_BASE}/firebase-auth.js`),
-    import(`${FIREBASE_SDK_BASE}/firebase-firestore.js`)
-  ]);
-
-  const app = appSdk.initializeApp(project);
-  const auth = authSdk.getAuth(app);
-  const credential = auth.currentUser
-    ? { user: auth.currentUser }
-    : await authSdk.signInAnonymously(auth);
-  const db = firestoreSdk.getFirestore(app);
+  const client = await getFirebaseClient(project, 'student');
+  const user = await ensureAnonymousFirebaseUser(client);
 
   return {
-    app,
-    auth,
-    db,
-    uid: credential.user.uid,
-    firestore: firestoreSdk
+    app: client.app,
+    auth: client.auth,
+    db: client.db,
+    uid: user.uid,
+    firestore: client.firestore
   };
 }
 

@@ -44,10 +44,12 @@ test('Firebase attempt documents keep deterministic attempt ids and ownership', 
   });
 });
 
-test('Firebase config validation fails closed until all public web config fields are supplied', () => {
+test('Firebase production config is enabled only for the verified Chiến Binh Dịch project', () => {
   assert.deepEqual(validateFirebaseProjectConfig({}), ['apiKey', 'authDomain', 'projectId', 'appId']);
   assert.deepEqual(validateFirebaseProjectConfig({ apiKey: 'a', authDomain: 'b', projectId: 'c', appId: 'd' }), []);
-  assert.match(firebaseConfig, /enabled:\s*false/);
+  assert.match(firebaseConfig, /enabled:\s*true/);
+  assert.match(firebaseConfig, /projectId:\s*'chienbinhdich'/);
+  assert.doesNotMatch(firebaseConfig, /mrt-student-reports/);
 });
 
 test('persistence facade keeps local-first safety and queues Firebase synchronization', () => {

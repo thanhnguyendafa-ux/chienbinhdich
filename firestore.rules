@@ -5,9 +5,41 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function isAdmin() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
     function ownsSession(sessionId) {
       return signedIn()
         && get(/databases/$(database)/documents/sessions/$(sessionId)).data.ownerUid == request.auth.uid;
+    }
+
+    match /admins/{uid} {
+      allow get: if signedIn() && request.auth.uid == uid;
+      allow list, create, update, delete: if false;
+    }
+
+    match /assignments/{assignmentId} {
+      allow get: if isAdmin() || (signedIn() && resource.data.active == true);
+      allow list: if isAdmin();
+
+      allow create: if isAdmin()
+        && request.resource.data.id == assignmentId
+        && request.resource.data.code == assignmentId
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.active == true;
+
+      allow update: if isAdmin()
+        && request.resource.data.id == resource.data.id
+        && request.resource.data.code == resource.data.code
+        && request.resource.data.slug == resource.data.slug
+        && request.resource.data.setId == resource.data.setId
+        && request.resource.data.setVersion == resource.data.setVersion
+        && request.resource.data.createdBy == resource.data.createdBy
+        && request.resource.data.createdAt == resource.data.createdAt;
+
+      allow delete: if false;
     }
 
     match /sessions/{sessionId} {
@@ -16,7 +48,7 @@ service cloud.firestore {
         && request.resource.data.id == sessionId
         && request.resource.data.schemaVersion == 7;
 
-      allow read: if signedIn() && resource.data.ownerUid == request.auth.uid;
+      allow read: if isAdmin() || (signedIn() && resource.data.ownerUid == request.auth.uid);
 
       allow update: if signedIn()
         && resource.data.ownerUid == request.auth.uid
@@ -25,18 +57,25 @@ service cloud.firestore {
         && request.resource.data.schemaVersion == resource.data.schemaVersion
         && request.resource.data.setId == resource.data.setId
         && request.resource.data.setVersion == resource.data.setVersion
-        && request.resource.data.startedAt == resource.data.startedAt;
+        && request.resource.data.startedAt == resource.data.startedAt
+        && (
+          (!('assignmentId' in request.resource.data) && !('assignmentId' in resource.data))
+          || request.resource.data.assignmentId == resource.data.assignmentId
+        );
 
       allow delete: if false;
 
       match /attempts/{attemptId} {
-        allow read: if ownsSession(sessionId);
+        allow read: if isAdmin() || ownsSession(sessionId);
+
         allow create: if ownsSession(sessionId)
           && request.resource.data.ownerUid == request.auth.uid
           && request.resource.data.sessionId == sessionId
           && request.resource.data.id == attemptId;
+
         allow update: if ownsSession(sessionId)
           && request.resource.data == resource.data;
+
         allow delete: if false;
       }
     }
