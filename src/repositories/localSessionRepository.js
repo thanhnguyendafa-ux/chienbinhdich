@@ -1,31 +1,135 @@
-import { SESSION_SCHEMA_VERSION } from '../core/sessionMachine.js';
+import { firebaseConfig } from '../config/firebaseConfig.js';
+import { browserSessionStore as browser } from './browserSessionStore.js';
+import { createFirebaseSessionRepository } from './firebaseSessionRepository.js';
 
-const ACTIVE_KEY = 'cbd.activeSession.v7';
-const LAST_NAME_KEY = 'cbd.lastStudentName.v1';
-const REPORT_PREFIX = 'cbd.report.v7.';
+// Compatibility facade: existing app imports keep working while persistence dual-writes.
+// Legacy keys remain cbd.activeSession.v7 and cbd.report.v7. for safe V7 migration.
+const pendingSessions = new Map();
+let remoteRepository = null;
+let remoteReady = false;
+let initializationPromise = null;
+let flushPromise = null;
+let lastRemoteError = null;
+let onlineListenerInstalled = false;
 
 export const localSessionRepository = Object.freeze({
   saveActive(session) {
-    localStorage.setItem(ACTIVE_KEY, JSON.stringify(session));
-    localStorage.setItem(LAST_NAME_KEY, session.studentName);
+    browser.saveActive(session);
+    enqueueRemote(session);
   },
   loadActive() {
-    const session = safeParse(localStorage.getItem(ACTIVE_KEY));
-    return session?.schemaVersion === SESSION_SCHEMA_VERSION ? session : null;
+    return browser.loadActive();
   },
-  clearActive() { localStorage.removeItem(ACTIVE_KEY); },
+  clearActive() {
+    browser.clearActive();
+  },
   saveReport(session) {
-    localStorage.setItem(`${REPORT_PREFIX}${session.id}`, JSON.stringify(session));
-    this.clearActive();
+    browser.saveReport(session);
+    enqueueRemote(session);
   },
   loadReport(sessionId) {
-    const session = safeParse(localStorage.getItem(`${REPORT_PREFIX}${sessionId}`));
-    return session?.schemaVersion === SESSION_SCHEMA_VERSION ? session : null;
+    return browser.loadReport(sessionId);
   },
-  getLastStudentName() { return localStorage.getItem(LAST_NAME_KEY) ?? ''; }
+  getLastStudentName() {
+    return browser.getLastStudentName();
+  },
+  initializeRemotePersistence() {
+    return initializeRemotePersistence();
+  },
+  syncNow() {
+    return flushPending();
+  },
+  getPersistenceStatus() {
+    return {
+      mode: firebaseConfig.enabled ? 'firebase-with-local-fallback' : 'local-only',
+      remoteReady,
+      pendingSessions: pendingSessions.size,
+      migrationTimestamp: browser.getFirebaseMigrationTimestamp(firebaseConfig.project.projectId),
+      lastRemoteError: lastRemoteError ? String(lastRemoteError.message ?? lastRemoteError) : null
+    };
+  }
 });
 
-function safeParse(raw) {
-  if (!raw) return null;
-  try { return JSON.parse(raw); } catch { return null; }
+if (firebaseConfig.enabled) void initializeRemotePersistence();
+
+function enqueueRemote(session) {
+  if (!firebaseConfig.enabled || !session?.id) return;
+  pendingSessions.set(session.id, structuredClone(session));
+  if (remoteReady) void flushPending();
+}
+
+async function initializeRemotePersistence() {
+  if (!firebaseConfig.enabled) return { mode: 'local-only' };
+  if (initializationPromise) return initializationPromise;
+
+  initializationPromise = (async () => {
+    try {
+      remoteRepository = createFirebaseSessionRepository(firebaseConfig.project);
+      const identity = await remoteRepository.initialize();
+      remoteReady = true;
+      lastRemoteError = null;
+      installOnlineRetry();
+
+      for (const session of browser.listPersistedSessions()) {
+        pendingSessions.set(session.id, structuredClone(session));
+      }
+      await flushPending();
+      if (pendingSessions.size === 0) {
+        browser.markFirebaseMigration(firebaseConfig.project.projectId);
+      }
+
+      return { mode: 'firebase-with-local-fallback', ownerUid: identity.uid };
+    } catch (error) {
+      remoteReady = false;
+      lastRemoteError = error;
+      installOnlineRetry();
+      console.warn('Firebase persistence unavailable; continuing with local fallback.', error);
+      return { mode: 'local-fallback', error };
+    } finally {
+      initializationPromise = null;
+    }
+  })();
+
+  return initializationPromise;
+}
+
+async function flushPending() {
+  if (!firebaseConfig.enabled || !remoteReady || !remoteRepository) {
+    return { synced: 0, pending: pendingSessions.size };
+  }
+  if (flushPromise) return flushPromise;
+
+  flushPromise = (async () => {
+    let synced = 0;
+    for (const [sessionId, snapshot] of [...pendingSessions.entries()]) {
+      try {
+        await remoteRepository.saveSession(snapshot);
+        if (pendingSessions.get(sessionId) === snapshot) {
+          pendingSessions.delete(sessionId);
+        }
+        synced += 1;
+        lastRemoteError = null;
+      } catch (error) {
+        lastRemoteError = error;
+        console.warn(`Firebase sync failed for session ${sessionId}; local copy is retained.`, error);
+      }
+    }
+    if (pendingSessions.size === 0) {
+      browser.markFirebaseMigration(firebaseConfig.project.projectId);
+    }
+    return { synced, pending: pendingSessions.size };
+  })().finally(() => {
+    flushPromise = null;
+  });
+
+  return flushPromise;
+}
+
+function installOnlineRetry() {
+  if (onlineListenerInstalled || typeof window === 'undefined') return;
+  onlineListenerInstalled = true;
+  window.addEventListener('online', () => {
+    if (remoteReady) void flushPending();
+    else void initializeRemotePersistence();
+  });
 }
