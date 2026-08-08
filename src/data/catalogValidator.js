@@ -12,6 +12,25 @@ export function validateCatalog(folders, registry) {
     if (!Number.isInteger(folder?.order)) errors.push(`Folder ${folder?.id ?? '(unknown)'} có order không hợp lệ.`);
   }
 
+  const folderById = new Map((folders ?? []).filter(folder => folder?.id).map(folder => [folder.id, folder]));
+  for (const folder of folders ?? []) {
+    if (!folder?.parentId) continue;
+    if (folder.parentId === folder.id) errors.push(`Folder ${folder.id} không thể là parent của chính nó.`);
+    else if (!folderIds.has(folder.parentId)) errors.push(`Folder ${folder.id} tham chiếu parent không tồn tại: ${folder.parentId}`);
+  }
+  for (const folder of folders ?? []) {
+    const visited = new Set();
+    let cursor = folder;
+    while (cursor?.parentId) {
+      if (visited.has(cursor.id)) {
+        errors.push(`Folder tree có vòng lặp tại: ${folder.id}`);
+        break;
+      }
+      visited.add(cursor.id);
+      cursor = folderById.get(cursor.parentId);
+    }
+  }
+
   for (const entry of registry ?? []) {
     if (!entry?.id) errors.push('Set descriptor thiếu id.');
     else if (setIds.has(entry.id)) errors.push(`Set id bị trùng: ${entry.id}`);

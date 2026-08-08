@@ -4,7 +4,24 @@ const cache = new Map();
 const registryById = new Map(lessonRegistry.map(entry => [entry.id, entry]));
 
 export function listFolders() {
-  return lessonFolders.slice().sort((a, b) => a.order - b.order).map(folder => ({ ...folder }));
+  const byParent = new Map();
+  for (const folder of lessonFolders) {
+    const parentId = folder.parentId ?? null;
+    const list = byParent.get(parentId) ?? [];
+    list.push(folder);
+    byParent.set(parentId, list);
+  }
+
+  const ordered = [];
+  const visit = parentId => {
+    const siblings = (byParent.get(parentId) ?? []).slice().sort(compareFolder);
+    for (const folder of siblings) {
+      ordered.push({ ...folder });
+      visit(folder.id);
+    }
+  };
+  visit(null);
+  return ordered;
 }
 
 export function listSetDescriptors() {
@@ -42,6 +59,10 @@ function publicDescriptor(entry) {
     ...descriptor,
     activityTypes: [...descriptor.activityTypes]
   };
+}
+
+function compareFolder(a, b) {
+  return a.order - b.order || a.name.localeCompare(b.name, 'vi');
 }
 
 function compareDescriptor(a, b) {

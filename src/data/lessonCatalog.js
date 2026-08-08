@@ -3,18 +3,28 @@ export const lessonFolders = Object.freeze([
     id: 'samples',
     name: 'Bài tập mẫu',
     description: 'Các Set mẫu dùng để thử luồng Mastery, nhiều dạng câu và link giao bài.',
+    parentId: null,
     order: 1
   }),
   Object.freeze({
-    id: 'global7-unit1',
-    name: 'Global 7 - Unit 1',
-    description: 'Bài luyện Global Success 7 Unit 1 · Hobbies, tập trung dịch và sử dụng ngôn ngữ theo từng bước.',
+    id: 'global7',
+    name: 'Global Success 7',
+    description: 'Kho bài luyện Global Success 7 được tổ chức theo từng Unit.',
+    parentId: null,
     order: 2
+  }),
+  Object.freeze({
+    id: 'global7-unit1',
+    name: 'Unit 1 · Hobbies',
+    description: 'Bài luyện Global Success 7 Unit 1 · Hobbies, tập trung dịch và sử dụng ngôn ngữ theo từng bước.',
+    parentId: 'global7',
+    order: 1
   }),
   Object.freeze({
     id: 'mrt-lessons',
     name: 'Bài học Thầy Thành MRT',
     description: 'Các bài luyện theo hệ tư duy ngữ pháp Mister Thành MRT.',
+    parentId: null,
     order: 3
   })
 ]);
