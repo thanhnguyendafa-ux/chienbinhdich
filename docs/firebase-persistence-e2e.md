@@ -2,7 +2,7 @@
 
 ## Goal
 
-Keep GitHub `main` as the canonical source for application code and lesson content, keep Vercel as Git-backed hosting, and add Firebase Authentication + Cloud Firestore as durable learner-data persistence without changing Session V7, Attempt SSOT, Mastery, Retry, qualification, reports, Set IDs, or stable student links.
+Keep GitHub `main` as the canonical source for application code and lesson content, keep Vercel as Git-backed hosting, and use Firebase Authentication + Cloud Firestore as durable learner-data persistence without changing Session V7, Attempt SSOT, Mastery, Retry, qualification, reports, Set IDs, or stable student links.
 
 ## Release architecture
 
@@ -20,7 +20,7 @@ Lesson content does not move to Firestore. Existing `src/data/*` modules and `le
 ## Safe migration behavior
 
 1. Existing V7 local keys remain readable: `cbd.activeSession.v7` and `cbd.report.v7.*`.
-2. When Firebase is enabled, the persistence facade authenticates anonymously in the background.
+2. With Firebase enabled, the persistence facade authenticates anonymously in the background.
 3. All valid local V7 active/report snapshots are queued for Firestore upload.
 4. Session document IDs reuse `session.id`; attempt document IDs reuse immutable `attempt.id`, making repeat migration idempotent.
 5. Local copies are not deleted after upload.
@@ -51,19 +51,14 @@ sessions/{sessionId}/attempts/{attemptId}
 
 Mastery remains derived from Attempt Events; no independent mastery SSOT is introduced.
 
-## Firebase Console setup required before enablement
+## Production cutover gate
 
-The repository intentionally ships with `firebaseConfig.enabled = false` so a deploy cannot accidentally write into an unknown project.
+The registered Firebase Web App config is present in `src/config/firebaseConfig.js`. The cutover commit sets `firebaseConfig.enabled = true` only after these external Firebase Console gates are satisfied:
 
-1. Create/select the Firebase project.
-2. Add a Web App.
-3. Enable **Authentication -> Anonymous**.
-4. Create a Cloud Firestore database.
-5. Copy the Web App values into `src/config/firebaseConfig.js` and set `enabled: true`.
-6. Deploy `firestore.rules` before enabling production writes.
-7. Merge through PR to `main`; do not manually upload production files to Vercel.
+1. **Authentication -> Sign-in method -> Anonymous** is enabled.
+2. The repository `firestore.rules` is published to the target Firestore database.
 
-The Firebase web config is public client configuration. Do not commit service-account JSON, Admin SDK private keys, or any server secret.
+Do not merge the cutover branch before both gates are confirmed. Do not commit service-account JSON, Admin SDK private keys, or any server secret.
 
 ## Rules contract
 
@@ -77,15 +72,15 @@ Teacher-wide/admin reads are deliberately not granted by these student rules. Ad
 
 ## CSP contract
 
-Firebase modular CDN is pinned to `12.16.0`. Vercel CSP must permit `www.gstatic.com` for the pinned SDK modules and Firebase Google API origins for Auth/Firestore connections while retaining `style-src 'self'` and no `unsafe-inline`.
+Firebase modular CDN is pinned to `12.16.0`. Vercel CSP permits `www.gstatic.com` for the pinned SDK modules and Firebase Google API origins for Auth/Firestore connections while retaining `style-src 'self'` and no `unsafe-inline`.
 
 ## Acceptance
 
-Before production enablement, verify:
+Before merging production cutover, verify:
 
-- existing lesson catalog and stable routes unchanged;
-- existing V7 local session resumes normally with Firebase disabled;
-- Firebase config missing/invalid fails back to local without blocking the lesson;
+- Anonymous Authentication is enabled;
+- repository Firestore rules are published;
+- existing lesson catalog and stable routes are unchanged;
 - first successful Firebase launch uploads existing active/report snapshots;
 - repeated migration does not create duplicate session/attempt IDs;
 - correct/wrong/correction/retry semantics remain unchanged;
