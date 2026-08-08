@@ -68,7 +68,7 @@ export function searchLessonDescriptors(sets, query) {
     set.subtitle,
     set.course,
     set.unit,
-    set.assignmentSlug,
+    set.lessonSlug,
     ...(set.activityTypes ?? [])
   ].filter(Boolean).join(' ')).includes(needle));
 }
