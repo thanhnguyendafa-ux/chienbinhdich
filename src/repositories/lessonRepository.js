@@ -1,7 +1,9 @@
 import { lessonFolders, lessonRegistry } from '../data/lessonCatalog.js';
+import { normalizeLessonSlug } from '../core/lessonLinks.js';
 
 const cache = new Map();
 const registryById = new Map(lessonRegistry.map(entry => [entry.id, entry]));
+const registryBySlug = new Map(lessonRegistry.map(entry => [entry.lessonSlug, entry]));
 
 export function listFolders() {
   const byParent = new Map();
@@ -38,6 +40,11 @@ export function listSetsByFolder(folderId) {
 
 export function getSetDescriptor(setId) {
   const entry = registryById.get(setId);
+  return entry ? publicDescriptor(entry) : null;
+}
+
+export function getSetDescriptorBySlug(slug) {
+  const entry = registryBySlug.get(normalizeLessonSlug(slug));
   return entry ? publicDescriptor(entry) : null;
 }
 
