@@ -1,8 +1,10 @@
+import { validateLessonSlug } from '../core/lessonLinks.js';
+
 export function validateCatalog(folders, registry) {
   const errors = [];
   const folderIds = new Set();
   const setIds = new Set();
-  const assignmentSlugs = new Set();
+  const lessonSlugs = new Set();
 
   for (const folder of folders ?? []) {
     if (!folder?.id) errors.push('Folder thiếu id.');
@@ -46,13 +48,13 @@ export function validateCatalog(folders, registry) {
     if (!Array.isArray(entry?.activityTypes) || entry.activityTypes.length === 0) errors.push(`Set ${entry?.id ?? '(unknown)'} thiếu activityTypes.`);
     if (typeof entry?.loadContent !== 'function') errors.push(`Set ${entry?.id ?? '(unknown)'} thiếu content loader.`);
 
-    const slug = String(entry?.assignmentSlug ?? '');
-    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) {
-      errors.push(`Set ${entry?.id ?? '(unknown)'} có assignmentSlug không hợp lệ.`);
-    } else if (assignmentSlugs.has(slug)) {
-      errors.push(`assignmentSlug bị trùng: ${slug}`);
+    const slug = String(entry?.lessonSlug ?? '');
+    if (!validateLessonSlug(slug)) {
+      errors.push(`Set ${entry?.id ?? '(unknown)'} có lessonSlug không hợp lệ hoặc xung đột legacy route.`);
+    } else if (lessonSlugs.has(slug)) {
+      errors.push(`lessonSlug bị trùng: ${slug}`);
     } else {
-      assignmentSlugs.add(slug);
+      lessonSlugs.add(slug);
     }
   }
 

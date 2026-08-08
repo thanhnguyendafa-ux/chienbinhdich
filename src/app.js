@@ -1,22 +1,25 @@
 import { validateSet } from './data/contentValidator.js';
 import { firebaseConfig } from './config/firebaseConfig.js';
 import { localSessionRepository as sessions } from './repositories/localSessionRepository.js';
-import { createFirebaseAssignmentRepository } from './repositories/assignmentRepository.js';
-import { getSetDescriptor, listFolders, listSetDescriptors, loadLessonSet } from './repositories/lessonRepository.js';
+import { createFirebaseAdminRepository } from './repositories/adminRepository.js';
+import { createLegacyAssignmentRepository } from './repositories/legacyAssignmentRepository.js';
+import { getSetDescriptor, getSetDescriptorBySlug, listFolders, listSetDescriptors, loadLessonSet } from './repositories/lessonRepository.js';
 import { abandonSession, continueQualifiedSession, createSession, qualifySessionIfEligible, submitAnswer, submitPassedSession } from './core/sessionMachine.js';
-import { buildAssignmentShareUrl, resolveAccessRoute } from './core/accessRouting.js';
+import { resolveAccessRoute } from './core/accessRouting.js';
+import { buildFixedLessonUrl, buildLegacyAssignmentUrl } from './core/lessonLinks.js';
 import { renderLoading } from './ui/renderLoading.js';
 
 const route = resolveAccessRoute(window.location);
 const root = document.querySelector('#app');
 const moduleCache = new Map();
-let assignmentRepository = null;
+let adminRepository = null;
+let legacyAssignmentRepository = null;
 let currentStudentName = sessions.getLastStudentName();
-let session = route.kind === 'assignment' ? sessions.loadActive() : null;
+let session = ['lesson-link', 'legacy-assignment'].includes(route.kind) ? sessions.loadActive() : null;
 let feedback = null;
 let set = null;
 let activeSetId = null;
-let assignment = null;
+let accessContext = null;
 let previewMode = false;
 
 const screenLoaders = Object.freeze({
@@ -35,10 +38,16 @@ async function getScreen(name, loadingMessage) {
   return modulePromise;
 }
 
-function getAssignmentRepository() {
+function getAdminRepository() {
   if (!firebaseConfig.enabled) throw new Error('Firebase chưa được bật cho Chiến Binh Dịch.');
-  assignmentRepository ??= createFirebaseAssignmentRepository(firebaseConfig.project);
-  return assignmentRepository;
+  adminRepository ??= createFirebaseAdminRepository(firebaseConfig.project);
+  return adminRepository;
+}
+
+function getLegacyAssignmentRepository() {
+  if (!firebaseConfig.enabled) throw new Error('Firebase chưa được bật cho Chiến Binh Dịch.');
+  legacyAssignmentRepository ??= createLegacyAssignmentRepository(firebaseConfig.project);
+  return legacyAssignmentRepository;
 }
 
 function setActiveSet(setId) {
@@ -56,21 +65,29 @@ async function ensureSet() {
 }
 
 function canResumeCurrentSet() {
-  if (previewMode) return false;
-  return ['active', 'extended', 'passed'].includes(session?.status)
+  if (previewMode || !accessContext) return false;
+  const baseMatch = ['active', 'extended', 'passed'].includes(session?.status)
     && session.setId === activeSetId
-    && session.assignmentId === assignment?.id
     && (!set || session.setVersion === set.version);
+  if (!baseMatch) return false;
+  if (accessContext.kind === 'fixed-link') {
+    return session.entryMode === 'fixed-link' && session.accessSlug === accessContext.slug;
+  }
+  return session.assignmentId === accessContext.assignmentId;
 }
 
 function createCurrentSession(studentName, lesson) {
   const created = createSession({ studentName, set: lesson });
   if (previewMode) return { ...created, persistenceMode: 'preview' };
-  if (!assignment?.id) throw new Error('Assignment chưa được xác định.');
+  if (!accessContext) throw new Error('Nguồn truy cập bài học chưa được xác định.');
+  if (accessContext.kind === 'fixed-link') {
+    return { ...created, entryMode: 'fixed-link', accessSlug: accessContext.slug };
+  }
   return {
     ...created,
-    assignmentId: assignment.id,
-    assignmentSlug: assignment.slug
+    entryMode: 'legacy-assignment',
+    assignmentId: accessContext.assignmentId,
+    assignmentSlug: accessContext.slug
   };
 }
 
@@ -87,25 +104,39 @@ async function showStudentHome() {
   renderStudentHome({ root });
 }
 
-async function showAssignment() {
+async function showFixedLessonLink() {
+  const descriptor = getSetDescriptorBySlug(route.slug);
+  if (!descriptor) throw accessError('lesson_not_found', 'Link bài tập không tồn tại.');
+  accessContext = { kind: 'fixed-link', slug: descriptor.lessonSlug, setId: descriptor.id };
+  setActiveSet(descriptor.id);
+  const canonicalUrl = buildFixedLessonUrl(window.location, descriptor);
+  if (window.location.href !== canonicalUrl) window.history.replaceState(null, '', canonicalUrl);
+  await showEntry();
+}
+
+async function showLegacyAssignment() {
   if (!firebaseConfig.enabled) {
-    const { renderAssignmentUnavailable } = await getScreen('access', 'Đang kiểm tra link bài...');
+    const { renderAssignmentUnavailable } = await getScreen('access', 'Đang kiểm tra link bài cũ...');
     return renderAssignmentUnavailable({
       root,
       title: 'Bài tập chưa được mở',
-      message: 'Hệ thống giao bài đang được giáo viên cấu hình. Hãy thử lại sau.'
+      message: 'Link giao bài cũ cần Firebase để xác thực. Hãy thử lại sau.'
     });
   }
-
-  const repository = getAssignmentRepository();
-  assignment = await repository.getStudentAssignment(route.code);
-  setActiveSet(assignment.setId);
-
-  if (assignment.setVersion && getSetDescriptor(assignment.setId)?.version !== assignment.setVersion) {
-    throw new Error('Assignment này dùng phiên bản bài cũ. Hãy xin giáo viên tạo link mới.');
+  const assignment = await getLegacyAssignmentRepository().getStudentAssignment(route.code);
+  const descriptor = getSetDescriptor(assignment.setId);
+  if (!descriptor) throw accessError('lesson_not_found', 'Bài học của link cũ không còn tồn tại.');
+  if (assignment.setVersion && descriptor.version !== assignment.setVersion) {
+    throw accessError('assignment_closed', 'Link cũ dùng phiên bản bài không còn hiện hành. Hãy xin giáo viên link cố định mới.');
   }
-
-  const canonicalUrl = buildAssignmentShareUrl(window.location, assignment);
+  accessContext = {
+    kind: 'legacy-assignment',
+    assignmentId: assignment.id,
+    slug: assignment.slug,
+    setId: assignment.setId
+  };
+  setActiveSet(assignment.setId);
+  const canonicalUrl = buildLegacyAssignmentUrl(window.location, assignment);
   if (window.location.href !== canonicalUrl) window.history.replaceState(null, '', canonicalUrl);
   await showEntry();
 }
@@ -135,7 +166,6 @@ async function showDrill() {
   if (!session) return showEntry();
   if (!set) renderLoading(root, 'Đang tải bài luyện...');
   const lesson = await ensureSet();
-
   const reconciled = qualifySessionIfEligible(session, lesson);
   if (reconciled !== session) {
     session = reconciled;
@@ -144,7 +174,6 @@ async function showDrill() {
   }
 
   const { renderDrill, renderPassed, showSuccess } = await getScreen('drill', 'Đang tải bài luyện...');
-
   if (session.status === 'passed') {
     return renderPassed({
       root,
@@ -159,7 +188,6 @@ async function showDrill() {
       }
     });
   }
-
   if (session.status === 'submitted' || session.status === 'abandoned') return showReport();
 
   renderDrill({
@@ -174,12 +202,10 @@ async function showDrill() {
       const result = submitAnswer({ session, set: lesson, response, attemptMeta });
       session = result.session;
       saveActiveSession();
-
       if (result.event.type === 'incorrect_retry' || result.event.type === 'incorrect_reveal') {
         feedback = result.event;
         return showDrill();
       }
-
       feedback = null;
       showSuccess({
         root,
@@ -269,11 +295,9 @@ async function showAdmin() {
     const { renderFirebaseSetupGate } = await getScreen('access', 'Đang kiểm tra Firebase...');
     return renderFirebaseSetupGate({ root });
   }
-
-  const repository = getAssignmentRepository();
+  const repository = getAdminRepository();
   const state = await repository.getAdminState();
   const { renderAdminLogin } = await getScreen('admin', 'Đang mở khu vực quản trị...');
-
   if (!state.isAdmin) {
     return renderAdminLogin({
       root,
@@ -285,37 +309,26 @@ async function showAdmin() {
   }
 
   const params = new URL(window.location.href).searchParams;
-  if (params.get('preview')) return showAdminPreview(params.get('preview'));
+  if (params.get('preview')) return showAdminStudentPreview(params.get('preview'));
   if (params.get('inspect')) return showAdminInspector(params.get('inspect'));
   if (params.get('session')) return showAdminSession(params.get('session'));
   return showAdminDashboard();
 }
 
 async function showAdminDashboard() {
-  const repository = getAssignmentRepository();
+  const repository = getAdminRepository();
   renderLoading(root, 'Đang tải Dashboard...');
-  const [assignments, remoteSessions] = await Promise.all([
-    repository.listAssignments(),
-    repository.listSessions()
-  ]);
-
+  const remoteSessions = await repository.listSessions();
   const { renderAdminDashboard } = await getScreen('admin', 'Đang mở Dashboard...');
   const sets = listSetDescriptors();
   renderAdminDashboard({
     root,
     folders: listFolders(),
     sets,
-    assignments,
     sessions: remoteSessions,
-    assignmentUrlFor: item => buildAssignmentShareUrl(window.location, item),
+    fixedUrlFor: descriptor => buildFixedLessonUrl(window.location, descriptor),
+    loadLesson: loadLessonSet,
     onInspect: setId => navigateAdmin({ inspect: setId }),
-    onPreview: setId => navigateAdmin({ preview: setId }),
-    onCreateAssignment: createAssignmentForSet,
-    onToggleAssignment: async (code, enable) => {
-      if (enable) await repository.enableAssignment(code);
-      else await repository.disableAssignment(code);
-      await showAdminDashboard();
-    },
     onOpenSession: sessionId => navigateAdmin({ session: sessionId }),
     onRefresh: showAdminDashboard,
     onSignOut: async () => {
@@ -333,17 +346,17 @@ async function showAdminInspector(setId) {
   renderLessonInspector({
     root,
     set: lesson,
+    fixedUrl: buildFixedLessonUrl(window.location, lesson),
     onBack: () => navigateAdmin(),
-    onPreview: () => navigateAdmin({ preview: setId }),
-    onCreateAssignment: () => createAssignmentForSet(setId)
+    onStudentPreview: () => navigateAdmin({ preview: setId })
   });
 }
 
-async function showAdminPreview(setId) {
+async function showAdminStudentPreview(setId) {
   const descriptor = getSetDescriptor(setId);
   if (!descriptor) throw new Error(`Không tìm thấy set: ${setId}`);
   previewMode = true;
-  assignment = null;
+  accessContext = null;
   session = null;
   feedback = null;
   setActiveSet(setId);
@@ -351,27 +364,12 @@ async function showAdminPreview(setId) {
 }
 
 async function showAdminSession(sessionId) {
-  const repository = getAssignmentRepository();
+  const repository = getAdminRepository();
   renderLoading(root, 'Đang tải kết quả học sinh...');
   const detail = await repository.getSessionDetail(sessionId);
   const lesson = await loadLessonSet(detail.session.setId);
   const { renderAdminSessionDetail } = await getScreen('admin', 'Đang mở kết quả...');
-  renderAdminSessionDetail({
-    root,
-    ...detail,
-    set: lesson,
-    onBack: () => navigateAdmin()
-  });
-}
-
-async function createAssignmentForSet(setId) {
-  const descriptor = getSetDescriptor(setId);
-  if (!descriptor) throw new Error(`Không tìm thấy set: ${setId}`);
-  const created = await getAssignmentRepository().createAssignment(descriptor);
-  return {
-    assignment: created,
-    url: buildAssignmentShareUrl(window.location, created)
-  };
+  renderAdminSessionDetail({ root, ...detail, set: lesson, onBack: () => navigateAdmin() });
 }
 
 function navigateAdmin(params = {}) {
@@ -384,7 +382,8 @@ function navigateAdmin(params = {}) {
 
 async function bootstrap() {
   if (route.kind === 'home') return showStudentHome();
-  if (route.kind === 'assignment') return showAssignment();
+  if (route.kind === 'lesson-link') return showFixedLessonLink();
+  if (route.kind === 'legacy-assignment') return showLegacyAssignment();
   if (route.kind === 'admin') return showAdmin();
   if (route.kind === 'legacy-set') {
     const url = new URL('/admin', window.location.origin);
@@ -396,7 +395,7 @@ async function bootstrap() {
   const { renderAssignmentUnavailable } = await getScreen('access', 'Đang kiểm tra đường dẫn...');
   renderAssignmentUnavailable({
     root,
-    title: route.kind === 'invalid-assignment' ? 'Mã bài tập không hợp lệ' : 'Không tìm thấy trang',
+    title: route.kind === 'invalid-lesson-link' ? 'Link bài tập không hợp lệ' : 'Không tìm thấy trang',
     message: 'Hãy dùng đúng đường link do giáo viên gửi.'
   });
 }
@@ -406,10 +405,16 @@ bootstrap().catch(showFatalError);
 function showFatalError(error) {
   console.error(error);
   const code = error?.code;
-  const assignmentProblem = ['assignment_not_found', 'assignment_closed', 'assignment_invalid'].includes(code);
-  root.innerHTML = `<main class="loading-page"><section class="loading-panel error-panel"><div class="brand-lockup"><span class="brand-seal">MRT</span><span>Chiến Binh Dịch</span></div><h1>${assignmentProblem ? 'Không mở được bài được giao' : 'Không mở được trang'}</h1><p>${assignmentProblem ? escapeHtml(error.message) : 'Hãy tải lại trang. Nếu lỗi vẫn còn, báo cho Thầy Thành MRT.'}</p></section></main>`;
+  const accessProblem = ['lesson_not_found', 'assignment_not_found', 'assignment_closed', 'assignment_invalid'].includes(code);
+  root.innerHTML = `<main class="loading-page"><section class="loading-panel error-panel"><div class="brand-lockup"><span class="brand-seal">MRT</span><span>Chiến Binh Dịch</span></div><h1>${accessProblem ? 'Không mở được bài được giao' : 'Không mở được trang'}</h1><p>${accessProblem ? escapeHtml(error.message) : 'Hãy tải lại trang. Nếu lỗi vẫn còn, báo cho Thầy Thành.'}</p></section></main>`;
+}
+
+function accessError(code, message) {
+  const error = new Error(message);
+  error.code = code;
+  return error;
 }
 
 function escapeHtml(value) {
-  return String(value ?? '').replace(/[&<>'"]/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[char]);
+  return String(value ?? '').replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character]);
 }
