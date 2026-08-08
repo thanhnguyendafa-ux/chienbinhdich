@@ -9,6 +9,7 @@ let remoteRepository = null;
 let remoteReady = false;
 let initializationPromise = null;
 let flushPromise = null;
+let flushRequested = false;
 let lastRemoteError = null;
 let onlineListenerInstalled = false;
 
@@ -55,7 +56,9 @@ if (firebaseConfig.enabled) void initializeRemotePersistence();
 function enqueueRemote(session) {
   if (!firebaseConfig.enabled || !session?.id) return;
   pendingSessions.set(session.id, structuredClone(session));
-  if (remoteReady) void flushPending();
+  if (!remoteReady) return;
+  if (flushPromise) flushRequested = true;
+  else void flushPending();
 }
 
 async function initializeRemotePersistence() {
@@ -119,7 +122,10 @@ async function flushPending() {
     }
     return { synced, pending: pendingSessions.size };
   })().finally(() => {
+    const shouldFlushAgain = flushRequested;
+    flushRequested = false;
     flushPromise = null;
+    if (shouldFlushAgain && remoteReady) void flushPending();
   });
 
   return flushPromise;
