@@ -1,5 +1,5 @@
 export const firebaseConfig = Object.freeze({
-  enabled: false,
+  enabled: true,
   project: Object.freeze({
     apiKey: 'AIzaSyBsb2aKAneEDhVQksPujhTZZRjw1aXn0VI',
     authDomain: 'mrt-student-reports.firebaseapp.com',
