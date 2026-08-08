@@ -1,18 +1,23 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { resolveAccessRoute } from '../src/core/accessRouting.js';
 import {
-  activityTypeSlug,
-  buildAssignmentShareUrl,
-  generateAssignmentCode,
-  parseAssignmentPathToken,
-  resolveAccessRoute
-} from '../src/core/accessRouting.js';
+  buildFixedLessonUrl,
+  buildLegacyAssignmentUrl,
+  normalizeLessonSlug,
+  parseLegacyAssignmentToken,
+  validateLessonSlug
+} from '../src/core/lessonLinks.js';
 
-test('access routing separates home, Admin, assignment and legacy Set routes', () => {
+test('access routing separates home, Admin, fixed lesson, legacy assignment and legacy Set routes', () => {
   assert.deepEqual(resolveAccessRoute({ href: 'https://cbd.example/' }), { kind: 'home' });
   assert.deepEqual(resolveAccessRoute({ href: 'https://cbd.example/admin' }), { kind: 'admin' });
+  assert.deepEqual(resolveAccessRoute({ href: 'https://cbd.example/a/g7u1-dich2-mcq' }), {
+    kind: 'lesson-link',
+    slug: 'g7u1-dich2-mcq'
+  });
   assert.deepEqual(resolveAccessRoute({ href: 'https://cbd.example/a/g7u1-dich2-mcq-P9M3X8' }), {
-    kind: 'assignment',
+    kind: 'legacy-assignment',
     slug: 'g7u1-dich2-mcq',
     code: 'P9M3X8'
   });
@@ -22,34 +27,26 @@ test('access routing separates home, Admin, assignment and legacy Set routes', (
   });
 });
 
-test('assignment token keeps readable slug while code remains the stable lookup key', () => {
-  assert.deepEqual(parseAssignmentPathToken('G7U1-Dịch-2-MCQ-p9m3x8'), {
+test('fixed lesson URL is deterministic and does not need a generated code', () => {
+  assert.equal(
+    buildFixedLessonUrl({ href: 'https://chienbinhdich.vercel.app/admin?x=1' }, { lessonSlug: 'g7u1-dich2-mcq' }),
+    'https://chienbinhdich.vercel.app/a/g7u1-dich2-mcq'
+  );
+  assert.equal(normalizeLessonSlug('G7U1-Dịch-2-MCQ'), 'g7u1-dich-2-mcq');
+});
+
+test('lesson slugs cannot collide with the legacy six-character suffix grammar', () => {
+  assert.equal(validateLessonSlug('g7u1-dich2-mcq'), true);
+  assert.equal(validateLessonSlug('g7u1-dich2-P9M3X8'), false);
+});
+
+test('legacy assignment links remain readable for already-issued URLs', () => {
+  assert.deepEqual(parseLegacyAssignmentToken('G7U1-Dịch-2-MCQ-p9m3x8'), {
     slug: 'g7u1-dich-2-mcq',
     code: 'P9M3X8'
   });
-  assert.equal(parseAssignmentPathToken('g7u1-dich2-mcq-ABC123'), null, 'I/O/1/0-like alphabet exclusions keep codes easy to read');
-});
-
-test('assignment share URL is readable and canonical', () => {
   assert.equal(
-    buildAssignmentShareUrl({ href: 'https://chienbinhdich.vercel.app/admin?x=1' }, { slug: 'g7u1-dich2-mcq', code: 'P9M3X8' }),
+    buildLegacyAssignmentUrl({ href: 'https://chienbinhdich.vercel.app/admin' }, { slug: 'g7u1-dich2-mcq', code: 'P9M3X8' }),
     'https://chienbinhdich.vercel.app/a/g7u1-dich2-mcq-P9M3X8'
   );
-});
-
-test('assignment code generation uses secure random values and fixed six-character length', () => {
-  const fakeCrypto = {
-    getRandomValues(values) {
-      values.set([0, 1, 2, 3, 4, 5]);
-      return values;
-    }
-  };
-  assert.equal(generateAssignmentCode(fakeCrypto), 'ABCDEF');
-});
-
-test('activity type slug is concise and collapses mixed Sets to mix', () => {
-  assert.equal(activityTypeSlug(['typing']), 'typing');
-  assert.equal(activityTypeSlug(['mcq']), 'mcq');
-  assert.equal(activityTypeSlug(['true_false']), 'tf');
-  assert.equal(activityTypeSlug(['mcq', 'typing']), 'mix');
 });
