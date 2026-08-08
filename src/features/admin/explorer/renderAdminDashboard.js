@@ -7,7 +7,7 @@ import {
   rootFolderId,
   searchLessonDescriptors
 } from '../adminTreeModel.js';
-import { adminTopbar, copyText, esc } from '../shared/adminUi.js';
+import { adminTopbar, copyText } from '../shared/adminUi.js';
 import { createLessonPreviewController } from '../preview/lessonPreviewController.js';
 import { renderResultsView } from '../results/renderResultsView.js';
 import { createExplorerState, normalizePreviewWidth, persistExplorerState } from './explorerState.js';
@@ -75,9 +75,9 @@ export function renderAdminDashboard({
     state.selectedFolderId = folderId;
     state.selectedSetId = null;
     state.searchQuery = '';
-    previewController.clear();
     expandBreadcrumbAncestors(tree, folderId, state.expanded);
     persist();
+    previewController.clear();
   };
 
   const bindEvents = () => {
@@ -100,8 +100,8 @@ export function renderAdminDashboard({
     root.querySelectorAll('[data-view]').forEach(button => button.addEventListener('click', () => {
       state.view = button.dataset.view === 'results' ? 'results' : 'lessons';
       state.selectedSetId = null;
-      previewController.clear();
       persist();
+      previewController.clear();
     }));
 
     root.querySelectorAll('[data-folder-select]').forEach(button => button.addEventListener('click', () => {
@@ -141,10 +141,8 @@ export function renderAdminDashboard({
         previewController.select(state.selectedSetId);
       };
       row.addEventListener('click', choose);
-      row.addEventListener('dblclick', () => onInspect(row.dataset.selectSet));
       row.addEventListener('keydown', event => {
-        if (event.key === 'Enter') onInspect(row.dataset.selectSet);
-        if (event.key === ' ') {
+        if (event.key === 'Enter' || event.key === ' ') {
           event.preventDefault();
           choose();
         }
