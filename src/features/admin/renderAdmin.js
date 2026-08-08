@@ -86,7 +86,6 @@ export function renderAdminDashboard({
   });
 
   const render = ({ focusSearch = false } = {}) => {
-    const searchInputId = 'admin-explorer-search';
     root.innerHTML = `
       <main class="page admin-page admin-explorer-page">
         ${adminTopbar({ subtitle: 'Explorer' })}
@@ -117,10 +116,15 @@ export function renderAdminDashboard({
 
     bindDashboardEvents();
     if (focusSearch) {
-      const input = root.querySelector(`#${searchInputId}`);
+      const input = root.querySelector('#admin-explorer-search');
       input?.focus();
       input?.setSelectionRange(input.value.length, input.value.length);
     }
+  };
+
+  const closeAssignmentDialog = () => {
+    state.dialogSetId = null;
+    render();
   };
 
   const bindDashboardEvents = () => {
@@ -206,12 +210,15 @@ export function renderAdminDashboard({
     root.querySelectorAll('[data-create-assignment]').forEach(button => button.addEventListener('click', () => {
       state.dialogSetId = button.dataset.createAssignment;
       render();
-      root.querySelector('#admin-assignment-dialog')?.showModal?.();
+      const dialog = root.querySelector('#admin-assignment-dialog');
+      if (typeof dialog?.showModal === 'function') dialog.showModal();
+      else dialog?.setAttribute('open', '');
     }));
 
-    root.querySelector('#admin-dialog-cancel')?.addEventListener('click', () => {
+    root.querySelector('#admin-dialog-cancel')?.addEventListener('click', closeAssignmentDialog);
+    root.querySelector('#admin-dialog-cancel-bottom')?.addEventListener('click', closeAssignmentDialog);
+    root.querySelector('#admin-assignment-dialog')?.addEventListener('cancel', () => {
       state.dialogSetId = null;
-      render();
     });
 
     root.querySelector('#admin-dialog-create')?.addEventListener('click', async event => {
@@ -226,9 +233,10 @@ export function renderAdminDashboard({
         state.dialogSetId = null;
         state.toast = copied ? `Đã tạo và copy ${result.assignment.slug}-${result.assignment.code}` : `Đã tạo ${result.assignment.slug}-${result.assignment.code}`;
         render();
+        const toast = root.querySelector('.admin-toast');
         window.setTimeout(() => {
           state.toast = '';
-          if (root.isConnected) render();
+          toast?.remove();
         }, 2400);
       } catch (error) {
         state.toast = error?.message ?? 'Không tạo được link.';
@@ -450,7 +458,7 @@ function renderExplorerStatus(tree, state, sets) {
 
 function renderAssignmentDialog(set) {
   if (!set) return '';
-  return `<dialog id="admin-assignment-dialog" class="admin-assignment-dialog" open>
+  return `<dialog id="admin-assignment-dialog" class="admin-assignment-dialog">
     <div class="admin-dialog-head"><div><p class="eyebrow">TẠO LINK GIAO BÀI</p><h2>${esc(set.title)}</h2></div><button class="admin-dialog-x" id="admin-dialog-cancel" type="button" aria-label="Đóng">×</button></div>
     <div class="admin-dialog-summary"><span>${esc(set.course)}</span><span>${esc(set.unit)}</span><span>${esc(typeSummary(set.activityTypes))}</span><span>${Number(set.itemCount)} câu</span></div>
     <label>Link name<input value="${escAttr(set.assignmentSlug)}-XXXXXX" readonly /></label>
