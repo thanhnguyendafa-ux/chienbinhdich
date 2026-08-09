@@ -67,7 +67,7 @@ test('Explorer type filters distinguish single-type lessons from mixed lessons',
   assert.equal(lessonMatchesType(mixed, 'mcq'), false);
   assert.equal(lessonMatchesType(global5Mixed, 'mix'), true);
   assert.equal(lessonMatchesType(reading, 'mcq'), true);
-  assert.equal(lessonMatchesType(writing, 'sentence_order'), true);
+  assert.equal(lessonMatchesType(writing, 'order'), true);
 });
 
 test('every published Set appears exactly once in the Explorer tree', () => {
