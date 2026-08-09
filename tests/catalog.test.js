@@ -5,10 +5,18 @@ import { lessonFolders, lessonRegistry } from '../src/data/lessonCatalog.js';
 import { validateSet } from '../src/data/contentValidator.js';
 import { getSetDescriptor, getSetDescriptorBySlug, listFolders, listSetDescriptors, listSetsByFolder, loadLessonSet } from '../src/repositories/lessonRepository.js';
 
-test('catalog exposes hierarchical Global 7 and MRT folders with their published Sets', () => {
+test('catalog exposes hierarchical Global 5, Global 7 and MRT folders with their published Sets', () => {
   assert.deepEqual(validateCatalog(lessonFolders, lessonRegistry), []);
-  assert.deepEqual(listFolders().map(folder => folder.id), ['samples', 'global7', 'global7-unit1', 'mrt-lessons']);
+  assert.deepEqual(listFolders().map(folder => folder.id), [
+    'samples',
+    'global5',
+    'global5-unit1',
+    'global7',
+    'global7-unit1',
+    'mrt-lessons'
+  ]);
   assert.deepEqual(listSetsByFolder('samples').map(set => set.id), ['g7-u1-mixed-demo', 'g7-u1-s1']);
+  assert.deepEqual(listSetsByFolder('global5-unit1').map(set => set.id), ['g5-u1-vocab-01']);
   assert.deepEqual(listSetsByFolder('global7-unit1').map(set => set.id), [
     'g7-u1-translation-01',
     'g7-u1-translation-02'

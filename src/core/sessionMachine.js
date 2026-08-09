@@ -116,6 +116,7 @@ export function submitAnswer({ session, set, response, answer, attemptMeta = {},
 
 export function qualifySessionIfEligible(session, set) {
   if (session?.status !== 'active') return session;
+  if (!completionPolicySatisfied(session, set)) return session;
   const threshold = Number(set?.passThreshold ?? 80);
   if (masteryPercentFromAttempts(session.attempts, set.items.length) < threshold) return session;
 
@@ -208,6 +209,12 @@ export function getSessionMetrics(session, set, now = Date.now()) {
     abandoned: session.status === 'abandoned',
     durationMs: (session.completedAt ?? now) - session.startedAt
   };
+}
+
+function completionPolicySatisfied(session, set) {
+  if (set?.completionPolicy !== 'all-items') return true;
+  const totalItems = Array.isArray(set?.items) ? set.items.length : 0;
+  return totalItems > 0 && Number(session?.mainCursor ?? 0) >= totalItems;
 }
 
 function firstQualificationTimestamp(attempts, totalItems, threshold) {

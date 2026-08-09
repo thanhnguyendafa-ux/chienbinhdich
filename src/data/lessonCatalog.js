@@ -7,11 +7,25 @@ export const lessonFolders = Object.freeze([
     order: 1
   }),
   Object.freeze({
+    id: 'global5',
+    name: 'Global Success 5',
+    description: 'Kho bài luyện Global Success 5 được tổ chức theo từng Unit.',
+    parentId: null,
+    order: 2
+  }),
+  Object.freeze({
+    id: 'global5-unit1',
+    name: 'Unit 1 · All about me!',
+    description: 'Bài luyện Global Success 5 Unit 1 · All about me!, tập trung từ vựng và mẫu câu nền tảng.',
+    parentId: 'global5',
+    order: 1
+  }),
+  Object.freeze({
     id: 'global7',
     name: 'Global Success 7',
     description: 'Kho bài luyện Global Success 7 được tổ chức theo từng Unit.',
     parentId: null,
-    order: 2
+    order: 3
   }),
   Object.freeze({
     id: 'global7-unit1',
@@ -25,7 +39,7 @@ export const lessonFolders = Object.freeze([
     name: 'Bài học Thầy Thành MRT',
     description: 'Các bài luyện theo hệ tư duy ngữ pháp Mister Thành MRT.',
     parentId: null,
-    order: 3
+    order: 4
   })
 ]);
 
@@ -63,6 +77,24 @@ export const lessonRegistry = Object.freeze([
     activityTypes: Object.freeze(['typing']),
     itemCount: 16,
     loadContent: () => import('./global7-unit1-set1.js').then(module => module.global7Unit1Set1Content)
+  }),
+  Object.freeze({
+    id: 'g5-u1-vocab-01',
+    folderId: 'global5-unit1',
+    order: 1,
+    version: 1,
+    course: 'Global Success 5',
+    unit: 'Unit 1 · All about me!',
+    title: 'Bài tập từ vựng 1',
+    subtitle: 'MCQ · True/False · Giải thích tiếng Việt',
+    lessonSlug: 'g5u1-tu-vung-1',
+    passThreshold: 80,
+    completionPolicy: 'all-items',
+    teacher: 'Thầy Thành MRT',
+    description: '17 câu từ vựng Unit 1 gồm 12 MCQ và 5 True/False. Học sinh đi qua đủ 17 câu chính trước khi được xét PASS 80% Mastery; mỗi câu có giải thích tiếng Việt để củng cố nghĩa từ.',
+    activityTypes: Object.freeze(['mcq', 'true_false']),
+    itemCount: 17,
+    loadContent: () => import('./g5-u1-vocab-01.js').then(module => module.global5Unit1Vocab01Content)
   }),
   Object.freeze({
     id: 'g7-u1-translation-01',
