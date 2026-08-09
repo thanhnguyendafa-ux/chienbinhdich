@@ -1,4 +1,5 @@
 import { validateLessonSlug } from '../core/lessonLinks.js';
+import { validatePassThreshold } from '../core/masteryPolicy.js';
 
 export function validateCatalog(folders, registry) {
   const errors = [];
@@ -44,7 +45,7 @@ export function validateCatalog(folders, registry) {
     if (!entry?.course) errors.push(`Set ${entry?.id ?? '(unknown)'} thiếu course.`);
     if (!entry?.unit) errors.push(`Set ${entry?.id ?? '(unknown)'} thiếu unit.`);
     if (!Number.isInteger(entry?.itemCount) || entry.itemCount <= 0) errors.push(`Set ${entry?.id ?? '(unknown)'} có itemCount không hợp lệ.`);
-    if (!Number.isFinite(entry?.passThreshold) || entry.passThreshold <= 0 || entry.passThreshold > 100) errors.push(`Set ${entry?.id ?? '(unknown)'} có passThreshold không hợp lệ.`);
+    errors.push(...validatePassThreshold(entry?.passThreshold, `Set ${entry?.id ?? '(unknown)'} passThreshold`));
     if (!Array.isArray(entry?.activityTypes) || entry.activityTypes.length === 0) errors.push(`Set ${entry?.id ?? '(unknown)'} thiếu activityTypes.`);
     if (typeof entry?.loadContent !== 'function') errors.push(`Set ${entry?.id ?? '(unknown)'} thiếu content loader.`);
 
