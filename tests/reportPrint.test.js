@@ -33,12 +33,20 @@ test('submitted reports expose print in a top toolbar while printing stays outsi
   assert.doesNotMatch(sessionMachine, /print-report|window\.print|printedAt/);
 });
 
-test('report summary is line-based instead of dashboard cards', () => {
-  assert.match(report, /metricSection\('Kết quả học tập'/);
-  assert.match(report, /metricSection\('Thời gian'/);
+test('report prioritizes parent-facing assignment results before line-based technical details', () => {
+  const heroCall = report.indexOf('renderAssignmentHero({ session, set, summary })');
+  const technical = report.indexOf("metricSection('Chi tiết quá trình học'");
+  assert.ok(heroCall >= 0 && technical > heroCall);
+  assert.match(report, /class="report-key-results"/);
+  assert.match(report, /class="report-question-results"/);
+  assert.match(report, /Tổng số câu/);
+  assert.match(report, /Tổng thời gian/);
+  assert.match(report, /metricSection\('Chi tiết quá trình học'/);
+  assert.match(report, /metricSection\('Thời gian chi tiết'/);
   assert.match(report, /metricSection\('Dấu hiệu quá trình'/);
   assert.match(report, /class="metric-line"/);
   assert.doesNotMatch(report, /class="report-grid"/);
+  assert.match(reportCss, /\.report-key-results\{display:grid;grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/);
   assert.match(reportCss, /\.metric-line\{display:grid;grid-auto-flow:column/);
   assert.match(reportCss, /border-top:1px solid black/);
 });
