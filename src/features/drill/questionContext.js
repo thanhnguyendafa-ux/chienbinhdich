@@ -37,6 +37,14 @@ export function getQuestionContext(item) {
     ]);
   }
 
+  if (type === 'mcq' && item?.stimulus) {
+    const title = String(item.stimulus.title ?? '').trim();
+    return context([
+      row(title ? `Passage · ${title}` : 'Passage', item.stimulus.text),
+      row('Câu hỏi', prompt)
+    ]);
+  }
+
   const quoted = splitQuotedPrompt(prompt);
   if (quoted) {
     return context([
