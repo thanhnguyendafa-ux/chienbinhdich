@@ -43,7 +43,9 @@ export function validateSet(set) {
     seen.add(item.id);
   }
 
-  errors.push(...validatePassThreshold(set.passThreshold, `Set ${set.id} passThreshold`));
+  if (set.passThreshold !== undefined) {
+    errors.push(...validatePassThreshold(set.passThreshold, `Set ${set.id} passThreshold`));
+  }
   return errors;
 }
 
