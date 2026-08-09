@@ -5,9 +5,9 @@ import { validateCatalog } from '../src/data/catalogValidator.js';
 import { validateSet } from '../src/data/contentValidator.js';
 import { listSetDescriptors } from '../src/repositories/lessonRepository.js';
 
-test('all 11 currently published fixed lessons still default to 80% Mastery', () => {
+test('all 12 currently published fixed lessons still default to 80% Mastery', () => {
   const descriptors = listSetDescriptors();
-  assert.equal(descriptors.length, 11);
+  assert.equal(descriptors.length, 12);
   assert.equal(descriptors.filter(set => set.passThreshold !== 80).length, 0);
   assert.ok(descriptors.every(set => set.lessonSlug));
 });
