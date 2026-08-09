@@ -8,6 +8,7 @@ import {
   searchLessonDescriptors
 } from '../adminTreeModel.js';
 import { adminTopbar, copyText } from '../shared/adminUi.js';
+import { openMasteryEditor } from '../mastery/masteryEditor.js';
 import { createLessonPreviewController } from '../preview/lessonPreviewController.js';
 import { renderResultsView } from '../results/renderResultsView.js';
 import { createExplorerState, normalizePreviewWidth, persistExplorerState } from './explorerState.js';
@@ -24,6 +25,8 @@ export function renderAdminDashboard({
   loadLesson,
   onInspect,
   onOpenSession,
+  onSaveMastery,
+  onResetMastery,
   onRefresh,
   onSignOut
 }) {
@@ -133,6 +136,19 @@ export function renderAdminDashboard({
       const copied = await copyText(button.dataset.copyFixedLink);
       button.textContent = copied ? '✓ Copied' : 'Copy lỗi';
       window.setTimeout(() => { if (button.isConnected) button.textContent = original; }, 1100);
+    }));
+
+    root.querySelectorAll('[data-edit-mastery]').forEach(button => button.addEventListener('click', event => {
+      event.stopPropagation();
+      const lesson = setById.get(button.dataset.editMastery);
+      if (!lesson) return;
+      openMasteryEditor({
+        root,
+        lesson,
+        onSave: value => onSaveMastery?.(lesson.id, value),
+        onReset: () => onResetMastery?.(lesson.id),
+        onDone: onRefresh
+      });
     }));
 
     root.querySelectorAll('[data-select-set]').forEach(row => {
