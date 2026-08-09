@@ -4,7 +4,8 @@ const evaluators = Object.freeze({
   typing: evaluateTyping,
   mcq: evaluateMcq,
   true_false: evaluateTrueFalse,
-  sentence_order: evaluateSentenceOrder
+  sentence_order: evaluateSentenceOrder,
+  classification: evaluateClassification
 });
 
 const DEFAULT_TYPING_UI = Object.freeze({
@@ -34,6 +35,7 @@ export function expectedResponseDisplay(item) {
   if (type === 'mcq') return String(item.choices?.find(choice => choice.id === item.correctChoiceId)?.text ?? '');
   if (type === 'true_false') return item.answer === true ? 'TRUE' : 'FALSE';
   if (type === 'sentence_order') return (item.correctOrder ?? []).join(' ');
+  if (type === 'classification') return classificationResponseDisplay(item, classificationAnswerMap(item));
   return '';
 }
 
@@ -76,6 +78,25 @@ export function sentenceOrderHasUnusedTokens(item) {
   return acceptedSentenceOrders(item).every(order => !sameMultiset(tokens, order));
 }
 
+export function classificationAnswerMap(item) {
+  const answer = {};
+  for (const token of item?.tokens ?? []) {
+    if (!token?.id) continue;
+    answer[String(token.id)] = String(token.correctGroupId ?? '');
+  }
+  return answer;
+}
+
+export function classificationResponseDisplay(item, response) {
+  const normalized = normalizeClassificationResponse(item, response);
+  return (item?.groups ?? []).map(group => {
+    const tokenTexts = (item?.tokens ?? [])
+      .filter(token => normalized[String(token.id)] === String(group.id))
+      .map(token => String(token.text));
+    return `${String(group.label ?? group.id)}: ${tokenTexts.join(', ') || '—'}`;
+  }).join(' | ');
+}
+
 export function questionPromptDisplay(item) {
   const type = questionTypeForItem(item);
   if (type === 'typing') return String(item.vi ?? '');
@@ -100,7 +121,8 @@ export function questionTypeLabel(itemOrType) {
     typing: 'TYPING',
     mcq: 'MCQ',
     true_false: 'TRUE / FALSE',
-    sentence_order: 'SẮP XẾP CÂU'
+    sentence_order: 'SẮP XẾP CÂU',
+    classification: 'PHÂN LOẠI'
   })[type] ?? type.toUpperCase();
 }
 
@@ -147,8 +169,33 @@ function evaluateSentenceOrder(item, response) {
   };
 }
 
+function evaluateClassification(item, response) {
+  const normalized = normalizeClassificationResponse(item, response);
+  const expected = classificationAnswerMap(item);
+  const tokenIds = (item?.tokens ?? []).map(token => String(token.id));
+  const correct = Object.keys(normalized).length === tokenIds.length
+    && tokenIds.every(tokenId => normalized[tokenId] === expected[tokenId]);
+  return {
+    correct,
+    normalizedResponse: normalized,
+    displayResponse: classificationResponseDisplay(item, normalized)
+  };
+}
+
 function normalizeOrder(value) {
   return Array.isArray(value) ? value.map(token => String(token)) : [];
+}
+
+function normalizeClassificationResponse(item, value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+  const tokenIds = new Set((item?.tokens ?? []).map(token => String(token.id)));
+  const normalized = {};
+  for (const [tokenId, groupId] of Object.entries(value)) {
+    const key = String(tokenId);
+    if (!tokenIds.has(key)) continue;
+    normalized[key] = String(groupId);
+  }
+  return normalized;
 }
 
 function sameSequence(left, right) {
