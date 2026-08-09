@@ -42,6 +42,18 @@ test('optional MCQ stimulus validates independently from Reading diagnostic pass
     items: [fixtureMcq({ passageId: 'p1' })]
   };
   assert.ok(validateSet(ambiguous).some(error => error.includes('không được dùng đồng thời stimulus và passageId')));
+
+  const nonMcq = {
+    id: 'non-mcq-stimulus-set',
+    items: [{
+      id: 'typing-with-stimulus',
+      type: 'typing',
+      vi: 'một',
+      en: 'one',
+      stimulus: { title: 'Not allowed', text: 'Typing items cannot use a stimulus.' }
+    }]
+  };
+  assert.ok(validateSet(nonMcq).some(error => error.includes('Stimulus chỉ hỗ trợ MCQ')));
 });
 
 test('online MCQ renderer shows stimulus separately without changing ordinary or diagnostic MCQ labels', async () => {
