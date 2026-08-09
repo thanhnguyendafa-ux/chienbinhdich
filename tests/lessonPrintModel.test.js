@@ -8,6 +8,10 @@ function questions(model) {
   return model.sections.flatMap(section => section.blocks.flatMap(block => block.questions));
 }
 
+function mcq(id) {
+  return { id, type: 'mcq', prompt: 'Choose', choices: [{ id: 'a', text: 'A' }, { id: 'b', text: 'B' }], correctChoiceId: 'a' };
+}
+
 test('student print model supports all five question types without answer metadata', async () => {
   const [mixed, typing, writing, unit2] = await Promise.all([
     loadLessonSet('g7-u1-mixed-demo'),
@@ -61,12 +65,52 @@ test('Sentence Order and Classification print pools are deterministic and identi
   assert.deepEqual(teacherClassify.teacher.groups.find(group => group.label === 'STRESS 1').values, ['thirty', 'forty', 'eighty']);
 });
 
-test('optional printGroups are organizational metadata only and validator requires exact item coverage', () => {
-  const item = { id: 'q1', type: 'mcq', prompt: 'Choose', choices: [{ id: 'a', text: 'A' }, { id: 'b', text: 'B' }], correctChoiceId: 'a' };
-  const valid = { id: 'print-groups', items: [item], printGroups: [{ id: 'a', title: 'A. TEST', itemIds: ['q1'] }] };
+test('printGroups require exact coverage and preserve source question order', () => {
+  const q1 = mcq('q1');
+  const q2 = mcq('q2');
+  const valid = {
+    id: 'print-groups',
+    items: [q1, q2],
+    printGroups: [
+      { id: 'a', title: 'A. FIRST', itemIds: ['q1'] },
+      { id: 'b', title: 'B. SECOND', itemIds: ['q2'] }
+    ]
+  };
   assert.deepEqual(validateSet(valid), []);
+
   const missing = { ...valid, printGroups: [{ id: 'a', title: 'A. TEST', itemIds: ['missing'] }] };
-  const errors = validateSet(missing);
-  assert.ok(errors.some(error => error.includes('không tồn tại')));
-  assert.ok(errors.some(error => error.includes('thiếu item')));
+  const missingErrors = validateSet(missing);
+  assert.ok(missingErrors.some(error => error.includes('không tồn tại')));
+  assert.ok(missingErrors.some(error => error.includes('thiếu item')));
+
+  const reordered = {
+    ...valid,
+    printGroups: [
+      { id: 'b', title: 'B. SECOND', itemIds: ['q2'] },
+      { id: 'a', title: 'A. FIRST', itemIds: ['q1'] }
+    ]
+  };
+  assert.ok(validateSet(reordered).some(error => error.includes('giữ nguyên thứ tự item')));
+});
+
+test('printGroups validation stays safe for malformed items and rejects ambiguous Reading grouping', () => {
+  const malformed = {
+    id: 'malformed-print-groups',
+    items: [null, mcq('q1')],
+    printGroups: [{ id: 'a', title: 'A. TEST', itemIds: ['q1'] }]
+  };
+  assert.doesNotThrow(() => validateSet(malformed));
+  assert.ok(validateSet(malformed).some(error => error.includes('Item không hợp lệ')));
+
+  const readingWithGroups = {
+    id: 'reading-with-groups',
+    passages: [{ id: 'p1', title: 'Passage', text: 'Text' }],
+    items: [mcq('q1')],
+    printGroups: [{ id: 'a', title: 'A. TEST', itemIds: ['q1'] }]
+  };
+  assert.ok(validateSet(readingWithGroups).some(error => error.includes('không được dùng printGroups cùng passages')));
+  assert.throws(
+    () => buildLessonPrintModel(readingWithGroups, { version: 'student' }),
+    /cannot also define printGroups/
+  );
 });
