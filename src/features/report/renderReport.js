@@ -48,8 +48,11 @@ export function renderReport({ root, session, set, onRetry, onHome }) {
             ['Đã hiện đáp án', metrics.revealedCount]
           ],
           [
+            ['Chuỗi chính', `${metrics.completedMainItems}/${metrics.total}`],
             ['Mastery lúc đạt', metrics.masteryAtQualification === null ? '—' : `${formatPercent(metrics.masteryAtQualification)}%`],
-            ['Luyện thêm', metrics.extendedPractice ? 'Có' : 'Không'],
+            ['Luyện thêm', metrics.extendedPractice ? 'Có' : 'Không']
+          ],
+          [
             ['Lượt luyện thêm', metrics.extendedAttempts]
           ]
         ])}
@@ -141,7 +144,6 @@ function statusLabel(status) {
 
 function statusNote(summary) {
   if (summary.status === 'passed') return 'Đã nộp bài';
-  if (summary.status === 'abandoned') return `Đã làm ${summary.attemptedItems}/${summary.totalItems} câu`;
   return `Đã làm ${summary.attemptedItems}/${summary.totalItems} câu`;
 }
 
