@@ -6,6 +6,7 @@ import {
   questionPromptDisplay,
   questionTypeForItem
 } from '../../../core/questionTypes.js';
+import { buildAnswerPositionPlan } from './answerPositionPlanner.js';
 import { mcqPrintLayout } from './mcqPrintLayout.js';
 import { normalizePrintConfig } from './printConfig.js';
 
@@ -25,12 +26,23 @@ export function buildLessonPrintModel(lesson, options = {}) {
   const config = normalizePrintConfig(options);
   const itemById = new Map(lesson.items.map(item => [String(item.id), item]));
   const sectionSpecs = resolveSectionSpecs(lesson, itemById);
+  const orderedItems = sectionSpecs.flatMap(spec => spec.items);
+  const answerPositionPlan = buildAnswerPositionPlan(orderedItems, {
+    lessonId: lesson.id,
+    lessonVersion: lesson.version ?? 1
+  });
   let questionNumber = 0;
 
   const sections = sectionSpecs.map(spec => {
     const questions = spec.items.map(item => {
       questionNumber += 1;
-      return buildQuestionModel({ lesson, item, number: questionNumber, config });
+      return buildQuestionModel({
+        lesson,
+        item,
+        number: questionNumber,
+        config,
+        targetCorrectIndex: answerPositionPlan.get(String(item.id))
+      });
     });
     return Object.freeze({
       title: spec.title,
@@ -100,7 +112,7 @@ function groupQuestionBlocks(questions) {
   }));
 }
 
-function buildQuestionModel({ lesson, item, number, config }) {
+function buildQuestionModel({ lesson, item, number, config, targetCorrectIndex }) {
   const type = questionTypeForItem(item);
   const base = {
     id: String(item.id),
@@ -110,7 +122,7 @@ function buildQuestionModel({ lesson, item, number, config }) {
   };
   const key = `print:${lesson.id}:${item.id}:v${lesson.version ?? 1}`;
 
-  if (type === 'mcq') return buildMcq(item, base, key, config);
+  if (type === 'mcq') return buildMcq(item, base, key, config, targetCorrectIndex);
   if (type === 'true_false') return withTeacher(base, item, config, {
     answer: item.answer === true ? 'TRUE' : 'FALSE'
   });
@@ -122,9 +134,18 @@ function buildQuestionModel({ lesson, item, number, config }) {
   throw new Error(`Unsupported print question type: ${type}`);
 }
 
-function buildMcq(item, base, key, config) {
-  const shuffled = orderForExposure(item.choices ?? [], `${key}:mcq`);
-  const choices = shuffled.map((choice, index) => Object.freeze({
+function buildMcq(item, base, key, config, targetCorrectIndex) {
+  const sourceChoices = item.choices ?? [];
+  const correctChoice = sourceChoices.find(choice => String(choice.id) === String(item.correctChoiceId));
+  if (!correctChoice) throw new Error(`MCQ ${item.id} is missing its correct choice for print.`);
+  if (!Number.isInteger(targetCorrectIndex) || targetCorrectIndex < 0 || targetCorrectIndex >= sourceChoices.length) {
+    throw new Error(`MCQ ${item.id} is missing a valid planned correct position for print.`);
+  }
+
+  const distractors = sourceChoices.filter(choice => String(choice.id) !== String(item.correctChoiceId));
+  const ordered = orderForExposure(distractors, `${key}:mcq:distractors`);
+  ordered.splice(targetCorrectIndex, 0, correctChoice);
+  const choices = ordered.map((choice, index) => Object.freeze({
     label: alphabetLabel(index),
     text: String(choice.text ?? '')
   }));
@@ -135,12 +156,11 @@ function buildMcq(item, base, key, config) {
   };
   if (config.version !== 'teacher') return Object.freeze(student);
 
-  const correctIndex = shuffled.findIndex(choice => String(choice.id) === String(item.correctChoiceId));
-  const correct = correctIndex >= 0 ? choices[correctIndex] : null;
+  const correct = choices[targetCorrectIndex];
   return Object.freeze({
     ...student,
     teacher: teacherPayload(item, config, {
-      answer: correct ? `${correct.label}. ${correct.text}` : expectedResponseDisplay(item)
+      answer: `${correct.label}. ${correct.text}`
     })
   });
 }
