@@ -12,6 +12,8 @@ export function validateSet(set) {
     return ['Set phải có id và ít nhất một item.'];
   }
 
+  validatePassages(set, errors);
+
   for (const item of set.items) {
     const type = questionTypeForItem(item);
     if (!item?.id || !SUPPORTED_QUESTION_TYPES.includes(type)) {
@@ -22,6 +24,7 @@ export function validateSet(set) {
     ids.add(item.id);
 
     validateItemByType(item, type, errors);
+    validateReadingItem(item, set, errors);
     validateTeachingFeedback(item, errors);
 
     if (item.stage !== undefined) {
@@ -77,6 +80,59 @@ function validateItemByType(item, type, errors) {
     }
     if (!sameMultiset(tokens, item.correctOrder)) errors.push(`Sentence Order ${item.id} có token không khớp đáp án`);
     if (item.displayOrder && !sameMultiset(item.displayOrder, item.correctOrder)) errors.push(`Sentence Order ${item.id} có displayOrder không khớp đáp án`);
+  }
+}
+
+function validatePassages(set, errors) {
+  if (set.passages === undefined) return;
+  if (!Array.isArray(set.passages) || set.passages.length === 0) {
+    errors.push('Reading set phải có ít nhất một passage.');
+    return;
+  }
+  const ids = new Set();
+  for (const passage of set.passages) {
+    if (!nonEmpty(passage?.id) || !nonEmpty(passage?.title) || !nonEmpty(passage?.text)) {
+      errors.push(`Passage không hợp lệ: ${passage?.id ?? '(không id)'}`);
+      continue;
+    }
+    if (ids.has(passage.id)) errors.push(`Passage id bị trùng: ${passage.id}`);
+    ids.add(passage.id);
+  }
+}
+
+function validateReadingItem(item, set, errors) {
+  if (item.passageId === undefined) return;
+  if (questionTypeForItem(item) !== 'mcq') {
+    errors.push(`Reading item ${item.id} phải dùng type mcq`);
+    return;
+  }
+  const passageIds = new Set((set.passages ?? []).map(passage => passage.id));
+  if (!passageIds.has(item.passageId)) errors.push(`Reading item ${item.id} trỏ passage không tồn tại: ${item.passageId}`);
+  if (!Array.isArray(item.choices) || item.choices.length !== 4) {
+    errors.push(`Reading item ${item.id} phải có đúng 4 choices diagnostic`);
+    return;
+  }
+
+  const quadrants = new Set();
+  for (const choice of item.choices) {
+    const diagnostic = choice?.diagnostic;
+    if (!diagnostic || typeof diagnostic.verdictCorrect !== 'boolean' || typeof diagnostic.reasonCorrect !== 'boolean') {
+      errors.push(`Reading choice ${item.id}/${choice?.id ?? '?'} thiếu diagnostic hợp lệ`);
+      continue;
+    }
+    quadrants.add(`${diagnostic.verdictCorrect}:${diagnostic.reasonCorrect}`);
+    const isFullyCorrect = diagnostic.verdictCorrect && diagnostic.reasonCorrect;
+    if (isFullyCorrect && choice.id !== item.correctChoiceId) {
+      errors.push(`Reading item ${item.id} có choice đúng cả verdict/reason nhưng không phải correctChoiceId`);
+    }
+    if (!isFullyCorrect && !nonEmpty(diagnostic.errorCode)) {
+      errors.push(`Reading choice ${item.id}/${choice.id} thiếu errorCode`);
+    }
+  }
+  if (quadrants.size !== 4) errors.push(`Reading item ${item.id} phải đủ 4 quadrant verdict × reason`);
+  const correct = item.choices.find(choice => choice.id === item.correctChoiceId);
+  if (!(correct?.diagnostic?.verdictCorrect && correct?.diagnostic?.reasonCorrect)) {
+    errors.push(`Reading item ${item.id} correctChoiceId phải đúng cả verdict và reason`);
   }
 }
 
