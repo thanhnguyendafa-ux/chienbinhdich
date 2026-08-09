@@ -82,3 +82,11 @@ test('app refreshes live Mastery before a new start but renders active sessions 
   assert.match(app, /applySessionMasterySnapshot\(currentLesson, session\)/);
   assert.match(app, /lesson_settings_unavailable/);
 });
+
+test('historical report rendering uses static content plus the session snapshot, not a live settings read', () => {
+  const helper = app.match(/async function loadSessionHistoricalLesson\(\)[\s\S]*?\n}\n/)?.[0] ?? '';
+  assert.match(helper, /loadLessonSet\(activeSetId\)/);
+  assert.match(helper, /applySessionMasterySnapshot/);
+  assert.doesNotMatch(helper, /readStudentLessonSetting|ensureSet/);
+  assert.match(app, /const lesson = await loadSessionHistoricalLesson\(\)/);
+});
