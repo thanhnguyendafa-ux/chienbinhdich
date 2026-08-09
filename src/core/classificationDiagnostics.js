@@ -11,7 +11,7 @@ const LABELS = Object.freeze({
 
 export function diagnoseClassification(item, response) {
   if (questionTypeForItem(item) !== 'classification') return null;
-  const submitted = normalizeResponse(response);
+  const submitted = normalizeResponse(response, item);
   const wrong = [];
   const byCode = {};
 
@@ -109,7 +109,27 @@ function classificationErrorCode(item, expectedGroupId, selectedGroupId) {
   return 'wrong_group';
 }
 
-function normalizeResponse(value) {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
-  return Object.fromEntries(Object.entries(value).map(([key, groupId]) => [String(key), String(groupId)]));
+function normalizeResponse(value, item) {
+  if (value && typeof value === 'object' && !Array.isArray(value)) {
+    return Object.fromEntries(Object.entries(value).map(([key, groupId]) => [String(key), String(groupId)]));
+  }
+  const display = String(value ?? '').trim();
+  if (!display) return {};
+  const groupByLabel = new Map((item?.groups ?? []).map(group => [String(group.label), String(group.id)]));
+  const tokenByText = new Map((item?.tokens ?? []).map(token => [String(token.text), String(token.id)]));
+  const response = {};
+  for (const segment of display.split(' | ')) {
+    const separator = segment.indexOf(':');
+    if (separator < 0) continue;
+    const label = segment.slice(0, separator).trim();
+    const groupId = groupByLabel.get(label);
+    if (!groupId) continue;
+    const values = segment.slice(separator + 1).trim();
+    if (!values || values === '—') continue;
+    for (const text of values.split(',').map(value => value.trim()).filter(Boolean)) {
+      const tokenId = tokenByText.get(text);
+      if (tokenId) response[tokenId] = groupId;
+    }
+  }
+  return response;
 }
