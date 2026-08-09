@@ -3,6 +3,7 @@ export const lessonFolders = Object.freeze([
   Object.freeze({ id: 'global5', name: 'Global Success 5', description: 'Kho bài luyện Global Success 5 được tổ chức theo từng Unit.', parentId: null, order: 2 }),
   Object.freeze({ id: 'global5-unit1', name: 'Unit 1 · All about me!', description: 'Bài luyện Global Success 5 Unit 1 · All about me!, tập trung từ vựng, mẫu câu, đọc hiểu và viết.', parentId: 'global5', order: 1 }),
   Object.freeze({ id: 'global5-unit2', name: 'Unit 2 · Our homes', description: 'Bài luyện Global Success 5 Unit 2 · Our homes, tập trung trọng âm, từ vựng và ngôn ngữ về nhà ở, địa chỉ và khoảng cách.', parentId: 'global5', order: 2 }),
+  Object.freeze({ id: 'global5-review', name: 'Global Success 5 Review', description: 'Kho ôn tập tổng hợp Global Success 5 theo kỹ năng, tái sử dụng ngôn ngữ từ nhiều Unit.', parentId: 'global5', order: 99 }),
   Object.freeze({ id: 'global7', name: 'Global Success 7', description: 'Kho bài luyện Global Success 7 được tổ chức theo từng Unit.', parentId: null, order: 3 }),
   Object.freeze({ id: 'global7-unit1', name: 'Unit 1 · Hobbies', description: 'Kho bài luyện Global Success 7 Unit 1 · Hobbies, tập trung dịch và sử dụng ngôn ngữ theo từng bước.', parentId: 'global7', order: 1 }),
   Object.freeze({ id: 'mrt-lessons', name: 'Bài học Thầy Thành MRT', description: 'Các bài luyện theo hệ tư duy ngữ pháp Mister Thành MRT.', parentId: null, order: 4 })
@@ -75,6 +76,20 @@ export const lessonRegistry = Object.freeze([
     ]),
     activityTypes: Object.freeze(['mcq', 'true_false', 'classification']), itemCount: 12,
     loadContent: () => import('./g5-u2-stress-vocab-01.js').then(module => module.global5Unit2StressVocab01Content)
+  }),
+  Object.freeze({
+    id: 'g5-review-main-idea-01', folderId: 'global5-review', order: 1, version: 1,
+    course: 'Global Success 5', unit: 'Review · Units 1–10', title: 'Main Idea 1 · Units 1–10',
+    subtitle: '15 passages · MCQ · Main Idea', lessonSlug: 'g5-review-main-idea-1', passThreshold: 80,
+    completionPolicy: 'all-items', teacher: 'Thầy Thành MRT',
+    description: '15 bài đọc ngắn tái sử dụng chủ đề và từ vựng Global Success 5 Units 1–10 để luyện xác định Main Idea: từ nhận diện ý bao quát, chống bẫy detail đến suy luận ý chính không xuất hiện nguyên văn.',
+    printGroups: Object.freeze([
+      Object.freeze({ id: 'foundation', title: 'A. FOUNDATION · FIND THE BIG IDEA', itemIds: Object.freeze(['g5-review-mi-q01', 'g5-review-mi-q02', 'g5-review-mi-q03', 'g5-review-mi-q04', 'g5-review-mi-q05']) }),
+      Object.freeze({ id: 'detail-traps', title: 'B. DETAIL TRAPS · TRUE BUT TOO NARROW', itemIds: Object.freeze(['g5-review-mi-q06', 'g5-review-mi-q07', 'g5-review-mi-q08', 'g5-review-mi-q09', 'g5-review-mi-q10']) }),
+      Object.freeze({ id: 'inference', title: 'C. INFERENCE · BUILD THE MAIN IDEA', itemIds: Object.freeze(['g5-review-mi-q11', 'g5-review-mi-q12', 'g5-review-mi-q13', 'g5-review-mi-q14', 'g5-review-mi-q15']) })
+    ]),
+    activityTypes: Object.freeze(['mcq']), itemCount: 15,
+    loadContent: () => import('./g5-review-main-idea-01.js').then(module => module.global5ReviewMainIdea01Content)
   }),
   Object.freeze({
     id: 'g7-u1-translation-01', folderId: 'global7-unit1', order: 1, version: 1,

@@ -23,10 +23,12 @@ function renderQuestion(item, index, compact, passage) {
   const orderDetails = type === 'sentence_order' ? renderSentenceOrderDetails(item, compact) : '';
   const classificationDetails = type === 'classification' ? renderClassificationDetails(item) : '';
   const feedback = item.teachingFeedback ?? {};
+  const stimulus = item.stimulus ?? null;
   return `
     <article class="admin-question-card ${compact ? 'is-compact' : ''}">
       <div class="admin-question-head"><strong>Câu ${index + 1}</strong><span>${esc(typeLabel(type))}</span></div>
       ${passage ? `<section class="admin-reading-passage"><strong>${esc(passage.title)}</strong><p>${esc(passage.text)}</p></section>` : ''}
+      ${stimulus ? `<section class="admin-reading-passage admin-question-stimulus"><strong>${esc(stimulus.title)}</strong><p>${esc(stimulus.text)}</p></section>` : ''}
       <p class="admin-question-prompt">${esc(questionPromptDisplay(item) || item.id)}</p>
       ${choices}
       ${orderDetails}

@@ -61,13 +61,20 @@ function bindTyping({ root, onSubmit, attemptStartedAt }) {
 function renderMcq(item, { exposureKey = item.id, passages = [] } = {}) {
   const choices = orderForExposure(item.choices ?? [], `${exposureKey}:mcq`);
   const passage = item.passageId ? passages.find(candidate => candidate.id === item.passageId) : null;
+  const stimulus = item.stimulus ?? null;
+  const readingBlock = passage ?? stimulus;
+  const promptLabel = passage
+    ? 'Chọn phương án có cả True/False và lý do đúng'
+    : stimulus
+      ? 'Đọc bài và chọn Main Idea phù hợp nhất'
+      : 'Chọn một đáp án';
   return `
-    ${passage ? renderReadingPassage(passage) : ''}
-    <div class="prompt-block mixed-prompt-block ${passage ? 'reading-question-prompt' : ''}">
-      <p class="prompt-label">${passage ? 'Chọn phương án có cả True/False và lý do đúng' : 'Chọn một đáp án'}</p>
+    ${readingBlock ? renderReadingPassage(readingBlock) : ''}
+    <div class="prompt-block mixed-prompt-block ${readingBlock ? 'reading-question-prompt' : ''}">
+      <p class="prompt-label">${esc(promptLabel)}</p>
       <h1>${esc(questionPromptDisplay(item))}</h1>
     </div>
-    <div class="choice-grid mcq-grid ${passage ? 'reading-choice-grid' : ''}" role="group" aria-label="Các lựa chọn">
+    <div class="choice-grid mcq-grid ${readingBlock ? 'reading-choice-grid' : ''}" role="group" aria-label="Các lựa chọn">
       ${choices.map((choice, index) => `<button class="choice-btn" type="button" data-choice-id="${escAttr(choice.id)}"><span>${String.fromCharCode(65 + index)}</span><strong>${esc(choice.text)}</strong></button>`).join('')}
     </div>`;
 }
