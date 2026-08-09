@@ -21,15 +21,19 @@ test('adaptive MCQ layout uses four-across, two-column, and stacked modes', () =
 });
 
 test('lesson print contract locks A4 portrait, 13pt learner text, white paper, and unsplit ordinary questions', () => {
-  assert.match(css, /@page lessonWorksheet\{size:A4 portrait;margin:10mm\}/);
+  assert.match(css, /@page lessonworksheet\{size:a4 portrait;margin:10mm\}/);
   assert.match(css, /\.lesson-print-paper\{[^}]*background:#fff[^}]*color:#000[^}]*font-size:13pt/s);
-  assert.match(css, /\.lesson-print-question\{[^}]*break-inside:avoid[^}]*page-break-inside:avoid/s);
+  assert.match(css, /\.lesson-print-question\{[^}]*break-inside:avoid/s);
   assert.match(css, /\.lesson-print-passage p\{[^}]*font-size:13pt/s);
   assert.match(css, /\.lesson-print-choices[^}]*font-size:13pt/s);
-  assert.match(css, /\.lesson-print-paper\{page:lessonWorksheet/s);
+  assert.match(css, /\.lesson-print-paper\{page:lessonworksheet/s);
 });
 
 test('worksheet page rule is named so it does not override the existing report print page margin', () => {
   assert.doesNotMatch(css, /^@page\{/);
-  assert.match(css, /@page lessonWorksheet/);
+  assert.match(css, /@page lessonworksheet/);
+});
+
+test('worksheet CSS avoids deprecated page-break-inside declarations', () => {
+  assert.doesNotMatch(css, /page-break-inside/);
 });
