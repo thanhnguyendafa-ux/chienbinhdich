@@ -5,24 +5,32 @@ Webapp Mastery cho học sinh, hỗ trợ Set Typing và Mixed Question. V1.6.0 
 ## Published library
 
 - `/` là thư viện bài tập, không còn tự mở một Set mặc định.
-- `/s/:setId` là stable student link của từng Set.
+- `/a/:lessonSlug` là fixed student link của từng Set.
 - Folder chỉ dùng để tổ chức thư viện; di chuyển Set giữa folder không làm đổi student link.
-- V1.6.0 có folder **Bài tập mẫu** chứa:
-  - `g7-u1-mixed-demo` — MCQ + True/False + Sentence Order.
-  - `g7-u1-s1` — Typing Việt → Anh.
-- Homepage chỉ đọc metadata nhẹ từ `lessonCatalog`; full question content vẫn lazy-load khi Set được mở.
-- `lessonCatalog` sở hữu metadata/folder/threshold/loader; dataset modules chỉ sở hữu `items`, tránh split SSOT.
+- Homepage/Admin chỉ đọc metadata nhẹ từ `lessonCatalog`; full question content vẫn lazy-load khi Set được mở.
+- `lessonCatalog` sở hữu published metadata và default Mastery; dataset modules chỉ sở hữu `items`, tránh split SSOT.
+- Mutable runtime lesson settings không được copy ngược vào Catalog; chúng nằm riêng trong Firestore `lessonSettings/{setId}`.
 
 ## Learning loop
 
-- Học sinh mở stable link → nhập tên → vào đúng Set.
+- Học sinh mở fixed link → nhập tên → vào đúng Set.
 - Mỗi prompt exposure chỉ attempt đầu tiên được quyền thay đổi Mastery.
 - Attempt đầu đúng: `+1` Mastery unit; attempt đầu sai: `-1` Mastery unit.
 - Attempt #2 trở đi trong cùng exposure là correction/neutral: `0` Mastery.
 - Mastery được replay tuần tự trong biên 0–100, không có hidden negative debt.
 - Item sai quay lại sau 2 prompt khác; retry là exposure mới và được chấm lại `+1/-1` ở attempt đầu.
-- `Mastery >= passThreshold` đạt chuẩn. Set hiện tại dùng 80%.
+- `Mastery >= passThresholdAtStart` đạt chuẩn, cùng với `completionPolicy` của Set nếu có.
 - Khi đạt chuẩn, học sinh có **Nộp bài** hoặc **Làm tiếp**. Làm tiếp giữ nguyên Mastery/Retry semantics và cuối cùng vẫn nộp để ra report.
+
+## Runtime Mastery policy
+
+- Default toàn hệ thống là **80%**; lesson có thể khai báo default riêng từ 1–100 trong Catalog.
+- Admin có thể đặt runtime override từ 1–100 hoặc reset về default mà không đổi fixed link.
+- Runtime override chỉ áp dụng cho session bắt đầu sau khi setting được lưu.
+- Khi học sinh bấm **Bắt đầu**, effective threshold được snapshot vào Session V7 dưới `passThresholdAtStart`.
+- Resume, qualification và report dùng snapshot; thay đổi Admin sau đó không dịch chuyển vạch đích của session đang làm hoặc lịch sử.
+- Session V7 cũ không có snapshot được resolve về 80%, vì trước runtime settings toàn bộ published lesson đều dùng 80%.
+- Nếu live `lessonSettings` không đọc được, app không âm thầm fallback sang default cho một lượt mới; phải retry để tránh dùng sai mốc PASS.
 
 ## Attempt evidence SSOT
 
@@ -46,12 +54,16 @@ Mobile target:
 ## Architecture guardrails
 
 - Không God Component: orchestration, domain, scheduler, repositories và feature UI tách riêng.
-- Không split SSOT: Attempt log là learning evidence SSOT; Catalog là published metadata SSOT.
+- Không split SSOT: Attempt log là learning evidence SSOT; Catalog là published metadata/default policy SSOT; Firestore lesson settings chỉ chứa mutable override.
+- `masteryPolicy` sở hữu default/validation/resolution; UI và repositories không tự diễn giải threshold.
+- `effectiveLessonService` compose static lesson + runtime setting và session snapshot; SessionMachine không phụ thuộc Firebase.
+- Student lesson-settings reader là read-only; Admin settings writer là repository riêng, không phình `adminRepository`.
+- Shared Admin Mastery editor chỉ emit Save/Reset callbacks và không chứa Firebase logic.
 - Question Type Registry sở hữu renderer/evaluator interaction; Session/Mastery/Retry dùng chung mọi question type.
 - Feature screens lazy-load bằng dynamic `import()`.
 - Lesson full content lazy-load qua `lessonRepository`.
-- Catalog validator khóa duplicate IDs, dangling folders, invalid threshold/itemCount và missing loaders.
-- Design tokens tập trung trong `:root`; component CSS không tự khai báo màu hex riêng.
+- Catalog/content validator dùng chung Mastery policy validation, không hard-code một threshold riêng.
+- Design tokens tập trung trong `:root`; component CSS ưu tiên semantic tokens.
 - CSP giữ `style-src 'self'`, không dùng `unsafe-inline`.
 
 ## Canonical CI
@@ -62,8 +74,21 @@ npm run ci
 
 Quality gate chạy syntax check, catalog/content validation và toàn bộ automated tests.
 
+## Firebase rules delivery
+
+Runtime Mastery settings yêu cầu production Firestore rules có `lessonSettings/{setId}` trước khi web code bắt đầu đọc collection này.
+
+Release chứa thay đổi Firestore contract phải theo thứ tự an toàn:
+
+1. `npm run ci` xanh cho code và rule-contract tests.
+2. Deploy `firestore.rules` vào project `chienbinhdich` bằng credential quản trị đã được cấu hình.
+3. Xác minh signed-in learner có thể `get` setting nhưng không write; Admin có thể save/reset.
+4. Sau đó mới merge/deploy web code lên Production.
+
+Không merge web code phụ thuộc rule mới khi chưa có đường deploy rules, vì Vercel không triển khai Firestore rules.
+
 ## Delivery contract
 
-Feature branch → PR → GitHub CI → Vercel Preview → smoke/audit → squash merge `main` → Vercel Production từ Git commit → post-deploy verification.
+Feature branch → Draft PR → GitHub CI → dependency/rules rollout gate → Ready PR → merge `main` → Vercel Production → post-deploy verification.
 
 Không dùng manual file upload như đường release bình thường.
