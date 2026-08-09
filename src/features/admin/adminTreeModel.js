@@ -78,7 +78,13 @@ export function lessonMatchesType(set, filter) {
   if (normalized === 'all') return true;
   const types = Array.isArray(set?.activityTypes) ? set.activityTypes : [];
   if (normalized === 'mix') return types.length > 1;
-  return types.length === 1 && ({ mcq: 'mcq', typing: 'typing', true_false: 'tf', sentence_order: 'order' })[types[0]] === normalized;
+  return types.length === 1 && ({
+    mcq: 'mcq',
+    typing: 'typing',
+    true_false: 'tf',
+    sentence_order: 'order',
+    classification: 'classify'
+  })[types[0]] === normalized;
 }
 
 export function rootFolderId() {

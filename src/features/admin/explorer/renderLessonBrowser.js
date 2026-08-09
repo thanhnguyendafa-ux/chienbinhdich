@@ -25,7 +25,7 @@ export function renderLessonBrowser({ tree, state, sets, preview, fixedUrlFor })
       <span>${query ? visibleSets.length : folderLessonCount(currentNode)} bài</span>
     </div>
     <div class="admin-filter-strip" aria-label="Lọc dạng bài">
-      ${[['all','Tất cả'],['mcq','MCQ'],['typing','Typing'],['tf','T/F'],['order','Sắp xếp'],['mix','Mix']].map(([value, label]) => `<button type="button" data-type-filter="${value}" class="${state.typeFilter === value ? 'is-active' : ''}">${label}</button>`).join('')}
+      ${[['all','Tất cả'],['mcq','MCQ'],['typing','Typing'],['tf','T/F'],['order','Sắp xếp'],['classify','Phân loại'],['mix','Mix']].map(([value, label]) => `<button type="button" data-type-filter="${value}" class="${state.typeFilter === value ? 'is-active' : ''}">${label}</button>`).join('')}
     </div>
     <div class="admin-lesson-workspace ${hasPreview ? `has-preview ${previewWidthClass(state.previewWidth)}` : 'no-preview'}" data-lesson-workspace>
       <div class="admin-file-list-wrap">

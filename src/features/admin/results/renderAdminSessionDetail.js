@@ -5,6 +5,10 @@ import {
   diagnoseSentenceOrder,
   sentenceOrderDiagnosticLabel
 } from '../../../core/sentenceOrderDiagnostics.js';
+import {
+  classificationAttemptSummary,
+  deriveClassificationDiagnostics
+} from '../../../core/classificationDiagnostics.js';
 import { adminTopbar, displayValue, esc, formatDate, formatDuration, statusLabel, typeLabel } from '../shared/adminUi.js';
 
 export function renderAdminSessionDetail({ root, session, attempts, set, onBack }) {
@@ -12,6 +16,7 @@ export function renderAdminSessionDetail({ root, session, attempts, set, onBack 
   const source = session.entryMode === 'fixed-link' ? session.accessSlug ?? 'Fixed link' : session.assignmentId ?? 'Legacy';
   const reading = deriveReadingDiagnostics({ ...session, attempts }, set);
   const writing = deriveSentenceOrderDiagnostics({ ...session, attempts }, set);
+  const classification = deriveClassificationDiagnostics({ ...session, attempts }, set);
   const itemById = new Map((set?.items ?? []).map(item => [item.id, item]));
 
   root.innerHTML = `
@@ -34,6 +39,7 @@ export function renderAdminSessionDetail({ root, session, attempts, set, onBack 
           <div><span>Sai kết luận + sai lý do</span><strong>${reading.wrongVerdictWrongReason}</strong></div>
         </section>` : ''}
         ${writing.total ? renderWritingSummary(writing) : ''}
+        ${classification.total ? renderClassificationSummary(classification) : ''}
         <section class="admin-question-list">
           ${attempts.map((attempt, index) => renderAttempt(attempt, index, itemById.get(attempt.itemId))).join('') || '<p class="admin-empty">Session chưa có attempt.</p>'}
         </section>
@@ -50,15 +56,26 @@ function renderWritingSummary(writing) {
   </section>`;
 }
 
+function renderClassificationSummary(classification) {
+  const errorCells = classification.errors.map(error => `<div><span>${esc(error.label)}</span><strong>${error.count}</strong></div>`).join('');
+  return `<section class="admin-result-grid" aria-label="Classification diagnostics">
+    <div><span>Phân loại · lần đầu</span><strong>${classification.correct}/${classification.total} đúng</strong></div>
+    <div><span>Token xếp nhầm</span><strong>${classification.tokenMistakes}</strong></div>
+    ${errorCells}
+  </section>`;
+}
+
 function renderAttempt(attempt, index, item) {
   const choice = selectedReadingChoice(item, attempt.submittedResponse);
   const readingDiagnostic = choice?.diagnostic;
   const writingDiagnostic = diagnoseSentenceOrder(item, attempt.submittedResponse);
+  const classificationSummary = classificationAttemptSummary(item, attempt.submittedResponse);
   return `<article class="admin-attempt ${attempt.correct ? 'is-correct' : 'is-wrong'}">
     <div><strong>#${index + 1} · ${esc(attempt.itemId)}</strong><span>${esc(typeLabel(attempt.questionType))}</span></div>
     <p>Trả lời: <code>${esc(displayValue(attempt.submittedAnswer ?? attempt.submittedResponse))}</code></p>
     ${readingDiagnostic ? `<p><strong>Reading:</strong> ${esc(readingDiagnosticLabel(readingDiagnostic))}</p>` : ''}
     ${writingDiagnostic && writingDiagnostic.code !== 'correct' ? `<p><strong>Writing:</strong> ${esc(sentenceOrderDiagnosticLabel(writingDiagnostic.code))}</p>` : ''}
+    ${classificationSummary ? `<p><strong>Phân loại:</strong> ${esc(classificationSummary)}</p>` : ''}
     <small>${attempt.correct ? '✓ Đúng' : '✗ Sai'} · ${formatDuration(attempt.responseDurationMs)} · ${formatDate(attempt.submittedAt)}</small>
   </article>`;
 }
