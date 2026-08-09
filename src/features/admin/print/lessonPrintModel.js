@@ -51,18 +51,15 @@ export function buildLessonPrintModel(lesson, options = {}) {
 }
 
 function resolveSectionSpecs(lesson, itemById) {
-  if (Array.isArray(lesson.printGroups) && lesson.printGroups.length) {
-    return lesson.printGroups.map(group => ({
-      title: String(group.title),
-      passage: null,
-      items: group.itemIds.map(id => itemById.get(String(id))).filter(Boolean)
-    }));
+  const passages = Array.isArray(lesson.passages) ? lesson.passages : [];
+  const printGroups = Array.isArray(lesson.printGroups) ? lesson.printGroups : [];
+  if (passages.length && printGroups.length) {
+    throw new Error('Reading lessons group by passage and cannot also define printGroups.');
   }
 
-  const passages = Array.isArray(lesson.passages) ? lesson.passages : [];
   if (passages.length) {
-    const output = passages.map(passage => ({
-      title: `READING · ${String(passage.title)}`,
+    const output = passages.map((passage, index) => ({
+      title: `READING ${index + 1}`,
       passage,
       items: lesson.items.filter(item => String(item.passageId ?? '') === String(passage.id))
     })).filter(section => section.items.length);
@@ -70,6 +67,14 @@ function resolveSectionSpecs(lesson, itemById) {
     const otherItems = lesson.items.filter(item => !readingIds.has(String(item.id)));
     if (otherItems.length) output.push({ title: 'EXERCISES', passage: null, items: otherItems });
     return output;
+  }
+
+  if (printGroups.length) {
+    return printGroups.map(group => ({
+      title: String(group.title),
+      passage: null,
+      items: group.itemIds.map(id => itemById.get(String(id))).filter(Boolean)
+    }));
   }
 
   return [{ title: 'EXERCISES', passage: null, items: lesson.items }];
