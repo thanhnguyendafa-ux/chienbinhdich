@@ -97,6 +97,13 @@ async function ensureSet({ refreshSettings = false } = {}) {
   return set;
 }
 
+async function loadSessionHistoricalLesson() {
+  if (!activeSetId || !session) throw new Error('Không có session đang hoạt động.');
+  const staticLesson = await loadLessonSet(activeSetId);
+  validateLesson(staticLesson);
+  return applySessionMasterySnapshot(applyLessonMasterySetting(staticLesson, null), session);
+}
+
 async function loadAdminEffectiveLesson(setId) {
   const settingsRepository = getAdminLessonSettingsRepository();
   const [staticLesson, setting] = await Promise.all([
@@ -292,8 +299,7 @@ async function finishAbandoned() {
 
 async function showReport() {
   if (!session) return showEntry();
-  const currentLesson = await ensureSet({ refreshSettings: !previewMode });
-  const lesson = applySessionMasterySnapshot(currentLesson, session);
+  const lesson = await loadSessionHistoricalLesson();
   try {
     const { renderReport } = await getScreen('report', 'Đang tổng hợp quá trình học...');
     renderReport({
@@ -302,7 +308,7 @@ async function showReport() {
       set: lesson,
       onRetry: async () => {
         renderLoading(root, 'Đang tạo lượt làm mới...');
-        const latestLesson = previewMode ? currentLesson : await ensureSet({ refreshSettings: true });
+        const latestLesson = await ensureSet({ refreshSettings: true });
         session = createCurrentSession(session.studentName, latestLesson);
         saveActiveSession();
         await showDrill();
@@ -311,6 +317,7 @@ async function showReport() {
         currentStudentName = session.studentName;
         session = null;
         if (previewMode) return navigateAdmin({ inspect: activeSetId });
+        set = null;
         await showEntry();
       }
     });
@@ -339,6 +346,7 @@ function renderReportError() {
     currentStudentName = session?.studentName ?? currentStudentName;
     session = null;
     if (previewMode) return navigateAdmin({ inspect: activeSetId });
+    set = null;
     await showEntry();
   });
 }
