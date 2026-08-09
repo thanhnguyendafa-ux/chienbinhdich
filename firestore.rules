@@ -15,23 +15,60 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/sessions/$(sessionId)).data.ownerUid == request.auth.uid;
     }
 
+    function validPassThreshold(value) {
+      return value is int && value >= 1 && value <= 100;
+    }
+
+    function validLessonSetting() {
+      return request.resource.data.keys().hasOnly(['passThreshold', 'updatedAt', 'updatedBy'])
+        && validPassThreshold(request.resource.data.passThreshold)
+        && request.resource.data.updatedAt is int
+        && request.resource.data.updatedBy == request.auth.uid;
+    }
+
     match /admins/{uid} {
       allow get: if signedIn() && request.auth.uid == uid;
       allow list, create, update, delete: if false;
     }
 
-    // Compatibility only: previously-issued random assignment links may still be opened,
-    // but the fixed-link architecture never creates or mutates assignment documents.
+    match /lessonSettings/{setId} {
+      allow get: if signedIn();
+      allow list: if isAdmin();
+      allow create, update: if isAdmin() && validLessonSetting();
+      allow delete: if isAdmin();
+    }
+
     match /assignments/{assignmentId} {
       allow get: if isAdmin() || (signedIn() && resource.data.active == true);
-      allow list, create, update, delete: if false;
+      allow list: if isAdmin();
+
+      allow create: if isAdmin()
+        && request.resource.data.id == assignmentId
+        && request.resource.data.code == assignmentId
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.active == true;
+
+      allow update: if isAdmin()
+        && request.resource.data.id == resource.data.id
+        && request.resource.data.code == resource.data.code
+        && request.resource.data.slug == resource.data.slug
+        && request.resource.data.setId == resource.data.setId
+        && request.resource.data.setVersion == resource.data.setVersion
+        && request.resource.data.createdBy == resource.data.createdBy
+        && request.resource.data.createdAt == resource.data.createdAt;
+
+      allow delete: if false;
     }
 
     match /sessions/{sessionId} {
       allow create: if signedIn()
         && request.resource.data.ownerUid == request.auth.uid
         && request.resource.data.id == sessionId
-        && request.resource.data.schemaVersion == 7;
+        && request.resource.data.schemaVersion == 7
+        && (
+          !('passThresholdAtStart' in request.resource.data)
+          || validPassThreshold(request.resource.data.passThresholdAtStart)
+        );
 
       allow read: if isAdmin() || (signedIn() && resource.data.ownerUid == request.auth.uid);
 
@@ -43,6 +80,14 @@ service cloud.firestore {
         && request.resource.data.setId == resource.data.setId
         && request.resource.data.setVersion == resource.data.setVersion
         && request.resource.data.startedAt == resource.data.startedAt
+        && (
+          (!('passThresholdAtStart' in request.resource.data) && !('passThresholdAtStart' in resource.data))
+          || (
+            'passThresholdAtStart' in request.resource.data
+            && 'passThresholdAtStart' in resource.data
+            && request.resource.data.passThresholdAtStart == resource.data.passThresholdAtStart
+          )
+        )
         && (
           (!('assignmentId' in request.resource.data) && !('assignmentId' in resource.data))
           || request.resource.data.assignmentId == resource.data.assignmentId

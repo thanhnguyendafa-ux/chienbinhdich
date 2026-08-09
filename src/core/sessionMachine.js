@@ -1,5 +1,6 @@
 import { evaluateQuestion, expectedResponseDisplay, questionTypeForItem } from './questionTypes.js';
 import { getMasteryCounts, getMasteryTransitions, masteryDisplayPercent, masteryPercentFromAttempts, masteryUnitPercent } from './masteryEngine.js';
+import { sessionPassThreshold } from './masteryPolicy.js';
 import { advanceLearningPrompt, queueRetry } from './retryScheduler.js';
 
 export const SESSION_SCHEMA_VERSION = 7;
@@ -14,6 +15,7 @@ export function createSession({ studentName, set, now = Date.now() }) {
     studentName: studentName.trim(),
     setId: set.id,
     setVersion: set.version ?? 1,
+    passThresholdAtStart: sessionPassThreshold(null, set),
     startedAt: now,
     completedAt: null,
     submittedAt: null,
@@ -117,7 +119,7 @@ export function submitAnswer({ session, set, response, answer, attemptMeta = {},
 export function qualifySessionIfEligible(session, set) {
   if (session?.status !== 'active') return session;
   if (!completionPolicySatisfied(session, set)) return session;
-  const threshold = Number(set?.passThreshold ?? 80);
+  const threshold = sessionPassThreshold(session, set);
   if (masteryPercentFromAttempts(session.attempts, set.items.length) < threshold) return session;
 
   return {
@@ -183,6 +185,7 @@ export function getSessionMetrics(session, set, now = Date.now()) {
     : [];
   const extendedPractice = Boolean(session.extendedPracticeStartedAt);
   const extraPracticeEnd = session.extendedPracticeEndedAt ?? session.submittedAt ?? (extendedPractice ? now : null);
+  const passThreshold = sessionPassThreshold(session, set);
 
   return {
     total: set.items.length,
@@ -197,7 +200,8 @@ export function getSessionMetrics(session, set, now = Date.now()) {
     mastery,
     masteryExact,
     masteryUnit: masteryUnitPercent(set.items.length),
-    thresholdReached: Boolean(qualifiedAt) || masteryExact >= set.passThreshold,
+    passThreshold,
+    thresholdReached: Boolean(qualifiedAt) || masteryExact >= passThreshold,
     qualifiedAt,
     masteryAtQualification: qualifiedAt ? masteryPercentFromAttempts(attemptsAtQualification, set.items.length) : null,
     extendedPractice,

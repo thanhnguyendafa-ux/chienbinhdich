@@ -11,9 +11,11 @@ import {
 } from '../../../core/classificationDiagnostics.js';
 import { adminTopbar, displayValue, esc, formatDate, formatDuration, statusLabel, typeLabel } from '../shared/adminUi.js';
 
-export function renderAdminSessionDetail({ root, session, attempts, set, onBack }) {
+export function renderAdminSessionDetail({ root, session, attempts, set, currentPassThreshold = null, onBack }) {
   const mastery = masteryDisplayPercent(attempts, set?.items?.length ?? set?.itemCount ?? 1);
   const source = session.entryMode === 'fixed-link' ? session.accessSlug ?? 'Fixed link' : session.assignmentId ?? 'Legacy';
+  const historicalTarget = Number(set?.passThreshold ?? 80);
+  const currentTarget = Number(currentPassThreshold ?? historicalTarget);
   const reading = deriveReadingDiagnostics({ ...session, attempts }, set);
   const writing = deriveSentenceOrderDiagnostics({ ...session, attempts }, set);
   const classification = deriveClassificationDiagnostics({ ...session, attempts }, set);
@@ -31,6 +33,7 @@ export function renderAdminSessionDetail({ root, session, attempts, set, onBack 
         <div class="admin-result-grid">
           <div><span>Nguồn</span><strong>${esc(source)}</strong></div><div><span>Set</span><strong>${esc(session.setId)}</strong></div>
           <div><span>Trạng thái</span><strong>${esc(statusLabel(session.status))}</strong></div><div><span>Tổng attempt</span><strong>${attempts.length}</strong></div>
+          <div><span>Target lúc bắt đầu</span><strong>${historicalTarget}%</strong></div><div><span>Target hiện tại</span><strong>${currentTarget}%</strong></div>
         </div>
         ${reading.total ? `<section class="admin-result-grid" aria-label="Reading diagnostics">
           <div><span>Đúng kết luận + lý do</span><strong>${reading.correctVerdictCorrectReason}</strong></div>

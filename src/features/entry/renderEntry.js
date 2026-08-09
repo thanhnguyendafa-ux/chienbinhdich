@@ -1,5 +1,8 @@
+import { sessionPassThreshold } from '../../core/masteryPolicy.js';
+
 export function renderEntry({ root, lastName, directSet = null, resumeSession, previewMode = false, onBack = null, onStart, onResume }) {
   const threshold = Number(directSet?.passThreshold ?? 80);
+  const resumeThreshold = resumeSession ? sessionPassThreshold(resumeSession, directSet) : null;
   const teacher = directSet?.teacher ?? 'Thầy Thành MRT';
   root.innerHTML = `
     <main class="page page-centered entry-page">
@@ -14,7 +17,7 @@ export function renderEntry({ root, lastName, directSet = null, resumeSession, p
           : '<p class="lead">Nhớ tiếng Anh từ đơn vị nhỏ, rồi tự xây lên câu hoàn chỉnh.</p>'}
         ${directSet ? '' : '<div class="learning-path" aria-label="Từ đến câu"><span>TỪ</span><i></i><span>CỤM TỪ</span><i></i><span>CÂU</span></div>'}
 
-        ${resumeSession ? `<button class="resume-card" id="resume-btn" type="button"><span>Tiếp tục bài đang làm</span><strong>${esc(resumeSession.studentName)}</strong></button>` : ''}
+        ${resumeSession ? `<button class="resume-card" id="resume-btn" type="button"><span>Tiếp tục bài đang làm</span><strong>${esc(resumeSession.studentName)}</strong><small>Mục tiêu lượt này: ${resumeThreshold}% Mastery</small></button>` : ''}
 
         <form id="name-form" class="entry-form">
           <label for="student-name">Tên của em</label>

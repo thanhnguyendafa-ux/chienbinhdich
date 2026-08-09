@@ -1,0 +1,48 @@
+name: Firestore Rules
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: firestore-rules-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  deploy-rules:
+    name: Deploy Firestore rules
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      FIREBASE_SERVICE_ACCOUNT_CHIENBINHDICH: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_CHIENBINHDICH }}
+      FIREBASE_PROJECT_ID: chienbinhdich
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Require Firebase deploy credential
+        shell: bash
+        run: |
+          if [ -z "$FIREBASE_SERVICE_ACCOUNT_CHIENBINHDICH" ]; then
+            echo 'Missing GitHub Actions secret FIREBASE_SERVICE_ACCOUNT_CHIENBINHDICH.' >&2
+            echo 'Deploy manually from Firebase Console or configure the secret before using this workflow.' >&2
+            exit 1
+          fi
+
+      - name: Materialize Firebase service account
+        shell: bash
+        run: |
+          credential_file="$RUNNER_TEMP/firebase-service-account.json"
+          printf '%s' "$FIREBASE_SERVICE_ACCOUNT_CHIENBINHDICH" > "$credential_file"
+          chmod 600 "$credential_file"
+          echo "GOOGLE_APPLICATION_CREDENTIALS=$credential_file" >> "$GITHUB_ENV"
+
+      - name: Deploy Firestore rules
+        run: npx --yes firebase-tools@15.24.0 deploy --only firestore:rules --project "$FIREBASE_PROJECT_ID" --non-interactive

@@ -2,8 +2,11 @@ import { validateSet } from './data/contentValidator.js';
 import { firebaseConfig } from './config/firebaseConfig.js';
 import { localSessionRepository as sessions } from './repositories/localSessionRepository.js';
 import { createFirebaseAdminRepository } from './repositories/adminRepository.js';
+import { createAdminLessonSettingsRepository } from './repositories/adminLessonSettingsRepository.js';
+import { createLessonSettingsReader } from './repositories/lessonSettingsReader.js';
 import { createLegacyAssignmentRepository } from './repositories/legacyAssignmentRepository.js';
 import { getSetDescriptor, getSetDescriptorBySlug, listFolders, listSetDescriptors, loadLessonSet } from './repositories/lessonRepository.js';
+import { applyLessonMasterySetting, applyLessonMasterySettings, applySessionMasterySnapshot } from './services/effectiveLessonService.js';
 import { abandonSession, continueQualifiedSession, createSession, qualifySessionIfEligible, submitAnswer, submitPassedSession } from './core/sessionMachine.js';
 import { resolveAccessRoute } from './core/accessRouting.js';
 import { buildFixedLessonUrl, buildLegacyAssignmentUrl } from './core/lessonLinks.js';
@@ -13,6 +16,8 @@ const route = resolveAccessRoute(window.location);
 const root = document.querySelector('#app');
 const moduleCache = new Map();
 let adminRepository = null;
+let adminLessonSettingsRepository = null;
+let lessonSettingsReader = null;
 let legacyAssignmentRepository = null;
 let currentStudentName = sessions.getLastStudentName();
 let session = ['lesson-link', 'legacy-assignment'].includes(route.kind) ? sessions.loadActive() : null;
@@ -44,6 +49,18 @@ function getAdminRepository() {
   return adminRepository;
 }
 
+function getAdminLessonSettingsRepository() {
+  if (!firebaseConfig.enabled) throw new Error('Firebase chưa được bật cho Chiến Binh Dịch.');
+  adminLessonSettingsRepository ??= createAdminLessonSettingsRepository(firebaseConfig.project);
+  return adminLessonSettingsRepository;
+}
+
+function getLessonSettingsReader() {
+  if (!firebaseConfig.enabled) return null;
+  lessonSettingsReader ??= createLessonSettingsReader(firebaseConfig.project);
+  return lessonSettingsReader;
+}
+
 function getLegacyAssignmentRepository() {
   if (!firebaseConfig.enabled) throw new Error('Firebase chưa được bật cho Chiến Binh Dịch.');
   legacyAssignmentRepository ??= createLegacyAssignmentRepository(firebaseConfig.project);
@@ -55,13 +72,52 @@ function setActiveSet(setId) {
   activeSetId = setId;
 }
 
-async function ensureSet() {
+async function readStudentLessonSetting(setId) {
+  const reader = getLessonSettingsReader();
+  if (!reader) return null;
+  try {
+    return await reader.getLessonSetting(setId);
+  } catch (cause) {
+    const error = new Error('Không tải được cấu hình Mastery hiện tại. Hãy thử lại để tránh dùng sai mốc PASS.');
+    error.code = 'lesson_settings_unavailable';
+    error.cause = cause;
+    throw error;
+  }
+}
+
+async function ensureSet({ refreshSettings = false } = {}) {
   if (!activeSetId) throw new Error('Không có Set đang hoạt động.');
-  if (set) return set;
-  set = await loadLessonSet(activeSetId);
-  const contentErrors = validateSet(set);
-  if (contentErrors.length) throw new Error(`Invalid lesson content: ${contentErrors.join('; ')}`);
+  if (set && !refreshSettings) return set;
+  const [staticLesson, setting] = await Promise.all([
+    loadLessonSet(activeSetId),
+    readStudentLessonSetting(activeSetId)
+  ]);
+  set = applyLessonMasterySetting(staticLesson, setting);
+  validateLesson(set);
   return set;
+}
+
+async function loadSessionHistoricalLesson() {
+  if (!activeSetId || !session) throw new Error('Không có session đang hoạt động.');
+  const staticLesson = await loadLessonSet(activeSetId);
+  validateLesson(staticLesson);
+  return applySessionMasterySnapshot(applyLessonMasterySetting(staticLesson, null), session);
+}
+
+async function loadAdminEffectiveLesson(setId) {
+  const settingsRepository = getAdminLessonSettingsRepository();
+  const [staticLesson, setting] = await Promise.all([
+    loadLessonSet(setId),
+    settingsRepository.getLessonSetting(setId)
+  ]);
+  const lesson = applyLessonMasterySetting(staticLesson, setting);
+  validateLesson(lesson);
+  return lesson;
+}
+
+function validateLesson(lesson) {
+  const contentErrors = validateSet(lesson);
+  if (contentErrors.length) throw new Error(`Invalid lesson content: ${contentErrors.join('; ')}`);
 }
 
 function canResumeCurrentSet() {
@@ -153,8 +209,9 @@ async function showEntry() {
     onBack: previewMode ? () => navigateAdmin({ inspect: activeSetId }) : null,
     onStart: async name => {
       currentStudentName = name;
-      renderLoading(root, 'Đang chuẩn bị bài luyện...');
-      session = createCurrentSession(name, lesson);
+      renderLoading(root, 'Đang xác nhận mốc Mastery mới nhất...');
+      const latestLesson = previewMode ? lesson : await ensureSet({ refreshSettings: true });
+      session = createCurrentSession(name, latestLesson);
       saveActiveSession();
       await showDrill();
     },
@@ -165,7 +222,8 @@ async function showEntry() {
 async function showDrill() {
   if (!session) return showEntry();
   if (!set) renderLoading(root, 'Đang tải bài luyện...');
-  const lesson = await ensureSet();
+  const currentLesson = await ensureSet();
+  const lesson = applySessionMasterySnapshot(currentLesson, session);
   const reconciled = qualifySessionIfEligible(session, lesson);
   if (reconciled !== session) {
     session = reconciled;
@@ -241,7 +299,7 @@ async function finishAbandoned() {
 
 async function showReport() {
   if (!session) return showEntry();
-  const lesson = await ensureSet();
+  const lesson = await loadSessionHistoricalLesson();
   try {
     const { renderReport } = await getScreen('report', 'Đang tổng hợp quá trình học...');
     renderReport({
@@ -250,7 +308,8 @@ async function showReport() {
       set: lesson,
       onRetry: async () => {
         renderLoading(root, 'Đang tạo lượt làm mới...');
-        session = createCurrentSession(session.studentName, lesson);
+        const latestLesson = await ensureSet({ refreshSettings: true });
+        session = createCurrentSession(session.studentName, latestLesson);
         saveActiveSession();
         await showDrill();
       },
@@ -258,6 +317,7 @@ async function showReport() {
         currentStudentName = session.studentName;
         session = null;
         if (previewMode) return navigateAdmin({ inspect: activeSetId });
+        set = null;
         await showEntry();
       }
     });
@@ -286,6 +346,7 @@ function renderReportError() {
     currentStudentName = session?.studentName ?? currentStudentName;
     session = null;
     if (previewMode) return navigateAdmin({ inspect: activeSetId });
+    set = null;
     await showEntry();
   });
 }
@@ -317,19 +378,25 @@ async function showAdmin() {
 
 async function showAdminDashboard() {
   const repository = getAdminRepository();
+  const settingsRepository = getAdminLessonSettingsRepository();
   renderLoading(root, 'Đang tải Dashboard...');
-  const remoteSessions = await repository.listSessions();
+  const [remoteSessions, lessonSettings] = await Promise.all([
+    repository.listSessions(),
+    settingsRepository.listLessonSettings()
+  ]);
   const { renderAdminDashboard } = await getScreen('admin', 'Đang mở Dashboard...');
-  const sets = listSetDescriptors();
+  const sets = applyLessonMasterySettings(listSetDescriptors(), lessonSettings);
   renderAdminDashboard({
     root,
     folders: listFolders(),
     sets,
     sessions: remoteSessions,
     fixedUrlFor: descriptor => buildFixedLessonUrl(window.location, descriptor),
-    loadLesson: loadLessonSet,
+    loadLesson: loadAdminEffectiveLesson,
     onInspect: setId => navigateAdmin({ inspect: setId }),
     onOpenSession: sessionId => navigateAdmin({ session: sessionId }),
+    onSaveMastery: (setId, value) => settingsRepository.savePassThreshold(setId, value),
+    onResetMastery: setId => settingsRepository.resetPassThreshold(setId),
     onRefresh: showAdminDashboard,
     onSignOut: async () => {
       await repository.signOutAdmin();
@@ -339,16 +406,18 @@ async function showAdminDashboard() {
 }
 
 async function showAdminInspector(setId) {
-  const lesson = await loadLessonSet(setId);
-  const contentErrors = validateSet(lesson);
-  if (contentErrors.length) throw new Error(`Invalid lesson content: ${contentErrors.join('; ')}`);
+  const settingsRepository = getAdminLessonSettingsRepository();
+  const lesson = await loadAdminEffectiveLesson(setId);
   const { renderLessonInspector } = await getScreen('admin', 'Đang tải nội dung bài...');
   renderLessonInspector({
     root,
     set: lesson,
     fixedUrl: buildFixedLessonUrl(window.location, lesson),
     onBack: () => navigateAdmin(),
-    onStudentPreview: () => navigateAdmin({ preview: setId })
+    onStudentPreview: () => navigateAdmin({ preview: setId }),
+    onSaveMastery: (id, value) => settingsRepository.savePassThreshold(id, value),
+    onResetMastery: id => settingsRepository.resetPassThreshold(id),
+    onRefresh: () => showAdminInspector(setId)
   });
 }
 
@@ -367,9 +436,16 @@ async function showAdminSession(sessionId) {
   const repository = getAdminRepository();
   renderLoading(root, 'Đang tải kết quả học sinh...');
   const detail = await repository.getSessionDetail(sessionId);
-  const lesson = await loadLessonSet(detail.session.setId);
+  const currentLesson = await loadAdminEffectiveLesson(detail.session.setId);
+  const sessionLesson = applySessionMasterySnapshot(currentLesson, detail.session);
   const { renderAdminSessionDetail } = await getScreen('admin', 'Đang mở kết quả...');
-  renderAdminSessionDetail({ root, ...detail, set: lesson, onBack: () => navigateAdmin() });
+  renderAdminSessionDetail({
+    root,
+    ...detail,
+    set: sessionLesson,
+    currentPassThreshold: currentLesson.passThreshold,
+    onBack: () => navigateAdmin()
+  });
 }
 
 function navigateAdmin(params = {}) {
@@ -402,8 +478,18 @@ async function bootstrap() {
 
 bootstrap().catch(showFatalError);
 
-function showFatalError(error) {
+async function showFatalError(error) {
   console.error(error);
+  if (error?.code === 'lesson_settings_unavailable') {
+    const { renderRetryableAccessError } = await getScreen('access', 'Đang chuẩn bị thử lại...');
+    return renderRetryableAccessError({
+      root,
+      title: 'Chưa tải được mốc Mastery',
+      message: error.message,
+      onRetry: bootstrap
+    });
+  }
+
   const code = error?.code;
   const accessProblem = ['lesson_not_found', 'assignment_not_found', 'assignment_closed', 'assignment_invalid'].includes(code);
   root.innerHTML = `<main class="loading-page"><section class="loading-panel error-panel"><div class="brand-lockup"><span class="brand-seal">MRT</span><span>Chiến Binh Dịch</span></div><h1>${accessProblem ? 'Không mở được bài được giao' : 'Không mở được trang'}</h1><p>${accessProblem ? escapeHtml(error.message) : 'Hãy tải lại trang. Nếu lỗi vẫn còn, báo cho Thầy Thành.'}</p></section></main>`;

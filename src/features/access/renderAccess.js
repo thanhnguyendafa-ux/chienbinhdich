@@ -24,6 +24,24 @@ export function renderAssignmentUnavailable({ root, title = 'Không mở đượ
     </main>`;
 }
 
+export function renderRetryableAccessError({ root, title = 'Chưa tải được bài tập', message, onRetry }) {
+  root.innerHTML = `
+    <main class="page page-centered access-page">
+      <section class="access-card">
+        <div class="brand-lockup centered"><span class="brand-seal">MRT</span><span>Chiến Binh Dịch</span></div>
+        <p class="eyebrow">LINK BÀI TẬP</p>
+        <h1>${esc(title)}</h1>
+        <p>${esc(message ?? 'Chưa tải được cấu hình bài tập. Hãy thử lại.')}</p>
+        <button class="primary-btn" id="access-retry-btn" type="button">Thử lại</button>
+      </section>
+    </main>`;
+  root.querySelector('#access-retry-btn')?.addEventListener('click', async event => {
+    event.currentTarget.disabled = true;
+    event.currentTarget.textContent = 'Đang thử lại...';
+    await onRetry?.();
+  });
+}
+
 export function renderFirebaseSetupGate({ root }) {
   root.innerHTML = `
     <main class="page page-centered access-page">

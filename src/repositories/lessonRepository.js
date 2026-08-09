@@ -1,4 +1,5 @@
 import { lessonFolders, lessonRegistry } from '../data/lessonCatalog.js';
+import { catalogPassThreshold } from '../core/masteryPolicy.js';
 import { normalizeLessonSlug } from '../core/lessonLinks.js';
 
 const cache = new Map();
@@ -65,6 +66,7 @@ function publicDescriptor(entry) {
   const { loadContent, ...descriptor } = entry;
   return {
     ...descriptor,
+    passThreshold: catalogPassThreshold(entry),
     activityTypes: [...descriptor.activityTypes]
   };
 }

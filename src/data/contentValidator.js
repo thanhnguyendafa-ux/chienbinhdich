@@ -1,4 +1,5 @@
 import { SUPPORTED_QUESTION_TYPES, questionTypeForItem } from '../core/questionTypes.js';
+import { validatePassThreshold } from '../core/masteryPolicy.js';
 
 const stageRank = Object.freeze({ word: 0, phrase: 1, sentence: 2 });
 
@@ -42,7 +43,9 @@ export function validateSet(set) {
     seen.add(item.id);
   }
 
-  if (set.passThreshold !== 80) errors.push('V1 yêu cầu passThreshold = 80.');
+  if (set.passThreshold !== undefined) {
+    errors.push(...validatePassThreshold(set.passThreshold, `Set ${set.id} passThreshold`));
+  }
   return errors;
 }
 
