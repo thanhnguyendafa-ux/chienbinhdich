@@ -56,7 +56,6 @@ export async function loadLessonSet(setId) {
     cache.set(setId, entry.loadContent().then(content => Object.freeze({
       ...publicDescriptor(entry),
       ...(Array.isArray(content.passages) ? { passages: content.passages } : {}),
-      ...(Array.isArray(content.printGroups) ? { printGroups: content.printGroups } : {}),
       items: content.items
     })));
   }
