@@ -78,17 +78,25 @@ Quality gate chạy syntax check, catalog/content validation và toàn bộ auto
 
 Runtime Mastery settings yêu cầu production Firestore rules có `lessonSettings/{setId}` trước khi web code bắt đầu đọc collection này.
 
+Repository có workflow `.github/workflows/firebase-rules.yml` để deploy rules trước web merge. Workflow pin `firebase-tools@15.24.0` và yêu cầu GitHub Actions secret:
+
+```text
+FIREBASE_SERVICE_ACCOUNT_CHIENBINHDICH
+```
+
+Secret phải chứa JSON service account của project `chienbinhdich` với quyền cần thiết để deploy Firestore security rules. Không commit service-account JSON vào repository.
+
 Release chứa thay đổi Firestore contract phải theo thứ tự an toàn:
 
 1. `npm run ci` xanh cho code và rule-contract tests.
-2. Deploy `firestore.rules` vào project `chienbinhdich` bằng credential quản trị đã được cấu hình.
+2. `Firestore Rules` workflow deploy `firestore.rules` thành công vào project `chienbinhdich`.
 3. Xác minh signed-in learner có thể `get` setting nhưng không write; Admin có thể save/reset.
 4. Sau đó mới merge/deploy web code lên Production.
 
-Không merge web code phụ thuộc rule mới khi chưa có đường deploy rules, vì Vercel không triển khai Firestore rules.
+Không merge web code phụ thuộc rule mới khi `Firestore Rules` gate chưa xanh, vì Vercel không triển khai Firestore rules.
 
 ## Delivery contract
 
-Feature branch → Draft PR → GitHub CI → dependency/rules rollout gate → Ready PR → merge `main` → Vercel Production → post-deploy verification.
+Feature branch → Draft PR → GitHub CI → Firestore Rules gate → Ready PR → merge `main` → Vercel Production → post-deploy verification.
 
 Không dùng manual file upload như đường release bình thường.
