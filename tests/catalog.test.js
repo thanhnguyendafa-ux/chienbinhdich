@@ -16,7 +16,7 @@ test('catalog exposes hierarchical Global 5, Global 7 and MRT folders with their
     'mrt-lessons'
   ]);
   assert.deepEqual(listSetsByFolder('samples').map(set => set.id), ['g7-u1-mixed-demo', 'g7-u1-s1']);
-  assert.deepEqual(listSetsByFolder('global5-unit1').map(set => set.id), ['g5-u1-vocab-01']);
+  assert.deepEqual(listSetsByFolder('global5-unit1').map(set => set.id), ['g5-u1-vocab-01', 'g5-u1-pattern-01']);
   assert.deepEqual(listSetsByFolder('global7-unit1').map(set => set.id), [
     'g7-u1-translation-01',
     'g7-u1-translation-02'
