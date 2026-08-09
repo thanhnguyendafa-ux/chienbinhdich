@@ -1,11 +1,6 @@
 name: Firestore Rules
 
 on:
-  pull_request:
-    paths:
-      - 'firestore.rules'
-      - 'firebase.json'
-      - '.github/workflows/firebase-rules.yml'
   workflow_dispatch:
 
 permissions:
@@ -17,7 +12,7 @@ concurrency:
 
 jobs:
   deploy-rules:
-    name: Deploy rules before web merge
+    name: Deploy Firestore rules
     runs-on: ubuntu-latest
     timeout-minutes: 5
     env:
@@ -37,7 +32,7 @@ jobs:
         run: |
           if [ -z "$FIREBASE_SERVICE_ACCOUNT_CHIENBINHDICH" ]; then
             echo 'Missing GitHub Actions secret FIREBASE_SERVICE_ACCOUNT_CHIENBINHDICH.' >&2
-            echo 'Do not merge web code that depends on new Firestore rules until this gate can deploy successfully.' >&2
+            echo 'Deploy manually from Firebase Console or configure the secret before using this workflow.' >&2
             exit 1
           fi
 
