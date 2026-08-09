@@ -15,9 +15,27 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/sessions/$(sessionId)).data.ownerUid == request.auth.uid;
     }
 
+    function validPassThreshold(value) {
+      return value is int && value >= 1 && value <= 100;
+    }
+
+    function validLessonSetting() {
+      return request.resource.data.keys().hasOnly(['passThreshold', 'updatedAt', 'updatedBy'])
+        && validPassThreshold(request.resource.data.passThreshold)
+        && request.resource.data.updatedAt is int
+        && request.resource.data.updatedBy == request.auth.uid;
+    }
+
     match /admins/{uid} {
       allow get: if signedIn() && request.auth.uid == uid;
       allow list, create, update, delete: if false;
+    }
+
+    match /lessonSettings/{setId} {
+      allow get: if signedIn();
+      allow list: if isAdmin();
+      allow create, update: if isAdmin() && validLessonSetting();
+      allow delete: if isAdmin();
     }
 
     // Compatibility only: previously-issued random assignment links may still be opened,
@@ -31,7 +49,11 @@ service cloud.firestore {
       allow create: if signedIn()
         && request.resource.data.ownerUid == request.auth.uid
         && request.resource.data.id == sessionId
-        && request.resource.data.schemaVersion == 7;
+        && request.resource.data.schemaVersion == 7
+        && (
+          !('passThresholdAtStart' in request.resource.data)
+          || validPassThreshold(request.resource.data.passThresholdAtStart)
+        );
 
       allow read: if isAdmin() || (signedIn() && resource.data.ownerUid == request.auth.uid);
 
@@ -43,6 +65,14 @@ service cloud.firestore {
         && request.resource.data.setId == resource.data.setId
         && request.resource.data.setVersion == resource.data.setVersion
         && request.resource.data.startedAt == resource.data.startedAt
+        && (
+          (!('passThresholdAtStart' in request.resource.data) && !('passThresholdAtStart' in resource.data))
+          || (
+            'passThresholdAtStart' in request.resource.data
+            && 'passThresholdAtStart' in resource.data
+            && request.resource.data.passThresholdAtStart == resource.data.passThresholdAtStart
+          )
+        )
         && (
           (!('assignmentId' in request.resource.data) && !('assignmentId' in resource.data))
           || request.resource.data.assignmentId == resource.data.assignmentId
