@@ -1,6 +1,6 @@
 /* Desktop-only enhancement for MCQ items that use the generic stimulus contract.
    Diagnostic Reading keeps .has-reading-passage and is intentionally excluded. */
-@media screen and (min-width:1100px) and (min-height:650px){
+@media screen and (min-width:1100px){
   .question-card.type-mcq:not(.has-reading-passage):has(.question-interaction>.reading-passage){
     width:min(1080px,100%);
     min-height:clamp(420px,62vh,560px);
@@ -77,5 +77,55 @@
   .question-card.type-mcq:not(.has-reading-passage):has(.question-interaction>.reading-passage) .reading-choice-grid .choice-btn strong{
     font-size:17px;
     line-height:1.42
+  }
+}
+
+/* Very short wide viewports keep the split layout but compact its vertical footprint. */
+@media screen and (min-width:1100px) and (max-height:500px){
+  .question-card.type-mcq:not(.has-reading-passage):has(.question-interaction>.reading-passage){
+    min-height:0;
+    padding:14px 20px 12px
+  }
+
+  .question-card.type-mcq:not(.has-reading-passage):has(.question-interaction>.reading-passage)>.question-interaction{
+    column-gap:18px;
+    row-gap:8px
+  }
+
+  .question-card.type-mcq:not(.has-reading-passage):has(.question-interaction>.reading-passage) .reading-passage-heading{
+    padding:7px 10px
+  }
+
+  .question-card.type-mcq:not(.has-reading-passage):has(.question-interaction>.reading-passage) .reading-passage-heading span{
+    font-size:10px
+  }
+
+  .question-card.type-mcq:not(.has-reading-passage):has(.question-interaction>.reading-passage) .reading-passage-heading strong{
+    font-size:13px
+  }
+
+  .question-card.type-mcq:not(.has-reading-passage):has(.question-interaction>.reading-passage) .reading-passage p{
+    padding:10px 12px;
+    font-size:15px;
+    line-height:1.5
+  }
+
+  .question-card.type-mcq:not(.has-reading-passage):has(.question-interaction>.reading-passage) .reading-question-prompt h1{
+    margin-bottom:6px;
+    font-size:24px
+  }
+
+  .question-card.type-mcq:not(.has-reading-passage):has(.question-interaction>.reading-passage) .reading-choice-grid{
+    gap:7px
+  }
+
+  .question-card.type-mcq:not(.has-reading-passage):has(.question-interaction>.reading-passage) .reading-choice-grid .choice-btn{
+    min-height:46px;
+    padding:7px 9px
+  }
+
+  .question-card.type-mcq:not(.has-reading-passage):has(.question-interaction>.reading-passage) .reading-choice-grid .choice-btn strong{
+    font-size:15px;
+    line-height:1.3
   }
 }
