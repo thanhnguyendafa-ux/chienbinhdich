@@ -38,11 +38,26 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    // Compatibility only: previously-issued random assignment links may still be opened,
-    // but the fixed-link architecture never creates or mutates assignment documents.
     match /assignments/{assignmentId} {
       allow get: if isAdmin() || (signedIn() && resource.data.active == true);
-      allow list, create, update, delete: if false;
+      allow list: if isAdmin();
+
+      allow create: if isAdmin()
+        && request.resource.data.id == assignmentId
+        && request.resource.data.code == assignmentId
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.active == true;
+
+      allow update: if isAdmin()
+        && request.resource.data.id == resource.data.id
+        && request.resource.data.code == resource.data.code
+        && request.resource.data.slug == resource.data.slug
+        && request.resource.data.setId == resource.data.setId
+        && request.resource.data.setVersion == resource.data.setVersion
+        && request.resource.data.createdBy == resource.data.createdBy
+        && request.resource.data.createdAt == resource.data.createdAt;
+
+      allow delete: if false;
     }
 
     match /sessions/{sessionId} {
