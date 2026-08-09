@@ -30,6 +30,13 @@ export function getQuestionContext(item) {
     ]);
   }
 
+  if (type === 'classification') {
+    return context([
+      row('Nội dung', prompt || 'Phân loại các mục vào đúng nhóm.'),
+      row('Yêu cầu', 'Phân loại mỗi từ hoặc cụm từ vào đúng nhóm.')
+    ]);
+  }
+
   const quoted = splitQuotedPrompt(prompt);
   if (quoted) {
     return context([
