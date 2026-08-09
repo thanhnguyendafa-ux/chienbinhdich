@@ -11,7 +11,9 @@ test('catalog exposes hierarchical Global 5, Global 7 and MRT folders with their
     'samples', 'global5', 'global5-unit1', 'global7', 'global7-unit1', 'mrt-lessons'
   ]);
   assert.deepEqual(listSetsByFolder('samples').map(set => set.id), ['g7-u1-mixed-demo', 'g7-u1-s1']);
-  assert.deepEqual(listSetsByFolder('global5-unit1').map(set => set.id), ['g5-u1-vocab-01', 'g5-u1-pattern-01', 'g5-u1-reading-01']);
+  assert.deepEqual(listSetsByFolder('global5-unit1').map(set => set.id), [
+    'g5-u1-vocab-01', 'g5-u1-pattern-01', 'g5-u1-reading-01', 'g5-u1-writing-01'
+  ]);
   assert.deepEqual(listSetsByFolder('global7-unit1').map(set => set.id), ['g7-u1-translation-01', 'g7-u1-translation-02']);
   assert.deepEqual(listSetsByFolder('mrt-lessons').map(set => set.id), ['mrt-g6-gan-aura-action-01', 'mrt-left-cut-right-01']);
 });
