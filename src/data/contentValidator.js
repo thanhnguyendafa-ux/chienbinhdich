@@ -74,6 +74,52 @@ function validateItemByType(item, type, errors) {
 
   if (type === 'sentence_order') {
     validateSentenceOrder(item, errors);
+    return;
+  }
+
+  if (type === 'classification') validateClassification(item, errors);
+}
+
+function validateClassification(item, errors) {
+  if (!nonEmpty(item.prompt) || !Array.isArray(item.groups) || item.groups.length < 2 || !Array.isArray(item.tokens) || item.tokens.length < 2) {
+    errors.push(`Classification không hợp lệ: ${item.id}`);
+    return;
+  }
+
+  const groupIds = new Set();
+  for (const group of item.groups) {
+    if (!nonEmpty(group?.id) || !nonEmpty(group?.label) || groupIds.has(group.id)) {
+      errors.push(`Classification ${item.id} có group không hợp lệ`);
+      continue;
+    }
+    groupIds.add(group.id);
+    if (group.helper !== undefined && !nonEmpty(group.helper)) errors.push(`Classification ${item.id} có helper group rỗng: ${group.id}`);
+  }
+
+  const tokenIds = new Set();
+  const tokenCountByGroup = new Map([...groupIds].map(groupId => [groupId, 0]));
+  for (const token of item.tokens) {
+    if (!nonEmpty(token?.id) || !nonEmpty(token?.text) || tokenIds.has(token.id)) {
+      errors.push(`Classification ${item.id} có token không hợp lệ`);
+      continue;
+    }
+    tokenIds.add(token.id);
+    if (!groupIds.has(token.correctGroupId)) {
+      errors.push(`Classification ${item.id}/${token.id} trỏ group không tồn tại: ${token.correctGroupId ?? '(trống)'}`);
+      continue;
+    }
+    tokenCountByGroup.set(token.correctGroupId, (tokenCountByGroup.get(token.correctGroupId) ?? 0) + 1);
+  }
+
+  for (const groupId of groupIds) {
+    if ((tokenCountByGroup.get(groupId) ?? 0) === 0) errors.push(`Classification ${item.id} có group không có token: ${groupId}`);
+  }
+
+  if (item.classificationKind !== undefined && !['stress', 'vocabulary', 'generic'].includes(item.classificationKind)) {
+    errors.push(`Classification ${item.id} có classificationKind không hợp lệ`);
+  }
+  if (item.classificationHint !== undefined && !nonEmpty(item.classificationHint)) {
+    errors.push(`Classification ${item.id} có classificationHint rỗng`);
   }
 }
 
