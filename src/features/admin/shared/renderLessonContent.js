@@ -21,6 +21,7 @@ function renderQuestion(item, index, compact, passage) {
     ? `<ul>${item.choices.map(choice => `<li>${esc(choice.text ?? choice.label ?? choice.id)}${choice.diagnostic && !compact ? ` <small>(${diagnosticLabel(choice.diagnostic)})</small>` : ''}</li>`).join('')}</ul>`
     : '';
   const orderDetails = type === 'sentence_order' ? renderSentenceOrderDetails(item, compact) : '';
+  const classificationDetails = type === 'classification' ? renderClassificationDetails(item) : '';
   const feedback = item.teachingFeedback ?? {};
   return `
     <article class="admin-question-card ${compact ? 'is-compact' : ''}">
@@ -29,6 +30,7 @@ function renderQuestion(item, index, compact, passage) {
       <p class="admin-question-prompt">${esc(questionPromptDisplay(item) || item.id)}</p>
       ${choices}
       ${orderDetails}
+      ${classificationDetails}
       <div class="admin-answer-box"><span>Đáp án chuẩn</span><strong>${esc(displayValue(answer))}</strong></div>
       ${feedback.reason ? `<p><strong>Giải thích:</strong> ${esc(feedback.reason)}</p>` : ''}
       ${feedback.theory && !compact ? `<p><strong>Lý thuyết:</strong> ${esc(feedback.theory)}</p>` : ''}
@@ -47,6 +49,17 @@ function renderSentenceOrderDetails(item, compact) {
       ${distractors.length && !compact
         ? `<ul>${distractors.map(value => `<li><strong>Nhiễu:</strong> <code>${esc(value.token)}</code> · ${esc(value.code)} — ${esc(value.hint)}</li>`).join('')}</ul>`
         : ''}
+    </div>`;
+}
+
+function renderClassificationDetails(item) {
+  return `
+    <div class="admin-order-details admin-classification-details">
+      <p><strong>Token pool:</strong> ${(item.tokens ?? []).map(token => `<code>${esc(token.text)}</code>`).join(' · ')}</p>
+      ${(item.groups ?? []).map(group => {
+        const tokens = (item.tokens ?? []).filter(token => token.correctGroupId === group.id).map(token => token.text);
+        return `<p><strong>${esc(group.label)}:</strong> ${tokens.map(token => `<code>${esc(token)}</code>`).join(' · ')}${group.helper ? ` <small>— ${esc(group.helper)}</small>` : ''}</p>`;
+      }).join('')}
     </div>`;
 }
 
