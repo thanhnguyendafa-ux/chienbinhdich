@@ -14,6 +14,7 @@ export function validateSet(set) {
   }
 
   validatePassages(set, errors);
+  validatePrintGroups(set, errors);
 
   for (const item of set.items) {
     const type = questionTypeForItem(item);
@@ -225,6 +226,37 @@ function validatePassages(set, errors) {
     }
     if (ids.has(passage.id)) errors.push(`Passage id bị trùng: ${passage.id}`);
     ids.add(passage.id);
+  }
+}
+
+function validatePrintGroups(set, errors) {
+  if (set.printGroups === undefined) return;
+  if (!Array.isArray(set.printGroups) || set.printGroups.length === 0) {
+    errors.push(`Set ${set.id} printGroups phải là mảng không rỗng.`);
+    return;
+  }
+
+  const validItemIds = new Set(set.items.map(item => String(item.id)));
+  const seenItemIds = new Set();
+  const seenGroupIds = new Set();
+  for (const [index, group] of set.printGroups.entries()) {
+    const groupId = String(group?.id ?? `group-${index + 1}`);
+    if (!nonEmpty(group?.title) || !Array.isArray(group?.itemIds) || group.itemIds.length === 0) {
+      errors.push(`Print group ${groupId} không hợp lệ.`);
+      continue;
+    }
+    if (seenGroupIds.has(groupId)) errors.push(`Print group id bị trùng: ${groupId}`);
+    seenGroupIds.add(groupId);
+    for (const itemIdValue of group.itemIds) {
+      const itemId = String(itemIdValue);
+      if (!validItemIds.has(itemId)) errors.push(`Print group ${groupId} trỏ item không tồn tại: ${itemId}`);
+      if (seenItemIds.has(itemId)) errors.push(`Print group dùng trùng item: ${itemId}`);
+      seenItemIds.add(itemId);
+    }
+  }
+
+  for (const itemId of validItemIds) {
+    if (!seenItemIds.has(itemId)) errors.push(`Print groups thiếu item: ${itemId}`);
   }
 }
 
