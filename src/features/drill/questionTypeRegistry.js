@@ -1,5 +1,11 @@
 import { orderForExposure } from '../../core/exposureOrder.js';
-import { questionPromptDisplay, questionTypeForItem, typingUiForItem } from '../../core/questionTypes.js';
+import {
+  questionPromptDisplay,
+  questionTypeForItem,
+  sentenceOrderHasUnusedTokens,
+  sentenceOrderMinimumLength,
+  typingUiForItem
+} from '../../core/questionTypes.js';
 
 const registry = Object.freeze({
   typing: { render: renderTyping, bind: bindTyping },
@@ -108,13 +114,15 @@ function bindTrueFalse({ root, onSubmit, attemptStartedAt }) {
 
 function renderSentenceOrder(item, { exposureKey = item.id } = {}) {
   const tokens = shuffledTokens(item, exposureKey);
+  const selectMode = sentenceOrderHasUnusedTokens(item);
   return `
     <div class="prompt-block mixed-prompt-block order-prompt">
-      <p class="prompt-label">Chạm vào các từ để tạo câu đúng</p>
+      <p class="prompt-label">${selectMode ? 'Chọn khối đúng rồi sắp xếp' : 'Chạm vào các từ để tạo câu đúng'}</p>
       <h1>${esc(questionPromptDisplay(item) || 'Sắp xếp thành câu đúng')}</h1>
+      ${selectMode ? '<p class="order-helper">Không nhất thiết phải dùng hết các khối. Hãy chọn đúng trước, rồi xếp đúng thứ tự.</p>' : ''}
     </div>
-    <div class="sentence-order" data-order-root>
-      <div class="token-bank" data-token-bank aria-label="Từ cho sẵn">
+    <div class="sentence-order ${selectMode ? 'select-order' : ''}" data-order-root>
+      <div class="token-bank" data-token-bank aria-label="Các khối cho sẵn">
         ${tokens.map(token => tokenButton(token, 'bank')).join('')}
       </div>
       <div class="order-answer-wrap">
@@ -125,15 +133,16 @@ function renderSentenceOrder(item, { exposureKey = item.id } = {}) {
     </div>`;
 }
 
-function bindSentenceOrder({ root, onSubmit, attemptStartedAt }) {
+function bindSentenceOrder({ root, item, onSubmit, attemptStartedAt }) {
   const bank = root.querySelector('[data-token-bank]');
   const zone = root.querySelector('[data-answer-zone]');
   const submit = root.querySelector('[data-order-submit]');
   const selected = [];
+  const minimumLength = sentenceOrderMinimumLength(item);
 
   const update = () => {
     if (zone) zone.innerHTML = selected.map(token => tokenButton(token, 'answer')).join('');
-    if (submit) submit.disabled = selected.length === 0;
+    if (submit) submit.disabled = selected.length < minimumLength;
     zone?.querySelectorAll('[data-token-key]').forEach(button => button.addEventListener('click', () => {
       const index = selected.findIndex(token => token.key === button.dataset.tokenKey);
       if (index < 0) return;
@@ -157,7 +166,7 @@ function bindSentenceOrder({ root, onSubmit, attemptStartedAt }) {
 
   bindBankButtons();
   submit?.addEventListener('click', () => {
-    if (!selected.length) return;
+    if (selected.length < minimumLength) return;
     submit.disabled = true;
     submit.textContent = 'Đang kiểm tra...';
     onSubmit({ response: selected.map(token => token.text), attemptMeta: meta(attemptStartedAt, 'tap', false) });

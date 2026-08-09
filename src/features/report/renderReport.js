@@ -4,6 +4,11 @@ import { questionPromptDisplay, questionTypeLabel } from '../../core/questionTyp
 import { deriveAttemptAnalytics } from '../../core/attemptAnalytics.js';
 import { deriveAssignmentSummary } from '../../core/assignmentSummary.js';
 import { deriveReadingDiagnostics } from '../../core/readingDiagnostics.js';
+import {
+  deriveSentenceOrderDiagnostics,
+  diagnoseSentenceOrder,
+  sentenceOrderDiagnosticLabel
+} from '../../core/sentenceOrderDiagnostics.js';
 import { formatClockTime, formatDateTime, formatDuration, formatResponseDuration, stageLabel } from '../../core/formatters.js';
 
 export function renderReport({ root, session, set, onRetry, onHome }) {
@@ -11,6 +16,7 @@ export function renderReport({ root, session, set, onRetry, onHome }) {
   const analytics = deriveAttemptAnalytics(session, set);
   const summary = deriveAssignmentSummary(session, set);
   const reading = deriveReadingDiagnostics(session, set);
+  const writing = deriveSentenceOrderDiagnostics(session, set);
   const transitions = getMasteryTransitions(session.attempts, set.items.length);
   const itemById = new Map(set.items.map(item => [item.id, item]));
   const submitted = session.status === 'submitted';
@@ -42,6 +48,8 @@ export function renderReport({ root, session, set, onRetry, onHome }) {
           ]
         ]) : ''}
 
+        ${writing.total ? renderWritingDiagnostics(writing) : ''}
+
         ${metricSection('Chi tiết quá trình học', [
           [['Tổng lượt trả lời', metrics.totalAttempts], ['Retrieval đúng', metrics.retrievalSuccesses], ['Retrieval sai', metrics.retrievalErrors]],
           [['Correction', metrics.corrections], ['Lượt gặp lại', metrics.retryCount], ['Đã hiện đáp án', metrics.revealedCount]],
@@ -57,7 +65,7 @@ export function renderReport({ root, session, set, onRetry, onHome }) {
         ${metricSection('Dấu hiệu quá trình', [[['Paste detected', analytics.pasteCount], ['Phản hồi rất nhanh', analytics.rapidCount], ['Trung vị phản hồi', formatResponseDuration(analytics.medianResponseMs)] ]])}
         ${renderOutcome({ submitted, abandoned, metrics, set })}
 
-        <section class="process-note"><strong>Lưu ý khi đọc dữ liệu</strong><p>Đúng/Sai ở phần đầu báo cáo được tính theo lần trả lời đầu tiên của từng câu trong chuỗi chính. Với bài Reading diagnostic, bốn nhóm phía trên cũng chỉ tính lần chọn đầu tiên; retry và correction không làm tăng số lỗi. Paste và phản hồi rất nhanh chỉ là dữ liệu quá trình, không tự động bị coi là gian lận.</p></section>
+        <section class="process-note"><strong>Lưu ý khi đọc dữ liệu</strong><p>Đúng/Sai ở phần đầu báo cáo được tính theo lần trả lời đầu tiên của từng câu trong chuỗi chính. Reading diagnostic và Writing Select + Order cũng chỉ tính lần đầu; retry và correction không làm tăng số lỗi. Paste và phản hồi rất nhanh chỉ là dữ liệu quá trình, không tự động bị coi là gian lận.</p></section>
 
         <section class="timeline-section">
           <div class="timeline-heading"><div><p class="report-kicker">ACTIVITY TIMELINE</p><h2>Lịch sử từng lần trả lời</h2></div><span>${session.attempts.length} lượt</span></div>
@@ -88,6 +96,16 @@ function renderAssignmentHero({ session, set, summary }) {
   </section>`;
 }
 
+function renderWritingDiagnostics(writing) {
+  const entries = [
+    ['Đúng ngay', writing.correct],
+    ...writing.errors.map(error => [error.label, error.count])
+  ];
+  const rows = [];
+  for (let index = 0; index < entries.length; index += 3) rows.push(entries.slice(index, index + 3));
+  return metricSection('Phân tích Writing · Select + Order · lần đầu', rows);
+}
+
 function keyResult(label, value, note, extraClass = '') { return `<div class="report-key-result ${extraClass}"><span>${esc(label)}</span><strong>${esc(value)}</strong><small>${esc(note)}</small></div>`; }
 function questionResult(label, value, note = '') { return `<div class="report-question-result"><span>${esc(label)}</span><strong>${esc(value)}</strong>${note ? `<small>${esc(note)}</small>` : ''}</div>`; }
 function statusLabel(status) { if (status === 'passed') return 'PASS ✓'; if (status === 'abandoned') return 'BỎ CUỘC'; return 'ĐANG LÀM'; }
@@ -104,9 +122,12 @@ function renderAttempt(attempt, item, impact) {
   const flags = (attempt.flags ?? []).map(flag => `<span class="attempt-flag">${flagLabel(flag)}</span>`).join('');
   const impactLabel = impact > 0 ? `+${formatPercent(impact)}%` : impact < 0 ? `−${formatPercent(Math.abs(impact))}%` : '0%';
   const typeLabel = item?.stage ? stageLabel(item.stage) : questionTypeLabel(attempt.questionType ?? item);
+  const writingDiagnostic = diagnoseSentenceOrder(item, attempt.submittedResponse);
   return `<li class="attempt-row"><div class="attempt-time"><strong>${formatClockTime(attempt.submittedAt)}</strong><span>${formatResponseDuration(attempt.responseDurationMs)}</span></div><div class="attempt-body">
     <div class="attempt-meta"><span>${esc(typeLabel)}</span><span>${promptKindLabel(attempt.promptKind)}</span><span>Lần ${attempt.attemptNumber}</span><strong class="attempt-status">${status}</strong><strong class="mastery-impact">Mastery ${impactLabel}</strong></div>
-    <p class="attempt-prompt">${esc(questionPromptDisplay(item) || attempt.itemId)}</p><div class="attempt-answer"><span>Trả lời:</span> <code>${esc(attempt.submittedAnswer || '(trống)')}</code></div>${flags ? `<div class="attempt-flags">${flags}</div>` : ''}</div></li>`;
+    <p class="attempt-prompt">${esc(questionPromptDisplay(item) || attempt.itemId)}</p><div class="attempt-answer"><span>Trả lời:</span> <code>${esc(attempt.submittedAnswer || '(trống)')}</code></div>
+    ${writingDiagnostic && writingDiagnostic.code !== 'correct' ? `<div class="attempt-flags"><span class="attempt-flag">WRITING · ${esc(sentenceOrderDiagnosticLabel(writingDiagnostic.code))}</span></div>` : ''}
+    ${flags ? `<div class="attempt-flags">${flags}</div>` : ''}</div></li>`;
 }
 
 function renderOutcome({ submitted, abandoned, metrics, set }) {

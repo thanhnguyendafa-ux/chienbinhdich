@@ -73,13 +73,92 @@ function validateItemByType(item, type, errors) {
   }
 
   if (type === 'sentence_order') {
-    const tokens = item.tokens ?? item.correctOrder;
-    if (!nonEmpty(item.prompt) || !Array.isArray(tokens) || !Array.isArray(item.correctOrder) || item.correctOrder.length < 2) {
-      errors.push(`Sentence Order không hợp lệ: ${item.id}`);
-      return;
+    validateSentenceOrder(item, errors);
+  }
+}
+
+function validateSentenceOrder(item, errors) {
+  const tokens = item.tokens ?? item.correctOrder;
+  if (!nonEmpty(item.prompt) || !Array.isArray(tokens) || !Array.isArray(item.correctOrder) || item.correctOrder.length < 2) {
+    errors.push(`Sentence Order không hợp lệ: ${item.id}`);
+    return;
+  }
+
+  const accepted = item.acceptedOrders === undefined ? [item.correctOrder] : item.acceptedOrders;
+  if (!Array.isArray(accepted) || accepted.length === 0) {
+    errors.push(`Sentence Order ${item.id} phải có ít nhất một acceptedOrder`);
+    return;
+  }
+
+  const acceptedKeys = new Set();
+  let canonicalFound = false;
+  for (const order of accepted) {
+    if (!Array.isArray(order) || order.length < 2 || order.some(token => !nonEmpty(String(token)))) {
+      errors.push(`Sentence Order ${item.id} có acceptedOrder không hợp lệ`);
+      continue;
     }
-    if (!sameMultiset(tokens, item.correctOrder)) errors.push(`Sentence Order ${item.id} có token không khớp đáp án`);
-    if (item.displayOrder && !sameMultiset(item.displayOrder, item.correctOrder)) errors.push(`Sentence Order ${item.id} có displayOrder không khớp đáp án`);
+    if (!isSubMultiset(order, tokens)) {
+      errors.push(`Sentence Order ${item.id} có acceptedOrder dùng token ngoài token pool`);
+    }
+    const key = sequenceKey(order);
+    if (acceptedKeys.has(key)) errors.push(`Sentence Order ${item.id} có acceptedOrder bị trùng`);
+    acceptedKeys.add(key);
+    if (sameSequence(order, item.correctOrder)) canonicalFound = true;
+  }
+
+  if (!canonicalFound) errors.push(`Sentence Order ${item.id} phải chứa correctOrder trong acceptedOrders`);
+  if (!isSubMultiset(item.correctOrder, tokens)) errors.push(`Sentence Order ${item.id} có correctOrder dùng token ngoài token pool`);
+  if (item.displayOrder && !sameMultiset(item.displayOrder, tokens)) {
+    errors.push(`Sentence Order ${item.id} có displayOrder không khớp token pool`);
+  }
+
+  validateOrderDiagnostics(item, tokens, accepted, errors);
+}
+
+function validateOrderDiagnostics(item, tokens, accepted, errors) {
+  if (item.orderDiagnostics === undefined) return;
+  const diagnostics = item.orderDiagnostics;
+  if (!diagnostics || typeof diagnostics !== 'object' || Array.isArray(diagnostics)) {
+    errors.push(`Sentence Order diagnostics không hợp lệ tại ${item.id}`);
+    return;
+  }
+
+  const distractors = diagnostics.distractors ?? [];
+  if (!Array.isArray(distractors)) {
+    errors.push(`Sentence Order ${item.id} distractors phải là mảng`);
+  } else {
+    const seenTokens = new Set();
+    for (const distractor of distractors) {
+      if (!nonEmpty(distractor?.token) || !nonEmpty(distractor?.code) || !nonEmpty(distractor?.hint)) {
+        errors.push(`Sentence Order ${item.id} có distractor diagnostic không hợp lệ`);
+        continue;
+      }
+      if (seenTokens.has(distractor.token)) errors.push(`Sentence Order ${item.id} có distractor trùng: ${distractor.token}`);
+      seenTokens.add(distractor.token);
+      if (!tokens.map(String).includes(String(distractor.token))) {
+        errors.push(`Sentence Order ${item.id} có distractor không nằm trong token pool: ${distractor.token}`);
+      }
+      if (accepted.some(order => order.map(String).includes(String(distractor.token)))) {
+        errors.push(`Sentence Order ${item.id} gắn distractor cho token thuộc acceptedOrder: ${distractor.token}`);
+      }
+    }
+  }
+
+  const rules = diagnostics.rules ?? [];
+  if (!Array.isArray(rules)) {
+    errors.push(`Sentence Order ${item.id} diagnostic rules phải là mảng`);
+    return;
+  }
+  for (const rule of rules) {
+    if (!nonEmpty(rule?.code) || !nonEmpty(rule?.hint) || !Array.isArray(rule?.all) || rule.all.length === 0) {
+      errors.push(`Sentence Order ${item.id} có diagnostic rule không hợp lệ`);
+      continue;
+    }
+    for (const token of [...rule.all, ...(rule.none ?? [])]) {
+      if (!tokens.map(String).includes(String(token))) {
+        errors.push(`Sentence Order ${item.id} diagnostic rule dùng token ngoài pool: ${token}`);
+      }
+    }
   }
 }
 
@@ -170,11 +249,32 @@ function validateWorkedExample(itemId, workedExample, errors) {
   if (!nonEmpty(workedExample.text)) errors.push(`Worked example ${itemId} thiếu text`);
 }
 
+function isSubMultiset(subset = [], superset = []) {
+  const counts = multisetCounts(superset);
+  for (const value of subset.map(String)) {
+    const available = counts.get(value) ?? 0;
+    if (available <= 0) return false;
+    counts.set(value, available - 1);
+  }
+  return true;
+}
+
 function sameMultiset(left = [], right = []) {
-  if (left.length !== right.length) return false;
-  const sortedLeft = left.map(String).sort();
-  const sortedRight = right.map(String).sort();
-  return sortedLeft.every((value, index) => value === sortedRight[index]);
+  return left.length === right.length && isSubMultiset(left, right);
+}
+
+function sameSequence(left = [], right = []) {
+  return left.length === right.length && left.every((value, index) => String(value) === String(right[index]));
+}
+
+function multisetCounts(values = []) {
+  const counts = new Map();
+  for (const value of values.map(String)) counts.set(value, (counts.get(value) ?? 0) + 1);
+  return counts;
+}
+
+function sequenceKey(order) {
+  return JSON.stringify(order.map(String));
 }
 
 function nonEmpty(value) {

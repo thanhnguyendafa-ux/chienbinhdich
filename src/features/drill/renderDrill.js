@@ -1,6 +1,7 @@
 import { getCurrentItem, getSessionMetrics } from '../../core/sessionMachine.js';
-import { questionTypeForItem, questionTypeLabel } from '../../core/questionTypes.js';
+import { acceptedSentenceOrderDisplays, questionTypeForItem, questionTypeLabel } from '../../core/questionTypes.js';
 import { readingFeedbackHint } from '../../core/readingDiagnostics.js';
+import { sentenceOrderFeedbackHint } from '../../core/sentenceOrderDiagnostics.js';
 import { stageLabel } from '../../core/formatters.js';
 import { animateMasteryProgress, formatMasteryPercent, renderMasteryProgress } from '../../ui/masteryProgress.js';
 import { bindQuestionInteraction, renderQuestionInteraction } from './questionTypeRegistry.js';
@@ -54,7 +55,9 @@ export function renderDrill({ root, session, set, feedback = null, onSubmit, onE
               ? 'Xem đáp án chuẩn rồi tự sửa lại. Correction trong cùng lượt không cộng hoặc trừ Mastery.'
               : item.passageId
                 ? 'Chọn phương án mà cả True/False và lý do đều khớp bài đọc.'
-                : 'Chỉ lần trả lời đầu tiên của mỗi lượt xuất hiện mới làm Mastery tăng hoặc giảm.'}</p>
+                : questionTypeForItem(item) === 'sentence_order' && item.orderDiagnostics
+                  ? 'Không nhất thiết phải dùng hết các khối. Chọn đúng thành phần và đúng thứ tự.'
+                  : 'Chỉ lần trả lời đầu tiên của mỗi lượt xuất hiện mới làm Mastery tăng hoặc giảm.'}</p>
         </article>
       </section>
 
@@ -165,6 +168,7 @@ function renderFeedback(feedback, item) {
       ? 'Mastery đang ở sàn 0%'
       : 'Mastery không đổi';
   const readingHint = readingFeedbackHint(item, feedback.entered);
+  const writingHint = sentenceOrderFeedbackHint(item, feedback.entered);
 
   if (feedback.type === 'incorrect_reveal') {
     return `
@@ -183,23 +187,31 @@ function renderFeedback(feedback, item) {
       ${item?.teachingFeedback ? renderQuestionContext(item) : ''}
       <p>${item?.teachingFeedback ? learnerResponseLabel(item) : 'Câu trả lời vừa chọn/làm'}: <q>${esc(feedback.entered || '(trống)')}</q></p>
       ${readingHint ? `<p class="reading-diagnostic-hint"><strong>Gợi ý đọc:</strong> ${esc(readingHint)}</p>` : ''}
+      ${writingHint ? `<p class="writing-diagnostic-hint"><strong>Gợi ý viết:</strong> ${esc(writingHint)}</p>` : ''}
       <p>Đáp án đúng chưa được hiện. Hãy đọc lại câu hỏi và thử lại bằng trí nhớ của con.</p>
     </div>`;
 }
 
 function renderTeachingFeedback({ item = null, entered, answer, teachingFeedback, includeContinue = false }) {
-  const conceptLine = sameText(answer, teachingFeedback.correctLabel)
+  const sentenceOrder = questionTypeForItem(item) === 'sentence_order';
+  const acceptedDisplays = sentenceOrder ? acceptedSentenceOrderDisplays(item) : [];
+  const alternatives = acceptedDisplays.filter(candidate => !sameText(candidate, answer));
+  const conceptLine = sentenceOrder || sameText(answer, teachingFeedback.correctLabel)
     ? ''
     : `<div class="teaching-row"><span>Loại đúng</span><strong>${esc(teachingFeedback.correctLabel)}</strong></div>`;
   const workedExample = teachingFeedback.workedExample;
   const workedLine = workedExample
     ? `<div class="teaching-copy teaching-worked"><span>${esc(workedExample.label)}</span><p>${esc(workedExample.text)}</p></div>`
     : '';
+  const alternativesLine = alternatives.length
+    ? `<div class="teaching-copy teaching-alternatives"><span>Cách đúng khác</span><p>${alternatives.map(esc).join(' · ')}</p></div>`
+    : '';
   return `
     <section class="teaching-feedback" aria-label="Giải thích đáp án">
       ${item ? renderQuestionContext(item) : ''}
       <div class="teaching-row"><span>${esc(learnerResponseLabel(item))}</span><strong>${esc(entered || '(trống)')}</strong></div>
-      <div class="teaching-row"><span>Đáp án đúng là</span><strong>${esc(answer)}</strong></div>
+      <div class="teaching-row"><span>${sentenceOrder ? 'Câu chuẩn' : 'Đáp án đúng là'}</span><strong>${esc(answer)}</strong></div>
+      ${alternativesLine}
       ${conceptLine}
       <div class="teaching-copy"><span>Vì</span><p>${esc(teachingFeedback.reason)}</p></div>
       <div class="teaching-copy"><span>Lý thuyết</span><p>${esc(teachingFeedback.theory)}</p></div>
@@ -223,7 +235,10 @@ function renderQuestionContext(item) {
 }
 
 function learnerResponseLabel(item) {
-  return questionTypeForItem(item) === 'typing' ? 'Con gõ' : 'Con chọn';
+  const type = questionTypeForItem(item);
+  if (type === 'typing') return 'Con gõ';
+  if (type === 'sentence_order') return 'Câu của con';
+  return 'Con chọn';
 }
 
 function sameText(left, right) {
