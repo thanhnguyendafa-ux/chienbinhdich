@@ -51,16 +51,26 @@ function bindTyping({ root, onSubmit, attemptStartedAt }) {
   return () => focusInput(input);
 }
 
-function renderMcq(item, { exposureKey = item.id } = {}) {
+function renderMcq(item, { exposureKey = item.id, passages = [] } = {}) {
   const choices = orderForExposure(item.choices ?? [], `${exposureKey}:mcq`);
+  const passage = item.passageId ? passages.find(candidate => candidate.id === item.passageId) : null;
   return `
-    <div class="prompt-block mixed-prompt-block">
-      <p class="prompt-label">Chọn một đáp án</p>
+    ${passage ? renderReadingPassage(passage) : ''}
+    <div class="prompt-block mixed-prompt-block ${passage ? 'reading-question-prompt' : ''}">
+      <p class="prompt-label">${passage ? 'Chọn phương án có cả True/False và lý do đúng' : 'Chọn một đáp án'}</p>
       <h1>${esc(questionPromptDisplay(item))}</h1>
     </div>
-    <div class="choice-grid mcq-grid" role="group" aria-label="Các lựa chọn">
+    <div class="choice-grid mcq-grid ${passage ? 'reading-choice-grid' : ''}" role="group" aria-label="Các lựa chọn">
       ${choices.map((choice, index) => `<button class="choice-btn" type="button" data-choice-id="${escAttr(choice.id)}"><span>${String.fromCharCode(65 + index)}</span><strong>${esc(choice.text)}</strong></button>`).join('')}
     </div>`;
+}
+
+function renderReadingPassage(passage) {
+  return `
+    <section class="reading-passage" aria-label="Bài đọc ${escAttr(passage.title)}">
+      <div class="reading-passage-heading"><span>READING</span><strong>${esc(passage.title)}</strong></div>
+      <p>${esc(passage.text)}</p>
+    </section>`;
 }
 
 function bindMcq({ root, onSubmit, attemptStartedAt }) {

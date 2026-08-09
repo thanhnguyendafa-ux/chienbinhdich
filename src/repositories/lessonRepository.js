@@ -54,6 +54,7 @@ export async function loadLessonSet(setId) {
   if (!cache.has(setId)) {
     cache.set(setId, entry.loadContent().then(content => Object.freeze({
       ...publicDescriptor(entry),
+      ...(Array.isArray(content.passages) ? { passages: content.passages } : {}),
       items: content.items
     })));
   }
