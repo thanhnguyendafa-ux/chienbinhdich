@@ -97,6 +97,24 @@ export const lessonRegistry = Object.freeze([
     loadContent: () => import('./g5-u1-vocab-01.js').then(module => module.global5Unit1Vocab01Content)
   }),
   Object.freeze({
+    id: 'g5-u1-pattern-01',
+    folderId: 'global5-unit1',
+    order: 2,
+    version: 1,
+    course: 'Global Success 5',
+    unit: 'Unit 1 · All about me!',
+    title: 'Bài tập mẫu câu 1',
+    subtitle: 'MCQ · True/False · Giải thích tiếng Việt',
+    lessonSlug: 'g5u1-mau-cau-1',
+    passThreshold: 80,
+    completionPolicy: 'all-items',
+    teacher: 'Thầy Thành MRT',
+    description: '17 câu Sentence Patterns Unit 1 gồm 12 MCQ và 5 True/False. Bài kiểm tra nhận diện pattern, đối chiếu câu hỏi–câu trả lời và sử dụng mẫu câu trong ngữ cảnh, với giải thích tiếng Việt cho từng câu.',
+    activityTypes: Object.freeze(['mcq', 'true_false']),
+    itemCount: 17,
+    loadContent: () => import('./g5-u1-pattern-01.js').then(module => module.global5Unit1Pattern01Content)
+  }),
+  Object.freeze({
     id: 'g7-u1-translation-01',
     folderId: 'global7-unit1',
     order: 1,
