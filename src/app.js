@@ -478,10 +478,20 @@ async function bootstrap() {
 
 bootstrap().catch(showFatalError);
 
-function showFatalError(error) {
+async function showFatalError(error) {
   console.error(error);
+  if (error?.code === 'lesson_settings_unavailable') {
+    const { renderRetryableAccessError } = await getScreen('access', 'Đang chuẩn bị thử lại...');
+    return renderRetryableAccessError({
+      root,
+      title: 'Chưa tải được mốc Mastery',
+      message: error.message,
+      onRetry: bootstrap
+    });
+  }
+
   const code = error?.code;
-  const accessProblem = ['lesson_not_found', 'assignment_not_found', 'assignment_closed', 'assignment_invalid', 'lesson_settings_unavailable'].includes(code);
+  const accessProblem = ['lesson_not_found', 'assignment_not_found', 'assignment_closed', 'assignment_invalid'].includes(code);
   root.innerHTML = `<main class="loading-page"><section class="loading-panel error-panel"><div class="brand-lockup"><span class="brand-seal">MRT</span><span>Chiến Binh Dịch</span></div><h1>${accessProblem ? 'Không mở được bài được giao' : 'Không mở được trang'}</h1><p>${accessProblem ? escapeHtml(error.message) : 'Hãy tải lại trang. Nếu lỗi vẫn còn, báo cho Thầy Thành.'}</p></section></main>`;
 }
 
