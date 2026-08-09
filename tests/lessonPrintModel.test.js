@@ -9,12 +9,13 @@ function questions(model) {
 }
 
 test('student print model supports all five question types without answer metadata', async () => {
-  const [mixed, writing, unit2] = await Promise.all([
+  const [mixed, typing, writing, unit2] = await Promise.all([
     loadLessonSet('g7-u1-mixed-demo'),
+    loadLessonSet('g7-u1-s1'),
     loadLessonSet('g5-u1-writing-01'),
     loadLessonSet('g5-u2-stress-vocab-01')
   ]);
-  const models = [mixed, writing, unit2].map(lesson => buildLessonPrintModel(lesson, { version: 'student' }));
+  const models = [mixed, typing, writing, unit2].map(lesson => buildLessonPrintModel(lesson, { version: 'student' }));
   const types = new Set(models.flatMap(model => questions(model).map(question => question.type)));
   assert.deepEqual([...types].sort(), ['classification', 'mcq', 'sentence_order', 'true_false', 'typing']);
 
