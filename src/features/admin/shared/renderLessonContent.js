@@ -1,4 +1,9 @@
-import { expectedResponseDisplay, questionPromptDisplay, questionTypeForItem } from '../../../core/questionTypes.js';
+import {
+  acceptedSentenceOrderDisplays,
+  expectedResponseDisplay,
+  questionPromptDisplay,
+  questionTypeForItem
+} from '../../../core/questionTypes.js';
 import { displayValue, esc, typeLabel } from './adminUi.js';
 
 export function renderLessonContent(set, { compact = false } = {}) {
@@ -15,6 +20,7 @@ function renderQuestion(item, index, compact, passage) {
   const choices = Array.isArray(item.choices)
     ? `<ul>${item.choices.map(choice => `<li>${esc(choice.text ?? choice.label ?? choice.id)}${choice.diagnostic && !compact ? ` <small>(${diagnosticLabel(choice.diagnostic)})</small>` : ''}</li>`).join('')}</ul>`
     : '';
+  const orderDetails = type === 'sentence_order' ? renderSentenceOrderDetails(item, compact) : '';
   const feedback = item.teachingFeedback ?? {};
   return `
     <article class="admin-question-card ${compact ? 'is-compact' : ''}">
@@ -22,11 +28,26 @@ function renderQuestion(item, index, compact, passage) {
       ${passage ? `<section class="admin-reading-passage"><strong>${esc(passage.title)}</strong><p>${esc(passage.text)}</p></section>` : ''}
       <p class="admin-question-prompt">${esc(questionPromptDisplay(item) || item.id)}</p>
       ${choices}
-      <div class="admin-answer-box"><span>Đáp án</span><strong>${esc(displayValue(answer))}</strong></div>
+      ${orderDetails}
+      <div class="admin-answer-box"><span>Đáp án chuẩn</span><strong>${esc(displayValue(answer))}</strong></div>
       ${feedback.reason ? `<p><strong>Giải thích:</strong> ${esc(feedback.reason)}</p>` : ''}
       ${feedback.theory && !compact ? `<p><strong>Lý thuyết:</strong> ${esc(feedback.theory)}</p>` : ''}
       ${feedback.example && !compact ? `<p><strong>Ví dụ:</strong> ${esc(feedback.example)}</p>` : ''}
     </article>`;
+}
+
+function renderSentenceOrderDetails(item, compact) {
+  const tokens = item.tokens ?? item.correctOrder ?? [];
+  const accepted = acceptedSentenceOrderDisplays(item);
+  const distractors = item.orderDiagnostics?.distractors ?? [];
+  return `
+    <div class="admin-order-details">
+      <p><strong>Token pool:</strong> ${tokens.map(token => `<code>${esc(token)}</code>`).join(' · ')}</p>
+      ${accepted.length > 1 ? `<p><strong>Các cách đúng:</strong> ${accepted.map(value => `<code>${esc(value)}</code>`).join(' · ')}</p>` : ''}
+      ${distractors.length && !compact
+        ? `<ul>${distractors.map(value => `<li><strong>Nhiễu:</strong> <code>${esc(value.token)}</code> · ${esc(value.code)} — ${esc(value.hint)}</li>`).join('')}</ul>`
+        : ''}
+    </div>`;
 }
 
 function diagnosticLabel(diagnostic) {
