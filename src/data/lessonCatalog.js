@@ -103,7 +103,7 @@ export const lessonRegistry = Object.freeze([
   Object.freeze({
     id: 'g7-u1-translation-02', folderId: 'global7-unit1', order: 2, version: 1,
     course: 'Global Success 7', unit: 'Unit 1 · Hobbies', title: 'Bài tập dịch 2',
-    subtitle: '23 clause độc lập từ bài Reading Unit 1. Mỗi câu có một bản dịch chính xác, ba bẫy nghĩa gần đúng và giải thích theo từng chunk cho học sinh.', lessonSlug: 'g7u1-dich2-mcq', passThreshold: 80,
+    subtitle: 'MCQ · Việt → Anh · Reading clauses', lessonSlug: 'g7u1-dich2-mcq', passThreshold: 80,
     teacher: 'Thầy Thành MRT',
     description: '23 clause độc lập từ bài Reading Unit 1. Mỗi câu có một bản dịch chính xác, ba bẫy nghĩa gần đúng và giải thích theo từng chunk cho học sinh.',
     activityTypes: Object.freeze(['mcq']), itemCount: 23,
