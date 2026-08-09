@@ -37,6 +37,45 @@ export function expectedResponseDisplay(item) {
   return '';
 }
 
+export function acceptedSentenceOrders(item) {
+  const canonical = normalizeOrder(item?.correctOrder);
+  const raw = Array.isArray(item?.acceptedOrders) && item.acceptedOrders.length
+    ? item.acceptedOrders
+    : [canonical];
+  const output = [];
+  const seen = new Set();
+
+  for (const candidate of raw) {
+    const normalized = normalizeOrder(candidate);
+    if (!normalized.length) continue;
+    const key = sequenceKey(normalized);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    output.push(normalized);
+  }
+
+  if (canonical.length) {
+    const canonicalKey = sequenceKey(canonical);
+    if (!seen.has(canonicalKey)) output.unshift(canonical);
+  }
+  return output;
+}
+
+export function acceptedSentenceOrderDisplays(item) {
+  return acceptedSentenceOrders(item).map(order => order.join(' '));
+}
+
+export function sentenceOrderMinimumLength(item) {
+  const lengths = acceptedSentenceOrders(item).map(order => order.length).filter(length => length > 0);
+  return lengths.length ? Math.min(...lengths) : 1;
+}
+
+export function sentenceOrderHasUnusedTokens(item) {
+  const tokens = normalizeOrder(item?.tokens ?? item?.correctOrder);
+  if (!tokens.length) return false;
+  return acceptedSentenceOrders(item).every(order => !sameMultiset(tokens, order));
+}
+
 export function questionPromptDisplay(item) {
   const type = questionTypeForItem(item);
   if (type === 'typing') return String(item.vi ?? '');
@@ -98,12 +137,31 @@ function evaluateTrueFalse(item, response) {
 }
 
 function evaluateSentenceOrder(item, response) {
-  const normalized = Array.isArray(response) ? response.map(token => String(token)) : [];
-  const expected = (item.correctOrder ?? []).map(token => String(token));
-  const correct = normalized.length === expected.length && normalized.every((token, index) => token === expected[index]);
+  const normalized = normalizeOrder(response);
+  const accepted = acceptedSentenceOrders(item);
+  const correct = accepted.some(expected => sameSequence(normalized, expected));
   return {
     correct,
     normalizedResponse: normalized,
     displayResponse: normalized.join(' ')
   };
+}
+
+function normalizeOrder(value) {
+  return Array.isArray(value) ? value.map(token => String(token)) : [];
+}
+
+function sameSequence(left, right) {
+  return left.length === right.length && left.every((token, index) => token === right[index]);
+}
+
+function sameMultiset(left = [], right = []) {
+  if (left.length !== right.length) return false;
+  const sortedLeft = left.map(String).sort();
+  const sortedRight = right.map(String).sort();
+  return sortedLeft.every((value, index) => value === sortedRight[index]);
+}
+
+function sequenceKey(order) {
+  return JSON.stringify(order);
 }
