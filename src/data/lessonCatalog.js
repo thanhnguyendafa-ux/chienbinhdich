@@ -1,9 +1,9 @@
 export const lessonFolders = Object.freeze([
   Object.freeze({ id: 'samples', name: 'Bài tập mẫu', description: 'Các Set mẫu dùng để thử luồng Mastery, nhiều dạng câu và link giao bài.', parentId: null, order: 1 }),
   Object.freeze({ id: 'global5', name: 'Global Success 5', description: 'Kho bài luyện Global Success 5 được tổ chức theo từng Unit.', parentId: null, order: 2 }),
-  Object.freeze({ id: 'global5-unit1', name: 'Unit 1 · All about me!', description: 'Bài luyện Global Success 5 Unit 1 · All about me!, tập trung từ vựng, mẫu câu và đọc hiểu.', parentId: 'global5', order: 1 }),
+  Object.freeze({ id: 'global5-unit1', name: 'Unit 1 · All about me!', description: 'Bài luyện Global Success 5 Unit 1 · All about me!, tập trung từ vựng, mẫu câu, đọc hiểu và viết.', parentId: 'global5', order: 1 }),
   Object.freeze({ id: 'global7', name: 'Global Success 7', description: 'Kho bài luyện Global Success 7 được tổ chức theo từng Unit.', parentId: null, order: 3 }),
-  Object.freeze({ id: 'global7-unit1', name: 'Unit 1 · Hobbies', description: 'Bài luyện Global Success 7 Unit 1 · Hobbies, tập trung dịch và sử dụng ngôn ngữ theo từng bước.', parentId: 'global7', order: 1 }),
+  Object.freeze({ id: 'global7-unit1', name: 'Unit 1 · Hobbies', description: 'Kho bài luyện Global Success 7 Unit 1 · Hobbies, tập trung dịch và sử dụng ngôn ngữ theo từng bước.', parentId: 'global7', order: 1 }),
   Object.freeze({ id: 'mrt-lessons', name: 'Bài học Thầy Thành MRT', description: 'Các bài luyện theo hệ tư duy ngữ pháp Mister Thành MRT.', parentId: null, order: 4 })
 ]);
 
@@ -52,6 +52,15 @@ export const lessonRegistry = Object.freeze([
     description: '3 bài đọc ngắn Unit 1 với 15 câu MCQ. Mỗi câu buộc học sinh xác định True/False đồng thời chọn đúng bằng chứng, giúp giảm đoán mò và chẩn đoán lỗi đọc hiểu.',
     activityTypes: Object.freeze(['mcq']), itemCount: 15,
     loadContent: () => import('./g5-u1-reading-01.js').then(module => module.global5Unit1Reading01Content)
+  }),
+  Object.freeze({
+    id: 'g5-u1-writing-01', folderId: 'global5-unit1', order: 4, version: 1,
+    course: 'Global Success 5', unit: 'Unit 1 · All about me!', title: 'Bài tập Writing 1',
+    subtitle: '14 câu · Select + Order · Từ nhiễu có chủ đích', lessonSlug: 'g5u1-writing-1', passThreshold: 80,
+    completionPolicy: 'all-items', teacher: 'Thầy Thành MRT',
+    description: '14 câu Writing Unit 1 theo dạng Select + Order. Học sinh phải chọn đúng khối từ trong token pool có nhiễu rồi sắp xếp đúng; các dạng tương đương như What’s/What is và I’m/I am đều được chấp nhận.',
+    activityTypes: Object.freeze(['sentence_order']), itemCount: 14,
+    loadContent: () => import('./g5-u1-writing-01.js').then(module => module.global5Unit1Writing01Content)
   }),
   Object.freeze({
     id: 'g7-u1-translation-01', folderId: 'global7-unit1', order: 1, version: 1,
