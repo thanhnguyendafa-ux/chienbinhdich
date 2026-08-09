@@ -78,25 +78,25 @@ Quality gate chạy syntax check, catalog/content validation và toàn bộ auto
 
 Runtime Mastery settings yêu cầu production Firestore rules có `lessonSettings/{setId}` trước khi web code bắt đầu đọc collection này.
 
-Repository có workflow `.github/workflows/firebase-rules.yml` để deploy rules trước web merge. Workflow pin `firebase-tools@15.24.0` và yêu cầu GitHub Actions secret:
+Có hai đường deploy hợp lệ:
 
-```text
-FIREBASE_SERVICE_ACCOUNT_CHIENBINHDICH
-```
+1. **Firebase Console**: Firestore → Rules → paste bản `firestore.rules` đã review → Publish → xác minh phiên bản mới xuất hiện trong Rules history.
+2. **GitHub Actions**: chạy thủ công workflow `.github/workflows/firebase-rules.yml` sau khi repository có secret `FIREBASE_SERVICE_ACCOUNT_CHIENBINHDICH` chứa service-account JSON phù hợp. Workflow pin `firebase-tools@15.24.0`.
 
-Secret phải chứa JSON service account của project `chienbinhdich` với quyền cần thiết để deploy Firestore security rules. Không commit service-account JSON vào repository.
+Không commit service-account JSON vào repository.
 
 Release chứa thay đổi Firestore contract phải theo thứ tự an toàn:
 
 1. `npm run ci` xanh cho code và rule-contract tests.
-2. `Firestore Rules` workflow deploy `firestore.rules` thành công vào project `chienbinhdich`.
-3. Xác minh signed-in learner có thể `get` setting nhưng không write; Admin có thể save/reset.
+2. Deploy `firestore.rules` vào project `chienbinhdich` bằng một trong hai đường trên.
+3. Xác minh Rules history hoặc deployment job cho thấy bản mới đã lên production.
 4. Sau đó mới merge/deploy web code lên Production.
+5. Smoke-test signed-in learner read-only và Admin save/reset.
 
-Không merge web code phụ thuộc rule mới khi `Firestore Rules` gate chưa xanh, vì Vercel không triển khai Firestore rules.
+Không merge web code phụ thuộc rule mới trước khi rules mới đã ở production, vì Vercel không triển khai Firestore rules.
 
 ## Delivery contract
 
-Feature branch → Draft PR → GitHub CI → Firestore Rules gate → Ready PR → merge `main` → Vercel Production → post-deploy verification.
+Feature branch → Draft PR → GitHub CI → deploy Firestore Rules → Ready PR → merge `main` → Vercel Production → post-deploy verification.
 
-Không dùng manual file upload như đường release bình thường.
+Không dùng manual file upload web như đường release bình thường.
