@@ -1,4 +1,4 @@
-@page{size:A4 portrait;margin:10mm}
+@page lessonWorksheet{size:A4 portrait;margin:10mm}
 
 .lesson-print-screen{min-height:100vh;background:var(--color-paper)}
 .lesson-print-toolbar{position:sticky;top:0;z-index:10;display:grid;gap:12px;padding:14px max(18px,calc((100vw - 1120px)/2));border-bottom:1px solid var(--color-border);background:var(--color-white);box-shadow:0 2px 8px var(--color-shadow)}
@@ -24,7 +24,7 @@
   html,body,#app,.lesson-print-screen,.lesson-print-preview-wrap,.lesson-print-preview-wrap>[data-print-preview]{width:auto!important;min-width:0!important;min-height:0!important;height:auto!important;margin:0!important;padding:0!important;overflow:visible!important;background:#fff!important;color:#000!important}
   body{-webkit-print-color-adjust:exact;print-color-adjust:exact}
   .lesson-print-toolbar{display:none!important}
-  .lesson-print-paper{width:auto!important;min-height:0!important;margin:0!important;padding:0!important;background:#fff!important;color:#000!important;box-shadow:none!important;font-size:13pt!important}
+  .lesson-print-paper{page:lessonWorksheet;width:auto!important;min-height:0!important;margin:0!important;padding:0!important;background:#fff!important;color:#000!important;box-shadow:none!important;font-size:13pt!important}
   .lesson-print-paper *{color:#000!important;box-shadow:none!important;text-shadow:none!important}
   .lesson-print-header,.lesson-print-section>h2,.lesson-print-instruction,.lesson-print-question,.lesson-print-footer{break-inside:avoid;page-break-inside:avoid}
   .lesson-print-passage{break-inside:auto;page-break-inside:auto}
