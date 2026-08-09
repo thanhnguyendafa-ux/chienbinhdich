@@ -11,6 +11,7 @@ const rules = readFileSync(new URL('../firestore.rules', import.meta.url), 'utf8
 const studentReader = readFileSync(new URL('../src/repositories/lessonSettingsReader.js', import.meta.url), 'utf8');
 const adminWriter = readFileSync(new URL('../src/repositories/adminLessonSettingsRepository.js', import.meta.url), 'utf8');
 const masteryEditor = readFileSync(new URL('../src/features/admin/mastery/masteryEditor.js', import.meta.url), 'utf8');
+const accessUi = readFileSync(new URL('../src/features/access/renderAccess.js', import.meta.url), 'utf8');
 const app = readFileSync(new URL('../src/app.js', import.meta.url), 'utf8');
 
 test('lesson setting document stores only mutable mastery metadata', () => {
@@ -89,4 +90,11 @@ test('historical report rendering uses static content plus the session snapshot,
   assert.match(helper, /applySessionMasterySnapshot/);
   assert.doesNotMatch(helper, /readStudentLessonSetting|ensureSet/);
   assert.match(app, /const lesson = await loadSessionHistoricalLesson\(\)/);
+});
+
+test('settings read failures are retryable instead of silently falling back to an incorrect target', () => {
+  assert.match(accessUi, /renderRetryableAccessError/);
+  assert.match(accessUi, /access-retry-btn/);
+  assert.match(app, /renderRetryableAccessError/);
+  assert.match(app, /onRetry: bootstrap/);
 });
