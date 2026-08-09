@@ -1,0 +1,33 @@
+name: Firebase Auth Probe
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/firebase-auth-probe.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    env:
+      FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+      FIREBASE_SERVICE_ACCOUNT_CHIENBINHDICH: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_CHIENBINHDICH }}
+      FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+      GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
+      GOOGLE_APPLICATION_CREDENTIALS_JSON: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}
+    steps:
+      - name: Detect configured deployment auth without exposing values
+        shell: bash
+        run: |
+          mode='none'
+          if [ -n "$FIREBASE_SERVICE_ACCOUNT_CHIENBINHDICH" ]; then mode='firebase-service-account-project'; fi
+          if [ -n "$FIREBASE_SERVICE_ACCOUNT" ]; then mode='firebase-service-account'; fi
+          if [ -n "$GOOGLE_CREDENTIALS" ]; then mode='google-credentials'; fi
+          if [ -n "$GOOGLE_APPLICATION_CREDENTIALS_JSON" ]; then mode='google-application-credentials-json'; fi
+          if [ -n "$FIREBASE_TOKEN" ]; then mode='firebase-token'; fi
+          echo "Firebase deploy auth mode: $mode" >> "$GITHUB_STEP_SUMMARY"
+          echo "auth_mode=$mode"
