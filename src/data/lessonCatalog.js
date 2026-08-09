@@ -2,6 +2,7 @@ export const lessonFolders = Object.freeze([
   Object.freeze({ id: 'samples', name: 'Bài tập mẫu', description: 'Các Set mẫu dùng để thử luồng Mastery, nhiều dạng câu và link giao bài.', parentId: null, order: 1 }),
   Object.freeze({ id: 'global5', name: 'Global Success 5', description: 'Kho bài luyện Global Success 5 được tổ chức theo từng Unit.', parentId: null, order: 2 }),
   Object.freeze({ id: 'global5-unit1', name: 'Unit 1 · All about me!', description: 'Bài luyện Global Success 5 Unit 1 · All about me!, tập trung từ vựng, mẫu câu, đọc hiểu và viết.', parentId: 'global5', order: 1 }),
+  Object.freeze({ id: 'global5-unit2', name: 'Unit 2 · Our homes', description: 'Bài luyện Global Success 5 Unit 2 · Our homes, tập trung trọng âm, từ vựng và ngôn ngữ về nhà ở, địa chỉ và khoảng cách.', parentId: 'global5', order: 2 }),
   Object.freeze({ id: 'global7', name: 'Global Success 7', description: 'Kho bài luyện Global Success 7 được tổ chức theo từng Unit.', parentId: null, order: 3 }),
   Object.freeze({ id: 'global7-unit1', name: 'Unit 1 · Hobbies', description: 'Kho bài luyện Global Success 7 Unit 1 · Hobbies, tập trung dịch và sử dụng ngôn ngữ theo từng bước.', parentId: 'global7', order: 1 }),
   Object.freeze({ id: 'mrt-lessons', name: 'Bài học Thầy Thành MRT', description: 'Các bài luyện theo hệ tư duy ngữ pháp Mister Thành MRT.', parentId: null, order: 4 })
@@ -61,6 +62,15 @@ export const lessonRegistry = Object.freeze([
     description: '14 câu Writing Unit 1 theo dạng Select + Order. Học sinh phải chọn đúng khối từ trong token pool có nhiễu rồi sắp xếp đúng; các dạng tương đương như What’s/What is và I’m/I am đều được chấp nhận.',
     activityTypes: Object.freeze(['sentence_order']), itemCount: 14,
     loadContent: () => import('./g5-u1-writing-01.js').then(module => module.global5Unit1Writing01Content)
+  }),
+  Object.freeze({
+    id: 'g5-u2-stress-vocab-01', folderId: 'global5-unit2', order: 1, version: 1,
+    course: 'Global Success 5', unit: 'Unit 2 · Our homes', title: 'Trọng âm & Từ vựng 1',
+    subtitle: '12 câu · MCQ · True/False · Classification', lessonSlug: 'g5u2-trong-am-tu-vung-1', passThreshold: 80,
+    completionPolicy: 'all-items', teacher: 'Thầy Thành MRT',
+    description: '12 câu Unit 2 luyện trọng âm -teen/-ty và từ vựng về nhà ở, địa chỉ, khoảng cách. Hai câu Classification buộc học sinh phân loại nhiều từ theo nhóm thay vì chỉ đoán một đáp án.',
+    activityTypes: Object.freeze(['mcq', 'true_false', 'classification']), itemCount: 12,
+    loadContent: () => import('./g5-u2-stress-vocab-01.js').then(module => module.global5Unit2StressVocab01Content)
   }),
   Object.freeze({
     id: 'g7-u1-translation-01', folderId: 'global7-unit1', order: 1, version: 1,
