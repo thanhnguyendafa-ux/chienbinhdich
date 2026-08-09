@@ -1,11 +1,9 @@
 import { buildLessonPrintModel } from './lessonPrintModel.js';
-import { DEFAULT_PRINT_CONFIG, normalizePrintConfig, printDensityLabel } from './printConfig.js';
+import { normalizePrintConfig, printDensityLabel } from './printConfig.js';
 import { renderPrintQuestion } from './printQuestionRegistry.js';
 import { esc } from './printMarkup.js';
 
 export function renderLessonPrint({ root, lesson, onBack, onPrint = () => window.print() }) {
-  let config = DEFAULT_PRINT_CONFIG;
-
   root.innerHTML = `
     <main class="page admin-page lesson-print-screen">
       <section class="lesson-print-toolbar" aria-label="Thiết lập bản in">
@@ -31,7 +29,7 @@ export function renderLessonPrint({ root, lesson, onBack, onPrint = () => window
   const detailWrap = root.querySelector('[data-teacher-detail-wrap]');
 
   const refresh = () => {
-    config = normalizePrintConfig({
+    const config = normalizePrintConfig({
       version: version?.value,
       density: density?.value,
       teacherDetail: detail?.value
