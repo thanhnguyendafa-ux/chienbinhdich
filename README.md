@@ -32,6 +32,19 @@ Webapp Mastery cho học sinh, hỗ trợ Set Typing và Mixed Question. V1.6.0 
 - Session V7 cũ không có snapshot được resolve về 80%, vì trước runtime settings toàn bộ published lesson đều dùng 80%.
 - Nếu live `lessonSettings` không đọc được, app không âm thầm fallback sang default cho một lượt mới; phải retry để tránh dùng sai mốc PASS.
 
+## Lesson worksheet / PDF
+
+- Admin Lesson Inspector có **In / PDF**, mở route được bảo vệ `/admin?print=<setId>`; không có Teacher print mode trên public student route.
+- Print dùng chính static lesson SSOT từ `lessonRepository`; không đọc Session, Attempt hay runtime Mastery để dựng đề giấy.
+- Student print model được sanitize trước khi render: không mang `correctChoiceId`, diagnostics, `teachingFeedback`, `correctGroupId` hay Teacher answer payload.
+- Teacher mode bổ sung answer ngay dưới từng câu, có `compact` và `full` detail.
+- Paper contract: A4 portrait, nền trắng, mực đen, learner question/choice/Reading text **13pt**, Name/Class/Date/Score cùng một dòng.
+- MCQ tự chọn layout 4 ngang / 2 cột / 1 cột theo độ dài choice; không giảm font để nhồi trang.
+- Sentence Order và Classification dùng deterministic print shuffle, nên Student/Teacher có cùng token order nhưng source order không vô tình gợi đáp án.
+- Reading group theo passage và mỗi passage chỉ in một lần.
+- Optional `printGroups` chỉ tổ chức `itemIds`; không copy question content sang một SSOT thứ hai.
+- Browser `window.print()` là đường in / Save as PDF; không thêm PDF runtime library.
+
 ## Attempt evidence SSOT
 
 Mỗi lần submit là một immutable Attempt Event trong `session.attempts`, gồm question type, prompt exposure, response, thời gian, input method, reveal state và `masteryDeltaUnits`.
@@ -60,9 +73,10 @@ Mobile target:
 - Student lesson-settings reader là read-only; Admin settings writer là repository riêng, không phình `adminRepository`.
 - Shared Admin Mastery editor chỉ emit Save/Reset callbacks và không chứa Firebase logic.
 - Question Type Registry sở hữu renderer/evaluator interaction; Session/Mastery/Retry dùng chung mọi question type.
+- Print có view-model sanitizer + paper Question Registry riêng; Student/Teacher không render trực tiếp raw lesson item.
 - Feature screens lazy-load bằng dynamic `import()`.
 - Lesson full content lazy-load qua `lessonRepository`.
-- Catalog/content validator dùng chung Mastery policy validation, không hard-code một threshold riêng.
+- Catalog/content validator dùng chung Mastery policy validation và kiểm tra optional print grouping metadata.
 - Design tokens tập trung trong `:root`; component CSS ưu tiên semantic tokens.
 - CSP giữ `style-src 'self'`, không dùng `unsafe-inline`.
 
@@ -97,6 +111,6 @@ Không merge web code phụ thuộc rule mới trước khi rules mới đã ở
 
 ## Delivery contract
 
-Feature branch → Draft PR → GitHub CI → deploy Firestore Rules → Ready PR → merge `main` → Vercel Production → post-deploy verification.
+Feature branch → Draft PR → GitHub CI → nếu có Firestore contract change thì deploy Rules trước → Ready PR → merge `main` → Vercel Production → post-deploy verification.
 
 Không dùng manual file upload web như đường release bình thường.
