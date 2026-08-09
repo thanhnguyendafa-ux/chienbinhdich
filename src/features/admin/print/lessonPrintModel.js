@@ -149,8 +149,10 @@ function buildMcq(item, base, key, config, targetCorrectIndex) {
     label: alphabetLabel(index),
     text: String(choice.text ?? '')
   }));
+  const stimulus = printStimulus(item.stimulus);
   const student = {
     ...base,
+    ...(stimulus ? { stimulus } : {}),
     choices: Object.freeze(choices),
     layout: mcqPrintLayout(choices)
   };
@@ -236,6 +238,14 @@ function teacherPayload(item, config, answerPayload) {
     }
   }
   return Object.freeze(payload);
+}
+
+function printStimulus(value) {
+  if (!value) return null;
+  return Object.freeze({
+    title: String(value.title ?? ''),
+    text: String(value.text ?? '')
+  });
 }
 
 function writingLineCount(item, config) {
