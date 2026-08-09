@@ -1,334 +1,149 @@
+const MAIN_IDEA_PROMPT = 'What is the main idea of the passage?';
+const CHOICE_IDS = Object.freeze(['a', 'b', 'c', 'd']);
+
 export const global5ReviewMainIdea01Content = Object.freeze({
-  items: [
-    {
-      id: 'g5-review-mi-q01',
-      type: 'mcq',
-      stimulus: {
-        title: 'About Lan',
-        text: 'Lan is eleven years old and she is in Class 5A. She lives in the city with her family. Her favourite animal is a dolphin, and her favourite colour is pink. She also enjoys playing table tennis after school.'
-      },
-      prompt: 'What is the main idea of the passage?',
-      choices: [
-        { id: 'a', text: 'Lan enjoys talking about her favourite things.' },
-        { id: 'b', text: 'Lan shares some basic information about herself.' },
-        { id: 'c', text: 'Lan spends most of her time playing table tennis.' },
-        { id: 'd', text: 'Lan likes living in the city with her family.' }
-      ],
-      correctChoiceId: 'b',
-      teachingFeedback: {
-        correctLabel: 'Lan shares some basic information about herself.',
-        reason: 'Bài đọc cho biết tuổi, lớp, nơi sống, con vật yêu thích, màu sắc yêu thích và môn thể thao Lan thích. Đáp án B bao quát được tất cả các nhóm thông tin đó; các đáp án còn lại chỉ nói một phần hoặc thêm ý không có trong bài.',
-        theory: 'Main Idea là ý lớn bao quát MOST/ALL important details, không phải một chi tiết dù chi tiết đó đúng.',
-        example: 'age + class + home + favourites + sport → information about Lan.'
-      }
-    },
-    {
-      id: 'g5-review-mi-q02',
-      type: 'mcq',
-      stimulus: {
-        title: "Tom's Home",
-        text: 'Tom lives in a flat in Green Tower. His flat is on the eighth floor. His address is 25 Green Street. There is also a small park near his building.'
-      },
-      prompt: 'What is the main idea of the passage?',
-      choices: [
-        { id: 'a', text: 'Tom likes the small park near his building.' },
-        { id: 'b', text: 'Tom lives on a high floor in a tall building.' },
-        { id: 'c', text: 'Tom gives the number and name of his street.' },
-        { id: 'd', text: 'Tom describes his home and where it is located.' }
-      ],
-      correctChoiceId: 'd',
-      teachingFeedback: {
-        correctLabel: 'Tom describes his home and where it is located.',
-        reason: 'Các chi tiết flat, Green Tower, eighth floor, 25 Green Street và công viên gần nhà đều cùng mô tả nơi Tom sống. D bao quát cả home và location; A, B, C chỉ lấy một phần của passage.',
-        theory: 'Khi nhiều chi tiết cùng trả lời một câu hỏi lớn như “Where does he live?”, Main Idea phải gom được các chi tiết đó vào một ý chung.',
-        example: 'flat + floor + address + nearby park → Tom\'s home and location.'
-      }
-    },
-    {
-      id: 'g5-review-mi-q03',
-      type: 'mcq',
-      stimulus: {
-        title: 'Our New Friend',
-        text: 'Lucy is a new Australian pupil in our class. She smiles and talks to everyone. She often helps her classmates when they need help. She also enjoys sports and is very active.'
-      },
-      prompt: 'What is the main idea of the passage?',
-      choices: [
-        { id: 'a', text: 'Lucy is a friendly and helpful new classmate.' },
-        { id: 'b', text: 'Lucy enjoys sports with the children in her class.' },
-        { id: 'c', text: 'Lucy often helps classmates with difficult work.' },
-        { id: 'd', text: 'Lucy tells the class some facts about Australia.' }
-      ],
-      correctChoiceId: 'a',
-      teachingFeedback: {
-        correctLabel: 'Lucy is a friendly and helpful new classmate.',
-        reason: 'Smiling, talking to everyone, helping classmates and being active all build the picture of Lucy as a friendly, helpful new classmate. Sports and nationality are supporting details, not the main point.',
-        theory: 'Một Main Idea tốt phải giải thích vì sao MOST details được đưa vào passage.',
-        example: 'smiles + talks to everyone + helps classmates → friendly/helpful classmate.'
-      }
-    },
-    {
-      id: 'g5-review-mi-q04',
-      type: 'mcq',
-      stimulus: {
-        title: "Nam's Weekend",
-        text: 'Nam does many things when he has free time. He sometimes watches cartoons after school. At the weekend, he often walks with his father and waters the flowers. He sometimes uses the Internet too.'
-      },
-      prompt: 'What is the main idea of the passage?',
-      choices: [
-        { id: 'a', text: 'Nam enjoys watching cartoons after school.' },
-        { id: 'b', text: 'Nam often spends weekend time with his father.' },
-        { id: 'c', text: 'Nam does several activities in his free time.' },
-        { id: 'd', text: 'Nam likes using the Internet more than walking.' }
-      ],
-      correctChoiceId: 'c',
-      teachingFeedback: {
-        correctLabel: 'Nam does several activities in his free time.',
-        reason: 'Cartoons, walking, watering flowers và using the Internet là nhiều hoạt động khác nhau trong free time. C bao quát tất cả; A và B quá hẹp, còn D thêm so sánh “more than” mà bài không nói.',
-        theory: 'Main Idea thường là chiếc “ô lớn” chứa được nhiều supporting details cùng chủ đề.',
-        example: 'cartoons + walking + flowers + Internet → different free-time activities.'
-      }
-    },
-    {
-      id: 'g5-review-mi-q05',
-      type: 'mcq',
-      stimulus: {
-        title: "Mai's Dream",
-        text: 'Mai loves plants and flowers. She often helps her grandmother in the garden. She likes reading about how plants grow. When she grows up, she would like to be a gardener.'
-      },
-      prompt: 'What is the main idea of the passage?',
-      choices: [
-        { id: 'a', text: 'Mai enjoys helping her grandmother after school.' },
-        { id: 'b', text: "Mai's interest in plants shapes her future job." },
-        { id: 'c', text: 'Mai wants to learn more about growing flowers.' },
-        { id: 'd', text: 'Mai spends a lot of time working in the garden.' }
-      ],
-      correctChoiceId: 'b',
-      teachingFeedback: {
-        correctLabel: "Mai's interest in plants shapes her future job.",
-        reason: 'Love plants, help in the garden và read about plants đều dẫn đến mong muốn trở thành gardener. B nối được toàn bộ mạch ý từ interest đến future job; A và C chỉ là details, D phóng đại thời lượng.',
-        theory: 'Main Idea có thể là mối quan hệ giữa các details, không nhất thiết là một câu được viết nguyên văn trong passage.',
-        example: 'loves plants → garden → reads about plants → wants to be a gardener.'
-      }
-    },
-    {
-      id: 'g5-review-mi-q06',
-      type: 'mcq',
-      stimulus: {
-        title: 'Rooms at Our School',
-        text: 'Our school has several special rooms. Pupils read books in the library. They use computers in the computer room and draw pictures in the art room. Each room gives pupils a place to do a different activity.'
-      },
-      prompt: 'What is the main idea of the passage?',
-      choices: [
-        { id: 'a', text: 'Our school rooms are used for different activities.' },
-        { id: 'b', text: 'Our library is a useful place for pupils to read.' },
-        { id: 'c', text: 'Our art room and computer room are both upstairs.' },
-        { id: 'd', text: 'Our pupils enjoy using special rooms at school.' }
-      ],
-      correctChoiceId: 'a',
-      teachingFeedback: {
-        correctLabel: 'Our school rooms are used for different activities.',
-        reason: 'Library → reading, computer room → computers, art room → drawing. A nói đúng mối quan hệ room → activity cho toàn passage. B quá hẹp; C không được support; D nói “enjoy” trong khi passage tập trung vào chức năng của phòng.',
-        theory: 'Distractor có thể nghe rất hợp lý nhưng Main Idea phải khớp trọng tâm thật của passage, không chỉ cùng chủ đề.',
-        example: 'library/read + computer room/use computers + art room/draw → different rooms, different activities.'
-      }
-    },
-    {
-      id: 'g5-review-mi-q07',
-      type: 'mcq',
-      stimulus: {
-        title: 'Ben and Maths',
-        text: "Ben's favourite school activity is solving maths problems. He likes thinking carefully about difficult questions. Finding the correct answer makes him happy. He says a difficult problem is like a puzzle that he wants to solve."
-      },
-      prompt: 'What is the main idea of the passage?',
-      choices: [
-        { id: 'a', text: 'Ben is happy when he answers a question correctly.' },
-        { id: 'b', text: 'Ben thinks difficult maths questions are interesting.' },
-        { id: 'c', text: 'Ben enjoys school activities that make him think.' },
-        { id: 'd', text: 'Ben likes solving maths problems that make him think.' }
-      ],
-      correctChoiceId: 'd',
-      teachingFeedback: {
-        correctLabel: 'Ben likes solving maths problems that make him think.',
-        reason: 'Passage lặp lại maths problems, thinking, correct answer và puzzle. D vừa giữ đúng topic cụ thể “maths problems” vừa bao quát lý do Ben thích chúng. C quá rộng; A và B chỉ bao phủ một phần.',
-        theory: 'Main Idea không được quá hẹp nhưng cũng không nên rộng hơn những gì passage thực sự nói.',
-        example: 'maths problems + careful thinking + puzzle → Ben likes solving maths problems that make him think.'
-      }
-    },
-    {
-      id: 'g5-review-mi-q08',
-      type: 'mcq',
-      stimulus: {
-        title: 'Our Classroom',
-        text: 'We try to keep our classroom tidy. Our school bags stay under the desks. Pencils and rulers go into pencil cases, and crayons have their own place. After each lesson, everyone puts the school things back.'
-      },
-      prompt: 'What is the main idea of the passage?',
-      choices: [
-        { id: 'a', text: 'Our classroom contains many useful school things.' },
-        { id: 'b', text: 'Our pupils keep their school bags under the desks.' },
-        { id: 'c', text: 'Our class keeps its school things neat and tidy.' },
-        { id: 'd', text: 'Our pencils, rulers and crayons stay in their places.' }
-      ],
-      correctChoiceId: 'c',
-      teachingFeedback: {
-        correctLabel: 'Our class keeps its school things neat and tidy.',
-        reason: 'Bags under desks, pencils/rulers in cases, crayons in their place và putting things back đều chứng minh lớp giữ đồ dùng ngăn nắp. C bao quát được tất cả; B và D là detail thật nhưng quá hẹp.',
-        theory: 'TRUE detail chưa chắc là Main Idea. Hãy hỏi: “Does this answer cover ALL the important details?”',
-        example: 'bags + pencils/rulers + crayons + put things back → neat and tidy school things.'
-      }
-    },
-    {
-      id: 'g5-review-mi-q09',
-      type: 'mcq',
-      stimulus: {
-        title: 'At the Campsite',
-        text: 'Last Saturday, our class went to a campsite. We played games in the afternoon and listened to music after dinner. Later, we sang songs around the campfire. Everyone had a very good time.'
-      },
-      prompt: 'What is the main idea of the passage?',
-      choices: [
-        { id: 'a', text: 'The children enjoyed many activities at the campsite.' },
-        { id: 'b', text: 'The children liked singing around the campfire most.' },
-        { id: 'c', text: 'The children spent Saturday listening to music together.' },
-        { id: 'd', text: 'The children played outdoor games before their dinner.' }
-      ],
-      correctChoiceId: 'a',
-      teachingFeedback: {
-        correctLabel: 'The children enjoyed many activities at the campsite.',
-        reason: 'Games, music, songs, campfire và “a very good time” cùng cho thấy các bạn nhỏ tận hưởng nhiều hoạt động ở campsite. B thêm “most”, C biến một detail thành cả ngày, D chỉ nói games.',
-        theory: 'Cẩn thận với đáp án dùng đúng từ trong passage nhưng phóng đại bằng most, all day, always hoặc only.',
-        example: 'games + music + songs + campfire → many enjoyable campsite activities.'
-      }
-    },
-    {
-      id: 'g5-review-mi-q10',
-      type: 'mcq',
-      stimulus: {
-        title: 'A Trip to the Farm',
-        text: 'Our class visited a farm on a school trip. We planted some young trees and learned how farmers grow vegetables. After lunch, we played games together. We came home with many happy memories and some new knowledge.'
-      },
-      prompt: 'What is the main idea of the passage?',
-      choices: [
-        { id: 'a', text: 'The pupils learned how farmers grow vegetables.' },
-        { id: 'b', text: 'The class learned and had fun during the farm trip.' },
-        { id: 'c', text: 'The pupils enjoyed playing games after their lunch.' },
-        { id: 'd', text: 'The class spent most of the trip planting young trees.' }
-      ],
-      correctChoiceId: 'b',
-      teachingFeedback: {
-        correctLabel: 'The class learned and had fun during the farm trip.',
-        reason: 'Planting trees, learning about vegetables và new knowledge thuộc nhóm LEARNED; playing games và happy memories thuộc nhóm FUN. B bao quát cả hai nhóm. A và C chỉ một nửa, D thêm “most of the trip”.',
-        theory: 'Có thể gom details thành các nhóm nhỏ rồi tìm một Main Idea bao trùm cả các nhóm đó.',
-        example: 'learning details + fun details → learned and had fun on the farm trip.'
-      }
-    },
-    {
-      id: 'g5-review-mi-q11',
-      type: 'mcq',
-      stimulus: {
-        title: 'Ken Joins the Class',
-        text: 'Ken is a new Japanese pupil in Class 5B. At break time, he talks and laughs with many classmates. When someone needs help, Ken is happy to help. He has also started playing table tennis with some children in his class.'
-      },
-      prompt: 'What is the main idea of the passage?',
-      choices: [
-        { id: 'a', text: 'Ken enjoys table tennis with his new classmates.' },
-        { id: 'b', text: 'Ken is a helpful new pupil who comes from Japan.' },
-        { id: 'c', text: 'Ken talks to many classmates during school breaks.' },
-        { id: 'd', text: 'Ken is fitting in well as a friendly new classmate.' }
-      ],
-      correctChoiceId: 'd',
-      teachingFeedback: {
-        correctLabel: 'Ken is fitting in well as a friendly new classmate.',
-        reason: 'Talking and laughing with classmates, helping others và joining table tennis all show that Ken is fitting in well. D phải được suy ra từ các details; A và C quá hẹp, B đưa nationality lên thành trọng tâm dù đó chỉ là background detail.',
-        theory: 'Ở mức inference, Main Idea có thể không xuất hiện nguyên văn; học sinh phải tổng hợp bằng chứng để suy ra.',
-        example: 'talks/laughs + helps + plays with classmates → fitting in well.'
-      }
-    },
-    {
-      id: 'g5-review-mi-q12',
-      type: 'mcq',
-      stimulus: {
-        title: "Hoa's Study Corner",
-        text: 'Hoa has a small study corner in her flat. Her notebooks are neatly placed on the desk, and her crayons are beside her pencil case. A colourful picture hangs above the desk. Hoa enjoys studying there and always keeps the area tidy.'
-      },
-      prompt: 'What is the main idea of the passage?',
-      choices: [
-        { id: 'a', text: 'Hoa keeps many school things on and near her desk.' },
-        { id: 'b', text: 'Hoa enjoys studying in a small corner of her flat.' },
-        { id: 'c', text: 'Hoa has a tidy study corner that she enjoys using.' },
-        { id: 'd', text: 'Hoa likes the picture that is hanging above her desk.' }
-      ],
-      correctChoiceId: 'c',
-      teachingFeedback: {
-        correctLabel: 'Hoa has a tidy study corner that she enjoys using.',
-        reason: 'Notebooks neatly placed, crayons beside the pencil case và “keeps the area tidy” support TIDY; “enjoys studying there” supports ENJOYS USING IT. C bao quát cả hai ý. A, B, D chỉ giữ một phần.',
-        theory: 'Khi hai nhóm details cùng quan trọng, Main Idea tốt phải bao quát cả hai thay vì chỉ chọn một nhóm.',
-        example: 'organised things + enjoys studying there → a tidy study corner she enjoys using.'
-      }
-    },
-    {
-      id: 'g5-review-mi-q13',
-      type: 'mcq',
-      stimulus: {
-        title: 'Linh Likes Learning',
-        text: 'Linh often reads books when she has free time. At school, she enjoys doing projects with her friends. She uses books in the library to find useful information for their projects. Learning something new always makes her excited.'
-      },
-      prompt: 'What is the main idea of the passage?',
-      choices: [
-        { id: 'a', text: 'Linh enjoys activities that help her learn new things.' },
-        { id: 'b', text: 'Linh likes reading books more than doing group projects.' },
-        { id: 'c', text: 'Linh often uses the library when she works with friends.' },
-        { id: 'd', text: 'Linh spends her free time studying for school projects.' }
-      ],
-      correctChoiceId: 'a',
-      teachingFeedback: {
-        correctLabel: 'Linh enjoys activities that help her learn new things.',
-        reason: 'Reading, projects, library research và excitement about learning đều thuộc ý lớn “activities that help her learn”. B thêm so sánh “more than”, C quá hẹp và D đổi free-time reading thành studying for projects.',
-        theory: 'Main Idea phải cover nhiều loại evidence mà không thêm thông tin passage không nói.',
-        example: 'reading + projects + research + excitement → enjoys activities that help her learn.'
-      }
-    },
-    {
-      id: 'g5-review-mi-q14',
-      type: 'mcq',
-      stimulus: {
-        title: "Minh's Future",
-        text: 'Minh loves visiting new places on school trips. He asks people questions and writes down interesting things that he sees. He also enjoys telling his classmates about the places he visits. In the future, Minh would like to be a reporter.'
-      },
-      prompt: 'What is the main idea of the passage?',
-      choices: [
-        { id: 'a', text: 'Minh enjoys asking people questions on school trips.' },
-        { id: 'b', text: "Minh's interests make reporting a good future job." },
-        { id: 'c', text: 'Minh likes visiting places and talking to new people.' },
-        { id: 'd', text: 'Minh writes notes because he wants to remember his trips.' }
-      ],
-      correctChoiceId: 'b',
-      teachingFeedback: {
-        correctLabel: "Minh's interests make reporting a good future job.",
-        reason: 'Visiting places, asking questions, writing information và telling others all match interests/skills useful for a reporter. B connects the details to the future job. A và C chỉ một phần; D tự thêm mục đích “to remember his trips”.',
-        theory: 'Nếu câu cuối nêu một kết quả hoặc lựa chọn, hãy kiểm tra xem các details trước đó có cùng dẫn đến kết quả đó không.',
-        example: 'places + questions + notes + telling others → reporting is a fitting future job.'
-      }
-    },
-    {
-      id: 'g5-review-mi-q15',
-      type: 'mcq',
-      stimulus: {
-        title: 'Visiting Another School',
-        text: 'Class 5A visited another school last Friday. The pupils read short books in the library and drew pictures in the art room. Later, they worked with their new friends on a science project. They were tired at the end of the visit, but they wanted to come again.'
-      },
-      prompt: 'What is the main idea of the passage?',
-      choices: [
-        { id: 'a', text: 'Class 5A enjoyed reading books at another school.' },
-        { id: 'b', text: 'Class 5A learned with new friends in several rooms.' },
-        { id: 'c', text: 'The school visit had many enjoyable learning activities.' },
-        { id: 'd', text: 'The science project was an enjoyable part of the visit.' }
-      ],
-      correctChoiceId: 'c',
-      teachingFeedback: {
-        correctLabel: 'The school visit had many enjoyable learning activities.',
-        reason: 'Reading, drawing và science project là nhiều learning activities; việc muốn quay lại cho thấy trải nghiệm enjoyable. C bao quát cả hoạt động và cảm nhận. A, D quá hẹp; B khá gần nhưng nhấn rooms/friends thay vì toàn bộ learning experience.',
-        theory: 'Khi hai đáp án đều có vẻ đúng, chọn đáp án cover nhiều important details hơn và ít lệch trọng tâm hơn.',
-        example: 'reading + drawing + science project + wants to return → an enjoyable visit with many learning activities.'
-      }
-    }
-  ]
+  items: Object.freeze([
+    mainIdeaItem(
+      'g5-review-mi-q01', 'About Lan',
+      'Lan is eleven years old and she is in Class 5A. She lives in the city with her family. Her favourite animal is a dolphin, and her favourite colour is pink. She also enjoys playing table tennis after school.',
+      ['Lan enjoys talking about her favourite things.', 'Lan shares some basic information about herself.', 'Lan spends most of her time playing table tennis.', 'Lan likes living in the city with her family.'], 'b',
+      'Bài đọc cho biết tuổi, lớp, nơi sống, con vật yêu thích, màu sắc yêu thích và môn thể thao Lan thích. Đáp án B bao quát được tất cả các nhóm thông tin đó; các đáp án còn lại chỉ nói một phần hoặc thêm ý không có trong bài.',
+      'Main Idea là ý lớn bao quát MOST/ALL important details, không phải một chi tiết dù chi tiết đó đúng.',
+      'age + class + home + favourites + sport → information about Lan.'
+    ),
+    mainIdeaItem(
+      'g5-review-mi-q02', "Tom's Home",
+      'Tom lives in a flat in Green Tower. His flat is on the eighth floor. His address is 25 Green Street. There is also a small park near his building.',
+      ['Tom likes the small park near his building.', 'Tom lives on a high floor in a tall building.', 'Tom gives the number and name of his street.', 'Tom describes his home and where it is located.'], 'd',
+      'Các chi tiết flat, Green Tower, eighth floor, 25 Green Street và công viên gần nhà đều cùng mô tả nơi Tom sống. D bao quát cả home và location; A, B, C chỉ lấy một phần của passage.',
+      'Khi nhiều chi tiết cùng trả lời một câu hỏi lớn như “Where does he live?”, Main Idea phải gom được các chi tiết đó vào một ý chung.',
+      "flat + floor + address + nearby park → Tom's home and location."
+    ),
+    mainIdeaItem(
+      'g5-review-mi-q03', 'Our New Friend',
+      'Lucy is a new Australian pupil in our class. She smiles and talks to everyone. She often helps her classmates when they need help. She also enjoys sports and is very active.',
+      ['Lucy is a friendly and helpful new classmate.', 'Lucy enjoys sports with the children in her class.', 'Lucy often helps classmates with difficult work.', 'Lucy tells the class some facts about Australia.'], 'a',
+      'Smiling, talking to everyone, helping classmates and being active all build the picture of Lucy as a friendly, helpful new classmate. Sports and nationality are supporting details, not the main point.',
+      'Một Main Idea tốt phải giải thích vì sao MOST details được đưa vào passage.',
+      'smiles + talks to everyone + helps classmates → friendly/helpful classmate.'
+    ),
+    mainIdeaItem(
+      'g5-review-mi-q04', "Nam's Weekend",
+      'Nam does many things when he has free time. He sometimes watches cartoons after school. At the weekend, he often walks with his father and waters the flowers. He sometimes uses the Internet too.',
+      ['Nam enjoys watching cartoons after school.', 'Nam often spends weekend time with his father.', 'Nam does several activities in his free time.', 'Nam likes using the Internet more than walking.'], 'c',
+      'Cartoons, walking, watering flowers và using the Internet là nhiều hoạt động khác nhau trong free time. C bao quát tất cả; A và B quá hẹp, còn D thêm so sánh “more than” mà bài không nói.',
+      'Main Idea thường là chiếc “ô lớn” chứa được nhiều supporting details cùng chủ đề.',
+      'cartoons + walking + flowers + Internet → different free-time activities.'
+    ),
+    mainIdeaItem(
+      'g5-review-mi-q05', "Mai's Dream",
+      'Mai loves plants and flowers. She often helps her grandmother in the garden. She likes reading about how plants grow. When she grows up, she would like to be a gardener.',
+      ['Mai enjoys helping her grandmother after school.', "Mai's interest in plants shapes her future job.", 'Mai wants to learn more about growing flowers.', 'Mai spends a lot of time working in the garden.'], 'b',
+      'Love plants, help in the garden và read about plants đều dẫn đến mong muốn trở thành gardener. B nối được toàn bộ mạch ý từ interest đến future job; A và C chỉ là details, D phóng đại thời lượng.',
+      'Main Idea có thể là mối quan hệ giữa các details, không nhất thiết là một câu được viết nguyên văn trong passage.',
+      'loves plants → garden → reads about plants → wants to be a gardener.'
+    ),
+    mainIdeaItem(
+      'g5-review-mi-q06', 'Rooms at Our School',
+      'Our school has several special rooms. Pupils read books in the library. They use computers in the computer room and draw pictures in the art room. Each room gives pupils a place to do a different activity.',
+      ['Our school rooms are used for different activities.', 'Our library is a useful place for pupils to read.', 'Our art room and computer room are both upstairs.', 'Our pupils enjoy using special rooms at school.'], 'a',
+      'Library → reading, computer room → computers, art room → drawing. A nói đúng mối quan hệ room → activity cho toàn passage. B quá hẹp; C không được support; D nói “enjoy” trong khi passage tập trung vào chức năng của phòng.',
+      'Distractor có thể nghe rất hợp lý nhưng Main Idea phải khớp trọng tâm thật của passage, không chỉ cùng chủ đề.',
+      'library/read + computer room/use computers + art room/draw → different rooms, different activities.'
+    ),
+    mainIdeaItem(
+      'g5-review-mi-q07', 'Ben and Maths',
+      "Ben's favourite school activity is solving maths problems. He likes thinking carefully about difficult questions. Finding the correct answer makes him happy. He says a difficult problem is like a puzzle that he wants to solve.",
+      ['Ben is happy when he answers a question correctly.', 'Ben thinks difficult maths questions are interesting.', 'Ben enjoys school activities that make him think.', 'Ben likes solving maths problems that make him think.'], 'd',
+      'Passage lặp lại maths problems, thinking, correct answer và puzzle. D vừa giữ đúng topic cụ thể “maths problems” vừa bao quát lý do Ben thích chúng. C quá rộng; A và B chỉ bao phủ một phần.',
+      'Main Idea không được quá hẹp nhưng cũng không nên rộng hơn những gì passage thực sự nói.',
+      'maths problems + careful thinking + puzzle → Ben likes solving maths problems that make him think.'
+    ),
+    mainIdeaItem(
+      'g5-review-mi-q08', 'Our Classroom',
+      'We try to keep our classroom tidy. Our school bags stay under the desks. Pencils and rulers go into pencil cases, and crayons have their own place. After each lesson, everyone puts the school things back.',
+      ['Our classroom contains many useful school things.', 'Our pupils keep their school bags under the desks.', 'Our class keeps its school things neat and tidy.', 'Our pencils, rulers and crayons stay in their places.'], 'c',
+      'Bags under desks, pencils/rulers in cases, crayons in their place và putting things back đều chứng minh lớp giữ đồ dùng ngăn nắp. C bao quát được tất cả; B và D là detail thật nhưng quá hẹp.',
+      'TRUE detail chưa chắc là Main Idea. Hãy hỏi: “Does this answer cover ALL the important details?”',
+      'bags + pencils/rulers + crayons + put things back → neat and tidy school things.'
+    ),
+    mainIdeaItem(
+      'g5-review-mi-q09', 'At the Campsite',
+      'Last Saturday, our class went to a campsite. We played games in the afternoon and listened to music after dinner. Later, we sang songs around the campfire. Everyone had a very good time.',
+      ['The children enjoyed many activities at the campsite.', 'The children liked singing around the campfire most.', 'The children spent Saturday listening to music together.', 'The children played outdoor games before their dinner.'], 'a',
+      'Games, music, songs, campfire và “a very good time” cùng cho thấy các bạn nhỏ tận hưởng nhiều hoạt động ở campsite. B thêm “most”, C biến một detail thành cả ngày, D chỉ nói games.',
+      'Cẩn thận với đáp án dùng đúng từ trong passage nhưng phóng đại bằng most, all day, always hoặc only.',
+      'games + music + songs + campfire → many enjoyable campsite activities.'
+    ),
+    mainIdeaItem(
+      'g5-review-mi-q10', 'A Trip to the Farm',
+      'Our class visited a farm on a school trip. We planted some young trees and learned how farmers grow vegetables. After lunch, we played games together. We came home with many happy memories and some new knowledge.',
+      ['The pupils learned how farmers grow vegetables.', 'The class learned and had fun during the farm trip.', 'The pupils enjoyed playing games after their lunch.', 'The class spent most of the trip planting young trees.'], 'b',
+      'Planting trees, learning about vegetables và new knowledge thuộc nhóm LEARNED; playing games và happy memories thuộc nhóm FUN. B bao quát cả hai nhóm. A và C chỉ một nửa, D thêm “most of the trip”.',
+      'Có thể gom details thành các nhóm nhỏ rồi tìm một Main Idea bao trùm cả các nhóm đó.',
+      'learning details + fun details → learned and had fun on the farm trip.'
+    ),
+    mainIdeaItem(
+      'g5-review-mi-q11', 'Ken Joins the Class',
+      'Ken is a new Japanese pupil in Class 5B. At break time, he talks and laughs with many classmates. When someone needs help, Ken is happy to help. He has also started playing table tennis with some children in his class.',
+      ['Ken enjoys table tennis with his new classmates.', 'Ken is a helpful new pupil who comes from Japan.', 'Ken talks to many classmates during school breaks.', 'Ken is fitting in well as a friendly new classmate.'], 'd',
+      'Talking and laughing with classmates, helping others và joining table tennis all show that Ken is fitting in well. D phải được suy ra từ các details; A và C quá hẹp, B đưa nationality lên thành trọng tâm dù đó chỉ là background detail.',
+      'Ở mức inference, Main Idea có thể không xuất hiện nguyên văn; học sinh phải tổng hợp bằng chứng để suy ra.',
+      'talks/laughs + helps + plays with classmates → fitting in well.'
+    ),
+    mainIdeaItem(
+      'g5-review-mi-q12', "Hoa's Study Corner",
+      'Hoa has a small study corner in her flat. Her notebooks are neatly placed on the desk, and her crayons are beside her pencil case. A colourful picture hangs above the desk. Hoa enjoys studying there and always keeps the area tidy.',
+      ['Hoa keeps many school things on and near her desk.', 'Hoa enjoys studying in a small corner of her flat.', 'Hoa has a tidy study corner that she enjoys using.', 'Hoa likes the picture that is hanging above her desk.'], 'c',
+      'Notebooks neatly placed, crayons beside the pencil case và “keeps the area tidy” support TIDY; “enjoys studying there” supports ENJOYS USING IT. C bao quát cả hai ý. A, B, D chỉ giữ một phần.',
+      'Khi hai nhóm details cùng quan trọng, Main Idea tốt phải bao quát cả hai thay vì chỉ chọn một nhóm.',
+      'organised things + enjoys studying there → a tidy study corner she enjoys using.'
+    ),
+    mainIdeaItem(
+      'g5-review-mi-q13', 'Linh Likes Learning',
+      'Linh often reads books when she has free time. At school, she enjoys doing projects with her friends. She uses books in the library to find useful information for their projects. Learning something new always makes her excited.',
+      ['Linh enjoys activities that help her learn new things.', 'Linh likes reading books more than doing group projects.', 'Linh often uses the library when she works with friends.', 'Linh spends her free time studying for school projects.'], 'a',
+      'Reading, projects, library research và excitement about learning đều thuộc ý lớn “activities that help her learn”. B thêm so sánh “more than”, C quá hẹp và D đổi free-time reading thành studying for projects.',
+      'Main Idea phải cover nhiều loại evidence mà không thêm thông tin passage không nói.',
+      'reading + projects + research + excitement → enjoys activities that help her learn.'
+    ),
+    mainIdeaItem(
+      'g5-review-mi-q14', "Minh's Future",
+      'Minh loves visiting new places on school trips. He asks people questions and writes down interesting things that he sees. He also enjoys telling his classmates about the places he visits. In the future, Minh would like to be a reporter.',
+      ['Minh enjoys asking people questions on school trips.', "Minh's interests make reporting a good future job.", 'Minh likes visiting places and talking to new people.', 'Minh writes notes because he wants to remember his trips.'], 'b',
+      'Visiting places, asking questions, writing information và telling others all match interests/skills useful for a reporter. B connects the details to the future job. A và C chỉ một phần; D tự thêm mục đích “to remember his trips”.',
+      'Nếu câu cuối nêu một kết quả hoặc lựa chọn, hãy kiểm tra xem các details trước đó có cùng dẫn đến kết quả đó không.',
+      'places + questions + notes + telling others → reporting is a fitting future job.'
+    ),
+    mainIdeaItem(
+      'g5-review-mi-q15', 'Visiting Another School',
+      'Class 5A visited another school last Friday. The pupils read short books in the library and drew pictures in the art room. Later, they worked with their new friends on a science project. They were tired at the end of the visit, but they wanted to come again.',
+      ['Class 5A enjoyed reading books at another school.', 'Class 5A learned with new friends in several rooms.', 'The school visit had many enjoyable learning activities.', 'The science project was an enjoyable part of the visit.'], 'c',
+      'Reading, drawing và science project là nhiều learning activities; việc muốn quay lại cho thấy trải nghiệm enjoyable. C bao quát cả hoạt động và cảm nhận. A, D quá hẹp; B khá gần nhưng nhấn rooms/friends thay vì toàn bộ learning experience.',
+      'Khi hai đáp án đều có vẻ đúng, chọn đáp án cover nhiều important details hơn và ít lệch trọng tâm hơn.',
+      'reading + drawing + science project + wants to return → an enjoyable visit with many learning activities.'
+    )
+  ])
 });
+
+function mainIdeaItem(id, title, text, choiceTexts, correctChoiceId, reason, theory, example) {
+  const choices = Object.freeze(choiceTexts.map((choiceText, index) => Object.freeze({
+    id: CHOICE_IDS[index],
+    text: choiceText
+  })));
+  const correctChoice = choices.find(choice => choice.id === correctChoiceId);
+  return Object.freeze({
+    id,
+    type: 'mcq',
+    stimulus: Object.freeze({ title, text }),
+    prompt: MAIN_IDEA_PROMPT,
+    choices,
+    correctChoiceId,
+    teachingFeedback: Object.freeze({
+      correctLabel: correctChoice?.text ?? '',
+      reason,
+      theory,
+      example
+    })
+  });
+}
