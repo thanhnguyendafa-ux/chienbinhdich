@@ -8,6 +8,7 @@ export function renderLessonInspector({
   fixedUrl,
   onBack,
   onStudentPreview,
+  onPrint,
   onSaveMastery,
   onResetMastery,
   onRefresh
@@ -37,6 +38,7 @@ export function renderLessonInspector({
         </section>
         <div class="admin-inspector-actions">
           <button class="secondary-btn" id="admin-student-preview-btn" type="button">Xem như học sinh</button>
+          <button class="secondary-btn" id="admin-print-btn" type="button">In / PDF</button>
           <button class="secondary-btn" id="admin-edit-mastery-btn" type="button">Chỉnh Mastery</button>
           <button class="primary-btn" id="admin-copy-fixed-btn" type="button" data-url="${escAttr(fixedUrl)}">Copy link cố định</button>
           <p id="admin-copy-fixed-status" class="copy-status"></p>
@@ -47,6 +49,7 @@ export function renderLessonInspector({
 
   root.querySelector('#admin-back-btn')?.addEventListener('click', onBack);
   root.querySelector('#admin-student-preview-btn')?.addEventListener('click', onStudentPreview);
+  root.querySelector('#admin-print-btn')?.addEventListener('click', onPrint);
   root.querySelector('#admin-edit-mastery-btn')?.addEventListener('click', () => {
     openMasteryEditor({
       root,

@@ -69,6 +69,10 @@ export const lessonRegistry = Object.freeze([
     subtitle: '12 câu · MCQ · True/False · Classification', lessonSlug: 'g5u2-trong-am-tu-vung-1', passThreshold: 80,
     completionPolicy: 'all-items', teacher: 'Thầy Thành MRT',
     description: '12 câu Unit 2 luyện trọng âm -teen/-ty và từ vựng về nhà ở, địa chỉ, khoảng cách. Hai câu Classification buộc học sinh phân loại nhiều từ theo nhóm thay vì chỉ đoán một đáp án.',
+    printGroups: Object.freeze([
+      Object.freeze({ id: 'word-stress', title: 'A. WORD STRESS', itemIds: Object.freeze(['g5u2-sv-q01', 'g5u2-sv-q02', 'g5u2-sv-q03', 'g5u2-sv-q04']) }),
+      Object.freeze({ id: 'vocabulary', title: 'B. VOCABULARY', itemIds: Object.freeze(['g5u2-sv-q05', 'g5u2-sv-q06', 'g5u2-sv-q07', 'g5u2-sv-q08', 'g5u2-sv-q09', 'g5u2-sv-q10', 'g5u2-sv-q11', 'g5u2-sv-q12']) })
+    ]),
     activityTypes: Object.freeze(['mcq', 'true_false', 'classification']), itemCount: 12,
     loadContent: () => import('./g5-u2-stress-vocab-01.js').then(module => module.global5Unit2StressVocab01Content)
   }),

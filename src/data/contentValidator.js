@@ -14,6 +14,7 @@ export function validateSet(set) {
   }
 
   validatePassages(set, errors);
+  validatePrintGroups(set, errors);
 
   for (const item of set.items) {
     const type = questionTypeForItem(item);
@@ -225,6 +226,73 @@ function validatePassages(set, errors) {
     }
     if (ids.has(passage.id)) errors.push(`Passage id bị trùng: ${passage.id}`);
     ids.add(passage.id);
+  }
+}
+
+function validatePrintGroups(set, errors) {
+  if (set.printGroups === undefined) return;
+  if (!Array.isArray(set.printGroups) || set.printGroups.length === 0) {
+    errors.push(`Set ${set.id} printGroups phải là mảng không rỗng.`);
+    return;
+  }
+  if (Array.isArray(set.passages) && set.passages.length > 0) {
+    errors.push(`Set ${set.id} không được dùng printGroups cùng passages; Reading tự group theo passage.`);
+    return;
+  }
+
+  const sourceItemIds = set.items
+    .filter(item => item?.id !== undefined && item?.id !== null)
+    .map(item => String(item.id));
+  const validItemIds = new Set(sourceItemIds);
+  const seenItemIds = new Set();
+  const seenGroupIds = new Set();
+  const groupedItemIds = [];
+
+  for (const [index, group] of set.printGroups.entries()) {
+    validatePrintGroup({ group, index, validItemIds, seenItemIds, seenGroupIds, groupedItemIds, errors });
+  }
+
+  validatePrintGroupCoverage(validItemIds, seenItemIds, errors);
+  validatePrintGroupOrder(sourceItemIds, groupedItemIds, validItemIds, seenItemIds, errors, set.id);
+}
+
+function validatePrintGroup({ group, index, validItemIds, seenItemIds, seenGroupIds, groupedItemIds, errors }) {
+  const groupId = String(group?.id ?? `group-${index + 1}`);
+  if (!nonEmpty(group?.title) || !Array.isArray(group?.itemIds) || group.itemIds.length === 0) {
+    errors.push(`Print group ${groupId} không hợp lệ.`);
+    return;
+  }
+  if (seenGroupIds.has(groupId)) errors.push(`Print group id bị trùng: ${groupId}`);
+  seenGroupIds.add(groupId);
+  validatePrintGroupItems(groupId, group.itemIds, validItemIds, seenItemIds, groupedItemIds, errors);
+}
+
+function validatePrintGroupItems(groupId, itemIds, validItemIds, seenItemIds, groupedItemIds, errors) {
+  for (const itemIdValue of itemIds) {
+    const itemId = String(itemIdValue);
+    if (!validItemIds.has(itemId)) {
+      errors.push(`Print group ${groupId} trỏ item không tồn tại: ${itemId}`);
+      continue;
+    }
+    if (seenItemIds.has(itemId)) {
+      errors.push(`Print group dùng trùng item: ${itemId}`);
+      continue;
+    }
+    seenItemIds.add(itemId);
+    groupedItemIds.push(itemId);
+  }
+}
+
+function validatePrintGroupCoverage(validItemIds, seenItemIds, errors) {
+  for (const itemId of validItemIds) {
+    if (!seenItemIds.has(itemId)) errors.push(`Print groups thiếu item: ${itemId}`);
+  }
+}
+
+function validatePrintGroupOrder(sourceItemIds, groupedItemIds, validItemIds, seenItemIds, errors, setId) {
+  if (seenItemIds.size !== validItemIds.size || groupedItemIds.length !== sourceItemIds.length) return;
+  if (!sourceItemIds.every((itemId, index) => groupedItemIds[index] === itemId)) {
+    errors.push(`Print groups phải giữ nguyên thứ tự item của Set ${setId}.`);
   }
 }
 

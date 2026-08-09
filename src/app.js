@@ -370,6 +370,7 @@ async function showAdmin() {
   }
 
   const params = new URL(window.location.href).searchParams;
+  if (params.get('print')) return showAdminLessonPrint(params.get('print'));
   if (params.get('preview')) return showAdminStudentPreview(params.get('preview'));
   if (params.get('inspect')) return showAdminInspector(params.get('inspect'));
   if (params.get('session')) return showAdminSession(params.get('session'));
@@ -415,9 +416,22 @@ async function showAdminInspector(setId) {
     fixedUrl: buildFixedLessonUrl(window.location, lesson),
     onBack: () => navigateAdmin(),
     onStudentPreview: () => navigateAdmin({ preview: setId }),
+    onPrint: () => navigateAdmin({ print: setId }),
     onSaveMastery: (id, value) => settingsRepository.savePassThreshold(id, value),
     onResetMastery: id => settingsRepository.resetPassThreshold(id),
     onRefresh: () => showAdminInspector(setId)
+  });
+}
+
+async function showAdminLessonPrint(setId) {
+  renderLoading(root, 'Đang chuẩn bị bản in...');
+  const lesson = await loadLessonSet(setId);
+  validateLesson(lesson);
+  const { renderLessonPrint } = await getScreen('admin', 'Đang mở bản in...');
+  renderLessonPrint({
+    root,
+    lesson,
+    onBack: () => navigateAdmin({ inspect: setId })
   });
 }
 
