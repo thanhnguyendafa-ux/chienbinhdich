@@ -13,6 +13,7 @@ export function typeLabel(type) {
     mcq: 'MCQ',
     true_false: 'True/False',
     sentence_order: 'Order',
+    classification: 'Classification',
     matching: 'Match',
     fill_blank: 'Fill',
     reading: 'Reading',
@@ -41,6 +42,7 @@ export function formatDuration(value) {
 export function displayValue(value) {
   if (Array.isArray(value)) return value.join(' → ');
   if (typeof value === 'boolean') return value ? 'True' : 'False';
+  if (value && typeof value === 'object') return Object.entries(value).map(([key, group]) => `${key} → ${group}`).join(' · ');
   return String(value ?? '—');
 }
 
