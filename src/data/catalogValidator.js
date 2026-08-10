@@ -1,5 +1,8 @@
 import { validateLessonSlug } from '../core/lessonLinks.js';
 import { validatePassThreshold } from '../core/masteryPolicy.js';
+import { isValidTypingTolerance } from '../core/typingPolicy.js';
+
+const DIFFICULTIES = new Set(['easy', 'medium', 'hard']);
 
 export function validateCatalog(folders, registry) {
   const errors = [];
@@ -47,6 +50,12 @@ export function validateCatalog(folders, registry) {
     if (!Number.isInteger(entry?.itemCount) || entry.itemCount <= 0) errors.push(`Set ${entry?.id ?? '(unknown)'} có itemCount không hợp lệ.`);
     if (entry?.passThreshold !== undefined) {
       errors.push(...validatePassThreshold(entry.passThreshold, `Set ${entry?.id ?? '(unknown)'} passThreshold`));
+    }
+    if (entry?.typingTolerance !== undefined && !isValidTypingTolerance(entry.typingTolerance)) {
+      errors.push(`Set ${entry?.id ?? '(unknown)'} có typingTolerance không hợp lệ.`);
+    }
+    if (entry?.difficulty !== undefined && !DIFFICULTIES.has(entry.difficulty)) {
+      errors.push(`Set ${entry?.id ?? '(unknown)'} có difficulty không hợp lệ.`);
     }
     if (!Array.isArray(entry?.activityTypes) || entry.activityTypes.length === 0) errors.push(`Set ${entry?.id ?? '(unknown)'} thiếu activityTypes.`);
     if (typeof entry?.loadContent !== 'function') errors.push(`Set ${entry?.id ?? '(unknown)'} thiếu content loader.`);

@@ -5,12 +5,21 @@ import { lessonFolders, lessonRegistry } from '../src/data/lessonCatalog.js';
 import { validateSet } from '../src/data/contentValidator.js';
 import { getSetDescriptor, getSetDescriptorBySlug, listFolders, listSetDescriptors, listSetsByFolder, loadLessonSet } from '../src/repositories/lessonRepository.js';
 
-test('catalog exposes hierarchical Global 5, Global 7 and MRT folders with their published Sets', () => {
+test('catalog exposes hierarchical Global 2, Global 5, Global 7 and MRT folders with published Sets', () => {
   assert.deepEqual(validateCatalog(lessonFolders, lessonRegistry), []);
   assert.deepEqual(listFolders().map(folder => folder.id), [
-    'samples', 'global5', 'global5-unit1', 'global5-unit2', 'global5-review', 'global7', 'global7-unit1', 'mrt-lessons'
+    'samples',
+    'global2', 'global2-unit6', 'global2-unit6-translation',
+    'global5', 'global5-unit1', 'global5-unit2', 'global5-review',
+    'global7', 'global7-unit1',
+    'mrt-lessons'
   ]);
   assert.deepEqual(listSetsByFolder('samples').map(set => set.id), ['g7-u1-mixed-demo', 'g7-u1-s1']);
+  assert.deepEqual(listSetsByFolder('global2-unit6-translation').map(set => set.id), [
+    'g2-u6-translation-01', 'g2-u6-translation-02', 'g2-u6-translation-03',
+    'g2-u6-translation-04', 'g2-u6-translation-05', 'g2-u6-translation-06',
+    'g2-u6-translation-07', 'g2-u6-translation-08', 'g2-u6-translation-09'
+  ]);
   assert.deepEqual(listSetsByFolder('global5-unit1').map(set => set.id), [
     'g5-u1-vocab-01', 'g5-u1-pattern-01', 'g5-u1-reading-01', 'g5-u1-writing-01'
   ]);
@@ -36,15 +45,18 @@ test('published Set ids and fixed lesson slugs are unique and repository-resolva
   }
 });
 
-test('catalog validator rejects duplicate ids, dangling folders and duplicate fixed slugs', () => {
+test('catalog validator rejects duplicate ids, dangling folders, duplicate fixed slugs and invalid new metadata', () => {
   const folder = { id: 'sample', name: 'Sample', order: 1 };
   const entry = {
     id: 'one', folderId: 'missing', title: 'One', course: 'Course', unit: 'Unit', itemCount: 1,
-    passThreshold: 80, activityTypes: ['mcq'], lessonSlug: 'one-mcq', order: 1, loadContent: async () => ({ items: [] })
+    passThreshold: 80, typingTolerance: 'yes', difficulty: 'super-hard', activityTypes: ['mcq'], lessonSlug: 'one-mcq', order: 1,
+    loadContent: async () => ({ items: [] })
   };
   const errors = validateCatalog([folder, folder], [entry, entry]);
   assert.ok(errors.some(error => error.includes('Folder id bị trùng')));
   assert.ok(errors.some(error => error.includes('Set id bị trùng')));
   assert.ok(errors.some(error => error.includes('folder không tồn tại')));
   assert.ok(errors.some(error => error.includes('lessonSlug bị trùng')));
+  assert.ok(errors.some(error => error.includes('typingTolerance không hợp lệ')));
+  assert.ok(errors.some(error => error.includes('difficulty không hợp lệ')));
 });

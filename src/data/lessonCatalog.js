@@ -1,12 +1,15 @@
 export const lessonFolders = Object.freeze([
   Object.freeze({ id: 'samples', name: 'Bài tập mẫu', description: 'Các Set mẫu dùng để thử luồng Mastery, nhiều dạng câu và link giao bài.', parentId: null, order: 1 }),
-  Object.freeze({ id: 'global5', name: 'Global Success 5', description: 'Kho bài luyện Global Success 5 được tổ chức theo từng Unit.', parentId: null, order: 2 }),
+  Object.freeze({ id: 'global2', name: 'Global Success 2', description: 'Kho bài luyện Global Success 2 được tổ chức theo từng Unit.', parentId: null, order: 2 }),
+  Object.freeze({ id: 'global2-unit6', name: 'Unit 6', description: 'Bài luyện Global Success 2 Unit 6.', parentId: 'global2', order: 6 }),
+  Object.freeze({ id: 'global2-unit6-translation', name: 'Bài tập dịch câu', description: 'Các bài Typing Việt → Anh xây từ gói từ, cụm từ đến câu hoàn chỉnh.', parentId: 'global2-unit6', order: 1 }),
+  Object.freeze({ id: 'global5', name: 'Global Success 5', description: 'Kho bài luyện Global Success 5 được tổ chức theo từng Unit.', parentId: null, order: 3 }),
   Object.freeze({ id: 'global5-unit1', name: 'Unit 1 · All about me!', description: 'Bài luyện Global Success 5 Unit 1 · All about me!, tập trung từ vựng, mẫu câu, đọc hiểu và viết.', parentId: 'global5', order: 1 }),
   Object.freeze({ id: 'global5-unit2', name: 'Unit 2 · Our homes', description: 'Bài luyện Global Success 5 Unit 2 · Our homes, tập trung trọng âm, từ vựng và ngôn ngữ về nhà ở, địa chỉ và khoảng cách.', parentId: 'global5', order: 2 }),
   Object.freeze({ id: 'global5-review', name: 'Global Success 5 Review', description: 'Kho ôn tập tổng hợp Global Success 5 theo kỹ năng, tái sử dụng ngôn ngữ từ nhiều Unit.', parentId: 'global5', order: 99 }),
-  Object.freeze({ id: 'global7', name: 'Global Success 7', description: 'Kho bài luyện Global Success 7 được tổ chức theo từng Unit.', parentId: null, order: 3 }),
+  Object.freeze({ id: 'global7', name: 'Global Success 7', description: 'Kho bài luyện Global Success 7 được tổ chức theo từng Unit.', parentId: null, order: 4 }),
   Object.freeze({ id: 'global7-unit1', name: 'Unit 1 · Hobbies', description: 'Kho bài luyện Global Success 7 Unit 1 · Hobbies, tập trung dịch và sử dụng ngôn ngữ theo từng bước.', parentId: 'global7', order: 1 }),
-  Object.freeze({ id: 'mrt-lessons', name: 'Bài học Thầy Thành MRT', description: 'Các bài luyện theo hệ tư duy ngữ pháp Mister Thành MRT.', parentId: null, order: 4 })
+  Object.freeze({ id: 'mrt-lessons', name: 'Bài học Thầy Thành MRT', description: 'Các bài luyện theo hệ tư duy ngữ pháp Mister Thành MRT.', parentId: null, order: 5 })
 ]);
 
 export const lessonRegistry = Object.freeze([
@@ -27,6 +30,87 @@ export const lessonRegistry = Object.freeze([
     description: 'Xây câu tiếng Anh từ các đơn vị nhỏ. Câu sai sẽ quay lại trong chuỗi để luyện đến khi Mastery đạt yêu cầu.',
     activityTypes: Object.freeze(['typing']), itemCount: 16,
     loadContent: () => import('./global7-unit1-set1.js').then(module => module.global7Unit1Set1Content)
+  }),
+  Object.freeze({
+    id: 'g2-u6-translation-01', folderId: 'global2-unit6-translation', order: 1, version: 1,
+    course: 'Global Success 2', unit: 'Unit 6', title: '01 · Dịch câu · Con cáo ở nông trại',
+    subtitle: 'Typing · Việt → Anh · Gói từ → cụm → câu', lessonSlug: 'g2u6-dich-cau-1', passThreshold: 80,
+    completionPolicy: 'all-items', typingTolerance: true, teacher: 'Thầy Thành MRT',
+    description: '7 lượt Typing độc lập xây từ gói từ và cụm nghĩa đến câu hoàn chỉnh. Chế độ lớp nhỏ bỏ qua viết hoa và dấu câu khi chấm.',
+    activityTypes: Object.freeze(['typing']), itemCount: 7,
+    loadContent: () => import('./g2-u6-translation-content.js').then(module => module.g2U6Translation01Content)
+  }),
+  Object.freeze({
+    id: 'g2-u6-translation-02', folderId: 'global2-unit6-translation', order: 2, version: 1,
+    course: 'Global Success 2', unit: 'Unit 6', title: '02 · Dịch câu · Con bò đực ở nông trại',
+    subtitle: 'Typing · Việt → Anh · Gói từ → cụm → câu', lessonSlug: 'g2u6-dich-cau-2', passThreshold: 80,
+    completionPolicy: 'all-items', typingTolerance: true, teacher: 'Thầy Thành MRT',
+    description: '7 lượt Typing độc lập xây từ gói từ và cụm nghĩa đến câu hoàn chỉnh. Chế độ lớp nhỏ bỏ qua viết hoa và dấu câu khi chấm.',
+    activityTypes: Object.freeze(['typing']), itemCount: 7,
+    loadContent: () => import('./g2-u6-translation-content.js').then(module => module.g2U6Translation02Content)
+  }),
+  Object.freeze({
+    id: 'g2-u6-translation-03', folderId: 'global2-unit6-translation', order: 3, version: 1,
+    course: 'Global Success 2', unit: 'Unit 6', title: '03 · Dịch câu · Con cáo trong hộp',
+    subtitle: 'Typing · Việt → Anh · Gói từ → cụm → câu', lessonSlug: 'g2u6-dich-cau-3', passThreshold: 80,
+    completionPolicy: 'all-items', typingTolerance: true, teacher: 'Thầy Thành MRT',
+    description: '7 lượt Typing độc lập xây từ gói từ và cụm nghĩa đến câu hoàn chỉnh. Chế độ lớp nhỏ bỏ qua viết hoa và dấu câu khi chấm.',
+    activityTypes: Object.freeze(['typing']), itemCount: 7,
+    loadContent: () => import('./g2-u6-translation-content.js').then(module => module.g2U6Translation03Content)
+  }),
+  Object.freeze({
+    id: 'g2-u6-translation-04', folderId: 'global2-unit6-translation', order: 4, version: 1,
+    course: 'Global Success 2', unit: 'Unit 6', title: '04 · Dịch câu hỏi · Con cáo ở nông trại',
+    subtitle: 'Typing · Việt → Anh · Gói từ → cụm → câu hỏi', lessonSlug: 'g2u6-dich-cau-4', passThreshold: 80,
+    completionPolicy: 'all-items', typingTolerance: true, teacher: 'Thầy Thành MRT',
+    description: '7 lượt Typing độc lập xây dần đến câu hỏi hoàn chỉnh. Chế độ lớp nhỏ bỏ qua viết hoa và dấu câu khi chấm.',
+    activityTypes: Object.freeze(['typing']), itemCount: 7,
+    loadContent: () => import('./g2-u6-translation-content.js').then(module => module.g2U6Translation04Content)
+  }),
+  Object.freeze({
+    id: 'g2-u6-translation-05', folderId: 'global2-unit6-translation', order: 5, version: 1,
+    course: 'Global Success 2', unit: 'Unit 6', title: '05 · Dịch hỏi–đáp · Con bò đực ở nông trại',
+    subtitle: 'Typing · Việt → Anh · Hỏi–đáp', lessonSlug: 'g2u6-dich-cau-5', passThreshold: 80,
+    completionPolicy: 'all-items', typingTolerance: true, difficulty: 'hard', teacher: 'Thầy Thành MRT',
+    description: '9 lượt Typing độc lập xây từ gói từ đến cặp hỏi–đáp hoàn chỉnh. Bài được đánh dấu Khó và bật chấm Typing lớp nhỏ.',
+    activityTypes: Object.freeze(['typing']), itemCount: 9,
+    loadContent: () => import('./g2-u6-translation-content.js').then(module => module.g2U6Translation05Content)
+  }),
+  Object.freeze({
+    id: 'g2-u6-translation-06', folderId: 'global2-unit6-translation', order: 6, version: 1,
+    course: 'Global Success 2', unit: 'Unit 6', title: '06 · Dịch hỏi–đáp · Con cáo ở nông trại',
+    subtitle: 'Typing · Việt → Anh · Hỏi–đáp', lessonSlug: 'g2u6-dich-cau-6', passThreshold: 80,
+    completionPolicy: 'all-items', typingTolerance: true, difficulty: 'hard', teacher: 'Thầy Thành MRT',
+    description: '9 lượt Typing độc lập xây từ gói từ đến cặp hỏi–đáp hoàn chỉnh. Bài được đánh dấu Khó và bật chấm Typing lớp nhỏ.',
+    activityTypes: Object.freeze(['typing']), itemCount: 9,
+    loadContent: () => import('./g2-u6-translation-content.js').then(module => module.g2U6Translation06Content)
+  }),
+  Object.freeze({
+    id: 'g2-u6-translation-07', folderId: 'global2-unit6-translation', order: 7, version: 1,
+    course: 'Global Success 2', unit: 'Unit 6', title: '07 · Dịch hỏi–đáp · Con bò đực ở nông trại · Luyện lại',
+    subtitle: 'Typing · Việt → Anh · Hỏi–đáp · Luyện lại', lessonSlug: 'g2u6-dich-cau-7', passThreshold: 80,
+    completionPolicy: 'all-items', typingTolerance: true, difficulty: 'hard', teacher: 'Thầy Thành MRT',
+    description: '9 lượt Typing độc lập luyện lại đầy đủ từ đáy thay vì giả định học sinh nhớ bài trước. Bài được đánh dấu Khó.',
+    activityTypes: Object.freeze(['typing']), itemCount: 9,
+    loadContent: () => import('./g2-u6-translation-content.js').then(module => module.g2U6Translation07Content)
+  }),
+  Object.freeze({
+    id: 'g2-u6-translation-08', folderId: 'global2-unit6-translation', order: 8, version: 1,
+    course: 'Global Success 2', unit: 'Unit 6', title: '08 · Dịch hỏi–đáp · Con cáo trong hộp',
+    subtitle: 'Typing · Việt → Anh · Hỏi–đáp', lessonSlug: 'g2u6-dich-cau-8', passThreshold: 80,
+    completionPolicy: 'all-items', typingTolerance: true, difficulty: 'hard', teacher: 'Thầy Thành MRT',
+    description: '10 lượt Typing độc lập xây đến cặp hỏi–đáp phủ định hoàn chỉnh. Bài được đánh dấu Khó và bật chấm Typing lớp nhỏ.',
+    activityTypes: Object.freeze(['typing']), itemCount: 10,
+    loadContent: () => import('./g2-u6-translation-content.js').then(module => module.g2U6Translation08Content)
+  }),
+  Object.freeze({
+    id: 'g2-u6-translation-09', folderId: 'global2-unit6-translation', order: 9, version: 1,
+    course: 'Global Success 2', unit: 'Unit 6', title: '09 · Dịch hỏi–đáp · Con bò đực trong hộp',
+    subtitle: 'Typing · Việt → Anh · Hỏi–đáp', lessonSlug: 'g2u6-dich-cau-9', passThreshold: 80,
+    completionPolicy: 'all-items', typingTolerance: true, difficulty: 'hard', teacher: 'Thầy Thành MRT',
+    description: '10 lượt Typing độc lập xây đến cặp hỏi–đáp phủ định hoàn chỉnh. Bài được đánh dấu Khó và bật chấm Typing lớp nhỏ.',
+    activityTypes: Object.freeze(['typing']), itemCount: 10,
+    loadContent: () => import('./g2-u6-translation-content.js').then(module => module.g2U6Translation09Content)
   }),
   Object.freeze({
     id: 'g5-u1-vocab-01', folderId: 'global5-unit1', order: 1, version: 1,

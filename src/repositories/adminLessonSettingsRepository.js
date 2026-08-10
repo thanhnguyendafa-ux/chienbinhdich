@@ -1,6 +1,6 @@
 import { getFirebaseClient } from './firebaseClient.js';
 import { requireAdmin } from './adminAccess.js';
-import { lessonSettingDocumentFor, normalizeLessonSettingRecord } from './lessonSettingsModel.js';
+import { lessonSettingDocumentFor, lessonSettingOverrides, normalizeLessonSettingRecord } from './lessonSettingsModel.js';
 
 const ADMIN_CONTEXT = 'admin';
 
@@ -20,25 +20,63 @@ export function createAdminLessonSettingsRepository(project) {
 
     async getLessonSetting(setId) {
       const { client } = await requireAdmin(adminClient);
-      const ref = client.firestore.doc(client.db, 'lessonSettings', String(setId));
-      const snapshot = await client.firestore.getDoc(ref);
-      if (!snapshot.exists()) return null;
-      return normalizeLessonSettingRecord(snapshot.id, snapshot.data());
+      return readSetting(client, setId);
     },
 
     async savePassThreshold(setId, passThreshold, updatedAt = Date.now()) {
-      const { client, user } = await requireAdmin(adminClient);
-      const ref = client.firestore.doc(client.db, 'lessonSettings', String(setId));
-      const document = lessonSettingDocumentFor(setId, passThreshold, user.uid, updatedAt);
-      await client.firestore.setDoc(ref, document);
-      return normalizeLessonSettingRecord(String(setId), document);
+      return mutateSetting(adminClient, setId, updatedAt, overrides => ({ ...overrides, passThreshold }));
     },
 
-    async resetPassThreshold(setId) {
-      const { client } = await requireAdmin(adminClient);
-      const ref = client.firestore.doc(client.db, 'lessonSettings', String(setId));
-      await client.firestore.deleteDoc(ref);
-      return null;
+    async resetPassThreshold(setId, updatedAt = Date.now()) {
+      return mutateSetting(adminClient, setId, updatedAt, overrides => {
+        const next = { ...overrides };
+        delete next.passThreshold;
+        return next;
+      });
+    },
+
+    async saveTypingTolerance(setId, typingTolerance, updatedAt = Date.now()) {
+      return mutateSetting(adminClient, setId, updatedAt, overrides => ({ ...overrides, typingTolerance }));
+    },
+
+    async resetTypingTolerance(setId, updatedAt = Date.now()) {
+      return mutateSetting(adminClient, setId, updatedAt, overrides => {
+        const next = { ...overrides };
+        delete next.typingTolerance;
+        return next;
+      });
     }
   });
+}
+
+async function mutateSetting(adminClient, setId, updatedAt, mutate) {
+  const { client, user } = await requireAdmin(adminClient);
+  return mutateLessonSettingTransaction({ client, user, setId, updatedAt, mutate });
+}
+
+export async function mutateLessonSettingTransaction({ client, user, setId, updatedAt, mutate }) {
+  const ref = client.firestore.doc(client.db, 'lessonSettings', String(setId));
+  return client.firestore.runTransaction(client.db, async transaction => {
+    const snapshot = await transaction.get(ref);
+    const current = snapshot.exists()
+      ? normalizeLessonSettingRecord(snapshot.id, snapshot.data())
+      : null;
+    const nextOverrides = mutate(lessonSettingOverrides(current));
+
+    if (Object.keys(nextOverrides).length === 0) {
+      transaction.delete(ref);
+      return null;
+    }
+
+    const document = lessonSettingDocumentFor(setId, nextOverrides, user.uid, updatedAt);
+    transaction.set(ref, document);
+    return normalizeLessonSettingRecord(String(setId), document);
+  });
+}
+
+async function readSetting(client, setId) {
+  const ref = client.firestore.doc(client.db, 'lessonSettings', String(setId));
+  const snapshot = await client.firestore.getDoc(ref);
+  if (!snapshot.exists()) return null;
+  return normalizeLessonSettingRecord(snapshot.id, snapshot.data());
 }

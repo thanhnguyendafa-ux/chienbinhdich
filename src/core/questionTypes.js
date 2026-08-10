@@ -22,11 +22,11 @@ export function questionTypeForItem(item) {
   return item?.type ?? 'typing';
 }
 
-export function evaluateQuestion(item, response) {
+export function evaluateQuestion(item, response, options = {}) {
   const type = questionTypeForItem(item);
   const evaluator = evaluators[type];
   if (!evaluator) throw new Error(`Unsupported question type: ${type}`);
-  return evaluator(item, response);
+  return evaluator(item, response, options);
 }
 
 export function expectedResponseDisplay(item) {
@@ -126,8 +126,12 @@ export function questionTypeLabel(itemOrType) {
   })[type] ?? type.toUpperCase();
 }
 
-function evaluateTyping(item, response) {
-  const result = evaluateAnswer(String(response ?? ''), item.en);
+function evaluateTyping(item, response, options = {}) {
+  const tolerant = options?.typingTolerance === true;
+  const result = evaluateAnswer(String(response ?? ''), item.en, {
+    ignoreCase: tolerant,
+    ignorePunctuation: tolerant
+  });
   return {
     correct: result.correct,
     normalizedResponse: result.normalizedInput,

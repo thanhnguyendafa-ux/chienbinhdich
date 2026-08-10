@@ -27,7 +27,8 @@ export function catalogPassThreshold(lesson) {
 
 export function resolveMasteryPolicy(lesson, setting = null) {
   const defaultThreshold = catalogPassThreshold(lesson);
-  if (setting === null || setting === undefined) {
+  const hasOverride = setting?.passThreshold !== undefined && setting?.passThreshold !== null;
+  if (!hasOverride) {
     return Object.freeze({
       passThreshold: defaultThreshold,
       defaultThreshold,

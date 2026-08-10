@@ -51,7 +51,7 @@ function renderFolderListRow(folder) {
 function renderLessonListRow(set, selected, location, fixedUrl) {
   const custom = set.masteryPolicy?.source === 'admin-override';
   return `<tr class="admin-lesson-row ${selected ? 'is-selected' : ''}" tabindex="0" data-select-set="${escAttr(set.id)}">
-    <td><div class="admin-file-name"><span>📄</span><div><strong>${esc(set.title)}</strong>${location ? `<small>${esc(location)}</small>` : `<small>${esc(set.unit)}</small>`}</div></div></td>
+    <td><div class="admin-file-name"><span>📄</span><div><div class="admin-file-title-row"><strong>${esc(set.title)}</strong>${set.difficulty === 'hard' ? '<span class="lesson-difficulty-badge">KHÓ</span>' : ''}</div>${location ? `<small>${esc(location)}</small>` : `<small>${esc(set.unit)}</small>`}</div></div></td>
     <td><span class="admin-type-badge">${esc(typeSummary(set.activityTypes))}</span></td>
     <td>${Number(set.itemCount)}</td>
     <td><div class="admin-mastery-inline"><strong>${Number(set.passThreshold)}%</strong><span class="admin-mastery-badge ${custom ? 'is-custom' : ''}">${custom ? 'Custom' : 'Default'}</span><button class="ghost-btn admin-mini-btn admin-mastery-edit-btn" type="button" data-edit-mastery="${escAttr(set.id)}" aria-label="Chỉnh Mastery cho ${escAttr(set.title)}">✎</button></div></td>

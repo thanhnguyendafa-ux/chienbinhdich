@@ -1,12 +1,16 @@
 import { resolveMasteryPolicy, sessionPassThreshold } from '../core/masteryPolicy.js';
+import { resolveTypingPolicy, sessionTypingTolerance } from '../core/typingPolicy.js';
 
 export function applyLessonMasterySetting(lesson, setting = null) {
   if (!lesson) throw new Error('Lesson is required.');
   const masteryPolicy = resolveMasteryPolicy(lesson, setting);
+  const typingPolicy = resolveTypingPolicy(lesson, setting);
   return Object.freeze({
     ...lesson,
     passThreshold: masteryPolicy.passThreshold,
-    masteryPolicy
+    masteryPolicy,
+    typingTolerance: typingPolicy.typingTolerance,
+    typingPolicy
   });
 }
 
@@ -17,15 +21,24 @@ export function applyLessonMasterySettings(lessons, settings = []) {
 
 export function applySessionMasterySnapshot(lesson, session) {
   if (!lesson) throw new Error('Lesson is required.');
-  const currentPolicy = lesson.masteryPolicy ?? resolveMasteryPolicy(lesson, null);
+  const currentMasteryPolicy = lesson.masteryPolicy ?? resolveMasteryPolicy(lesson, null);
+  const currentTypingPolicy = lesson.typingPolicy ?? resolveTypingPolicy(lesson, null);
   const threshold = sessionPassThreshold(session, lesson);
+  const typingTolerance = sessionTypingTolerance(session, lesson);
   return Object.freeze({
     ...lesson,
     passThreshold: threshold,
+    typingTolerance,
     masteryPolicy: Object.freeze({
-      ...currentPolicy,
+      ...currentMasteryPolicy,
       currentThreshold: Number(lesson.passThreshold),
       passThreshold: threshold,
+      source: 'session-snapshot'
+    }),
+    typingPolicy: Object.freeze({
+      ...currentTypingPolicy,
+      currentTypingTolerance: lesson.typingTolerance === true,
+      typingTolerance,
       source: 'session-snapshot'
     })
   });
