@@ -47,9 +47,10 @@ export function submitAnswer({ session, set, response, answer, attemptMeta = {},
   const hasSeenAnswer = exposureAttempts.some(attempt => attempt.answerRevealedAfterAttempt === true);
   const failedAttemptsBefore = exposureAttempts.filter(attempt => !attempt.correct).length;
   const submittedResponse = response === undefined ? answer : response;
-  const result = evaluateQuestion(item, submittedResponse, {
-    typingTolerance: sessionTypingTolerance(session, set)
-  });
+  const typingTolerance = sessionTypingTolerance(session, set);
+  const result = typingTolerance
+    ? evaluateQuestion(item, submittedResponse, { typingTolerance: true })
+    : evaluateQuestion(item, submittedResponse);
   const submittedAt = finiteTime(attemptMeta.submittedAt, now);
   const startedAt = finiteTime(attemptMeta.startedAt, submittedAt);
   const revealAfterAttempt = !result.correct && (hasSeenAnswer || failedAttemptsBefore + 1 >= 2);
