@@ -96,10 +96,26 @@ export function coldWritingTokens(words, phrases, sentences, scaffold) {
 
 export function dependencyIdsForText(text, wordEntries, wordIds, scaffold) {
   const targetTokens = new Set(lexicalWritingTokens(text, scaffold));
+  const normalizedTarget = normalizedWords(text);
   return wordEntries.flatMap((entry, index) => {
-    const entryTokens = lexicalWritingTokens(entry?.[1] ?? '', scaffold);
-    return entryTokens.some(token => targetTokens.has(token)) ? [wordIds[index]] : [];
+    const answer = entry?.[1] ?? '';
+    const entryTokens = lexicalWritingTokens(answer, scaffold);
+    const lexicalMatch = entryTokens.some(token => targetTokens.has(token));
+    const explicitChunkMatch = containsWordSequence(normalizedTarget, normalizedWords(answer));
+    return lexicalMatch || explicitChunkMatch ? [wordIds[index]] : [];
   });
+}
+
+function normalizedWords(value) {
+  return (String(value ?? '').toLocaleLowerCase('en').replace(/[’]/g, "'").match(/[a-z]+(?:'[a-z]+)?|\d+/g) ?? []);
+}
+
+function containsWordSequence(target, phrase) {
+  if (!phrase.length || phrase.length > target.length) return false;
+  for (let start = 0; start <= target.length - phrase.length; start += 1) {
+    if (phrase.every((word, offset) => target[start + offset] === word)) return true;
+  }
+  return false;
 }
 
 function unique(values) {
