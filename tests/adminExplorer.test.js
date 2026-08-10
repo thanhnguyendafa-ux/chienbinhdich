@@ -28,10 +28,13 @@ test('Explorer tree nests Global Success 2, 5, 6 and 7 without changing Set ids'
     'g2-u6-translation-07', 'g2-u6-translation-08', 'g2-u6-translation-09'
   ]);
 
-  assert.deepEqual(findAdminTreeNode(tree, 'global5').children.filter(node => node.type === 'folder').map(node => node.id), ['global5-unit1', 'global5-unit2', 'global5-review']);
+  assert.deepEqual(findAdminTreeNode(tree, 'global5').children.filter(node => node.type === 'folder').map(node => node.id), [
+    'global5-unit1', 'global5-unit2', 'global5-review-u1-5', 'global5-review'
+  ]);
   assert.deepEqual(folderEntries(tree, 'global5-unit1').filter(node => node.type === 'lesson').map(node => node.setId), [
     'g5-u1-vocab-01', 'g5-u1-pattern-01', 'g5-u1-reading-01', 'g5-u1-writing-01'
   ]);
+  assert.equal(folderEntries(tree, 'global5-review-u1-5').filter(node => node.type === 'lesson').length, 10);
 
   const global6 = findAdminTreeNode(tree, 'global6');
   assert.deepEqual(global6.children.filter(node => node.type === 'folder').map(node => node.id), ['global6-unit1-writing-typing']);
@@ -58,12 +61,13 @@ test('Explorer breadcrumbs and recursive lesson counts match the hierarchy', () 
   assert.deepEqual(folderBreadcrumbs(tree, 'global2-unit6-translation').map(item => item.label), ['Bài tập', 'Global Success 2', 'Unit 6', 'Bài tập dịch câu']);
   assert.deepEqual(folderBreadcrumbs(tree, 'global5-unit1').map(item => item.label), ['Bài tập', 'Global Success 5', 'Unit 1 · All about me!']);
   assert.deepEqual(folderBreadcrumbs(tree, 'global5-unit2').map(item => item.label), ['Bài tập', 'Global Success 5', 'Unit 2 · Our homes']);
+  assert.deepEqual(folderBreadcrumbs(tree, 'global5-review-u1-5').map(item => item.label), ['Bài tập', 'Global Success 5', 'Review Unit 1–5']);
   assert.deepEqual(folderBreadcrumbs(tree, 'global5-review').map(item => item.label), ['Bài tập', 'Global Success 5', 'Global Success 5 Review']);
   assert.deepEqual(folderBreadcrumbs(tree, 'global6-unit1-writing-s1').map(item => item.label), ['Bài tập', 'Global Success 6', 'G6Unit1 Writing Typing', 'Cấu trúc 1 · School Identity']);
   assert.deepEqual(folderBreadcrumbs(tree, 'global7-unit1-writing-s1').map(item => item.label), ['Bài tập', 'Global Success 7', 'Unit 1 · Hobbies', 'G7Unit1 Writing Typing', 'Cấu trúc 1 · Hobby Identification']);
   assert.deepEqual(folderBreadcrumbs(tree, 'global7-unit1-writing-final').map(item => item.label), ['Bài tập', 'Global Success 7', 'Unit 1 · Hobbies', 'G7Unit1 Writing Typing', 'Final Writing Integration']);
   assert.equal(folderLessonCount(findAdminTreeNode(tree, 'global2')), 9);
-  assert.equal(folderLessonCount(findAdminTreeNode(tree, 'global5')), 6);
+  assert.equal(folderLessonCount(findAdminTreeNode(tree, 'global5')), 16);
   assert.equal(folderLessonCount(findAdminTreeNode(tree, 'global6')), 42);
   assert.equal(folderLessonCount(findAdminTreeNode(tree, 'global7')), 46);
   assert.equal(folderLessonCount(tree), sets.length);
@@ -74,10 +78,11 @@ test('Explorer search finds lessons by title, slug, Set id, Unit and activity ty
   assert.deepEqual(searchLessonDescriptors(sets, 'g2u6-dich-cau-9').map(set => set.id), ['g2-u6-translation-09']);
   assert.deepEqual(searchLessonDescriptors(sets, 'g5u1-tu-vung-1').map(set => set.id), ['g5-u1-vocab-01']);
   assert.deepEqual(searchLessonDescriptors(sets, 'g5-review-main-idea-1').map(set => set.id), ['g5-review-main-idea-01']);
+  assert.deepEqual(searchLessonDescriptors(sets, 'g5-review-u1-5-mixed-10').map(set => set.id), ['g5-review-u1-5-10']);
   assert.deepEqual(searchLessonDescriptors(sets, 'g7u1-dich2-mcq').map(set => set.id), ['g7-u1-translation-02']);
   assert.deepEqual(searchLessonDescriptors(sets, 'g6u1-writing-s1-01').map(set => set.id), ['g6-u1-writing-s1-01']);
   assert.deepEqual(searchLessonDescriptors(sets, 'g7u1-writing-s1-01').map(set => set.id), ['g7-u1-writing-s1-01']);
-  assert.ok(searchLessonDescriptors(sets, 'My hobby is + ACTIVITY').some(set => set.id === 'g7-u1-writing-s1-01'));
+  assert.ok(searchLessonDescriptors(sets, 'Final U1–5 Challenge').some(set => set.id === 'g5-review-u1-5-10'));
   assert.ok(searchLessonDescriptors(sets, 'typing').some(set => set.id === 'g7-u1-s1'));
   assert.ok(searchLessonDescriptors(sets, 'typing').some(set => set.id === 'g6-u1-writing-s1-01'));
   assert.ok(searchLessonDescriptors(sets, 'typing').some(set => set.id === 'g7-u1-writing-s1-01'));
@@ -91,6 +96,7 @@ test('Explorer type filters distinguish single-type lessons from mixed lessons',
   const mcq = sets.find(set => set.id === 'g7-u1-translation-01');
   const mixed = sets.find(set => set.id === 'mrt-left-cut-right-01');
   const global5Mixed = sets.find(set => set.id === 'g5-u1-vocab-01');
+  const reviewMixed = sets.find(set => set.id === 'g5-review-u1-5-01');
   const writing = sets.find(set => set.id === 'g5-u1-writing-01');
   const classificationOnly = { activityTypes: ['classification'] };
   assert.equal(lessonMatchesType(g2Typing, 'typing'), true);
@@ -100,6 +106,9 @@ test('Explorer type filters distinguish single-type lessons from mixed lessons',
   assert.equal(lessonMatchesType(mixed, 'mix'), true);
   assert.equal(lessonMatchesType(mixed, 'mcq'), false);
   assert.equal(lessonMatchesType(global5Mixed, 'mix'), true);
+  assert.equal(lessonMatchesType(reviewMixed, 'mix'), true);
+  assert.equal(lessonMatchesType(reviewMixed, 'order'), false);
+  assert.equal(lessonMatchesType(reviewMixed, 'classify'), false);
   assert.equal(lessonMatchesType(writing, 'order'), true);
   assert.equal(lessonMatchesType(classificationOnly, 'classify'), true);
 });
