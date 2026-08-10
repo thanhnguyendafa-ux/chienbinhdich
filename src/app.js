@@ -78,7 +78,7 @@ async function readStudentLessonSetting(setId) {
   try {
     return await reader.getLessonSetting(setId);
   } catch (cause) {
-    const error = new Error('Không tải được cấu hình Mastery hiện tại. Hãy thử lại để tránh dùng sai mốc PASS.');
+    const error = new Error('Không tải được cài đặt bài hiện tại. Hãy thử lại để tránh dùng sai luật chấm hoặc mốc PASS.');
     error.code = 'lesson_settings_unavailable';
     error.cause = cause;
     throw error;
@@ -209,7 +209,7 @@ async function showEntry() {
     onBack: previewMode ? () => navigateAdmin({ inspect: activeSetId }) : null,
     onStart: async name => {
       currentStudentName = name;
-      renderLoading(root, 'Đang xác nhận mốc Mastery mới nhất...');
+      renderLoading(root, 'Đang xác nhận cài đặt bài mới nhất...');
       const latestLesson = previewMode ? lesson : await ensureSet({ refreshSettings: true });
       session = createCurrentSession(name, latestLesson);
       saveActiveSession();
@@ -335,10 +335,7 @@ function renderReportError() {
         <div class="brand-lockup"><span class="brand-seal">MRT</span><span>Chiến Binh Dịch</span></div>
         <h1>Không thể mở báo cáo</h1>
         <p>Dữ liệu làm bài vẫn đã được giữ. Con có thể thử mở lại báo cáo mà không cần làm lại bài.</p>
-        <div class="report-error-actions">
-          <button class="primary-btn" id="retry-report-btn" type="button">Thử mở lại báo cáo</button>
-          <button class="secondary-btn" id="report-home-btn" type="button">${previewMode ? 'Về Admin' : 'Về bài được giao'}</button>
-        </div>
+        <div class="report-error-actions"><button class="primary-btn" id="retry-report-btn" type="button">Thử mở lại báo cáo</button><button class="secondary-btn" id="report-home-btn" type="button">${previewMode ? 'Về Admin' : 'Về bài được giao'}</button></div>
       </section>
     </main>`;
   root.querySelector('#retry-report-btn')?.addEventListener('click', showReport);
@@ -419,6 +416,8 @@ async function showAdminInspector(setId) {
     onPrint: () => navigateAdmin({ print: setId }),
     onSaveMastery: (id, value) => settingsRepository.savePassThreshold(id, value),
     onResetMastery: id => settingsRepository.resetPassThreshold(id),
+    onSaveTypingTolerance: (id, value) => settingsRepository.saveTypingTolerance(id, value),
+    onResetTypingTolerance: id => settingsRepository.resetTypingTolerance(id),
     onRefresh: () => showAdminInspector(setId)
   });
 }
@@ -498,7 +497,7 @@ async function showFatalError(error) {
     const { renderRetryableAccessError } = await getScreen('access', 'Đang chuẩn bị thử lại...');
     return renderRetryableAccessError({
       root,
-      title: 'Chưa tải được mốc Mastery',
+      title: 'Chưa tải được cài đặt bài',
       message: error.message,
       onRetry: bootstrap
     });
