@@ -1,6 +1,7 @@
 import { evaluateQuestion, expectedResponseDisplay, questionTypeForItem } from './questionTypes.js';
 import { getMasteryCounts, getMasteryTransitions, masteryDisplayPercent, masteryPercentFromAttempts, masteryUnitPercent } from './masteryEngine.js';
 import { sessionPassThreshold } from './masteryPolicy.js';
+import { sessionTypingTolerance } from './typingPolicy.js';
 import { advanceLearningPrompt, queueRetry } from './retryScheduler.js';
 
 export const SESSION_SCHEMA_VERSION = 7;
@@ -16,6 +17,7 @@ export function createSession({ studentName, set, now = Date.now() }) {
     setId: set.id,
     setVersion: set.version ?? 1,
     passThresholdAtStart: sessionPassThreshold(null, set),
+    typingToleranceAtStart: sessionTypingTolerance(null, set),
     startedAt: now,
     completedAt: null,
     submittedAt: null,
@@ -45,7 +47,9 @@ export function submitAnswer({ session, set, response, answer, attemptMeta = {},
   const hasSeenAnswer = exposureAttempts.some(attempt => attempt.answerRevealedAfterAttempt === true);
   const failedAttemptsBefore = exposureAttempts.filter(attempt => !attempt.correct).length;
   const submittedResponse = response === undefined ? answer : response;
-  const result = evaluateQuestion(item, submittedResponse);
+  const result = evaluateQuestion(item, submittedResponse, {
+    typingTolerance: sessionTypingTolerance(session, set)
+  });
   const submittedAt = finiteTime(attemptMeta.submittedAt, now);
   const startedAt = finiteTime(attemptMeta.startedAt, submittedAt);
   const revealAfterAttempt = !result.correct && (hasSeenAnswer || failedAttemptsBefore + 1 >= 2);
