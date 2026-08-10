@@ -10,7 +10,7 @@ test('catalog exposes hierarchical Global 2, 5, 6, 7 and MRT folders with their 
   assert.deepEqual(listFolders().map(folder => folder.id), [
     'samples',
     'global2', 'global2-unit6', 'global2-unit6-translation',
-    'global5', 'global5-unit1', 'global5-unit2', 'global5-review',
+    'global5', 'global5-unit1', 'global5-unit2', 'global5-review-u1-5', 'global5-review',
     'global6', 'global6-unit1-writing-typing',
     'global6-unit1-writing-s1', 'global6-unit1-writing-s2', 'global6-unit1-writing-s3',
     'global6-unit1-writing-s4', 'global6-unit1-writing-s5', 'global6-unit1-writing-s6',
@@ -33,6 +33,10 @@ test('catalog exposes hierarchical Global 2, 5, 6, 7 and MRT folders with their 
     'g5-u1-vocab-01', 'g5-u1-pattern-01', 'g5-u1-reading-01', 'g5-u1-writing-01'
   ]);
   assert.deepEqual(listSetsByFolder('global5-unit2').map(set => set.id), ['g5-u2-stress-vocab-01']);
+  assert.deepEqual(listSetsByFolder('global5-review-u1-5').map(set => set.id), [
+    'g5-review-u1-5-01', 'g5-review-u1-5-02', 'g5-review-u1-5-03', 'g5-review-u1-5-04', 'g5-review-u1-5-05',
+    'g5-review-u1-5-06', 'g5-review-u1-5-07', 'g5-review-u1-5-08', 'g5-review-u1-5-09', 'g5-review-u1-5-10'
+  ]);
   assert.deepEqual(listSetsByFolder('global5-review').map(set => set.id), ['g5-review-main-idea-01']);
   assert.equal(listSetsByFolder('global6-unit1-writing-s1').length, 4);
   assert.equal(listSetsByFolder('global6-unit1-writing-s6').length, 5);
