@@ -57,6 +57,9 @@ export function validateCatalog(folders, registry) {
     if (entry?.difficulty !== undefined && !DIFFICULTIES.has(entry.difficulty)) {
       errors.push(`Set ${entry?.id ?? '(unknown)'} có difficulty không hợp lệ.`);
     }
+    if (entry?.expectedTimeMinutes !== undefined && !isValidExpectedTime(entry.expectedTimeMinutes)) {
+      errors.push(`Set ${entry?.id ?? '(unknown)'} có expectedTimeMinutes không hợp lệ; phải là số nguyên từ 1 đến 20.`);
+    }
     if (!Array.isArray(entry?.activityTypes) || entry.activityTypes.length === 0) errors.push(`Set ${entry?.id ?? '(unknown)'} thiếu activityTypes.`);
     if (typeof entry?.loadContent !== 'function') errors.push(`Set ${entry?.id ?? '(unknown)'} thiếu content loader.`);
 
@@ -71,4 +74,8 @@ export function validateCatalog(folders, registry) {
   }
 
   return errors;
+}
+
+function isValidExpectedTime(value) {
+  return Number.isInteger(value) && value >= 1 && value <= 20;
 }
