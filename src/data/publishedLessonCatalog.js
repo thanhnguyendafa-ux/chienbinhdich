@@ -1,7 +1,7 @@
 import { lessonFolders as baseLessonFolders, lessonRegistry as baseLessonRegistry } from './lessonCatalog.js';
 import { g5ReviewU15Folders, g5ReviewU15Registry } from './g5-review-u1-5-catalog.js';
-import { g6U1WritingFolders, g6U1WritingRegistry } from './g6-u1-writing-typing-catalog.js';
-import { g7U1WritingFolders, g7U1WritingRegistry } from './g7-u1-writing-typing-catalog.js';
+import { g6U1WritingFolders, g6U1WritingRegistry } from './g6-u1-writing-typing-published.js';
+import { g7U1WritingFolders, g7U1WritingRegistry } from './g7-u1-writing-typing-published.js';
 
 export const lessonFolders = Object.freeze([
   ...baseLessonFolders,

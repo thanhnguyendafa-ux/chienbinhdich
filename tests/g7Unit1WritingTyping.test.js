@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { validateSet } from '../src/data/contentValidator.js';
-import { g7U1WritingFolders, g7U1WritingRegistry } from '../src/data/g7-u1-writing-typing-catalog.js';
+import { g7U1WritingFolders, g7U1WritingRegistry } from '../src/data/g7-u1-writing-typing-published.js';
 import { g7U1SourceSentences, getG7U1WritingTypingContent } from '../src/data/g7-u1-writing-typing-content.js';
 
 test('Global 7 Unit 1 publishes 44 micro-lessons under 10 structures plus Final Writing', () => {
@@ -25,13 +25,10 @@ test('Global 7 Unit 1 publishes 44 micro-lessons under 10 structures plus Final 
   assert.equal(counts.get('global7-unit1-writing-final'), 3);
 });
 
-test('every G7 lesson stays in the 15–20 minute cap and obeys WORD → PHRASE → SENTENCE', () => {
-  const expectedStages = ['word', 'word', 'word', 'phrase', 'phrase', 'phrase', 'sentence', 'sentence', 'sentence'];
-
+test('every G7 lesson keeps 15–20 minutes and uses variable WORD → 3 PHRASE → 3 SENTENCE scaffolding', () => {
   for (const descriptor of g7U1WritingRegistry) {
     assert.ok(Number.isInteger(descriptor.expectedTimeMinutes), `${descriptor.id} missing expected time`);
     assert.ok(descriptor.expectedTimeMinutes >= 15 && descriptor.expectedTimeMinutes <= 20, `${descriptor.id} outside 15–20 minute design cap`);
-    assert.equal(descriptor.itemCount, 9);
     assert.deepEqual(descriptor.activityTypes, ['typing']);
     assert.equal(descriptor.completionPolicy, 'all-items');
     assert.equal(descriptor.typingTolerance, false);
@@ -39,16 +36,38 @@ test('every G7 lesson stays in the 15–20 minute cap and obeys WORD → PHRASE 
 
     const key = descriptor.id.replace('g7-u1-writing-', '');
     const content = getG7U1WritingTypingContent(key);
-    assert.equal(content.items.length, 9);
-    assert.deepEqual(content.items.map(item => item.stage), expectedStages);
+    const words = content.items.filter(item => item.stage === 'word');
+    const phrases = content.items.filter(item => item.stage === 'phrase');
+    const sentences = content.items.filter(item => item.stage === 'sentence');
+
+    assert.equal(content.items.length, descriptor.itemCount, `${descriptor.id} itemCount mismatch`);
+    assert.ok(words.length >= 3, `${descriptor.id} must keep at least three WORD retrievals`);
+    assert.equal(phrases.length, 3, `${descriptor.id} must keep three PHRASE builds`);
+    assert.equal(sentences.length, 3, `${descriptor.id} must keep three SENTENCE outputs`);
+    assert.deepEqual(
+      content.items.map(item => item.stage),
+      [...Array(words.length).fill('word'), 'phrase', 'phrase', 'phrase', 'sentence', 'sentence', 'sentence'],
+      `${descriptor.id} stage order must remain WORD → PHRASE → SENTENCE`
+    );
     assert.deepEqual(validateSet({ ...descriptor, items: content.items }), []);
 
-    for (const sentence of content.items.filter(item => item.stage === 'sentence')) {
+    for (const sentence of sentences) {
       assert.ok(sentence.teachingFeedback);
       assert.match(sentence.teachingFeedback.theory, /MINDSET FIRST/);
       assert.ok(sentence.teachingFeedback.reason.length > 0);
+      assert.ok(sentence.buildsFrom.length > 0, `${sentence.id} must have real scaffold dependencies`);
     }
   }
+});
+
+test('G7 regression: hobby identity lesson prepares gardening and taking photos before sentence typing', () => {
+  const content = getG7U1WritingTypingContent('s1-01');
+  const wordAnswers = content.items.filter(item => item.stage === 'word').map(item => item.en.toLowerCase());
+  assert.ok(wordAnswers.includes('garden'));
+  assert.ok(wordAnswers.includes('take'));
+  assert.ok(wordAnswers.includes('photo'));
+  assert.ok(content.items.find(item => item.en === 'My hobby is gardening.'));
+  assert.ok(content.items.find(item => item.en === 'My hobby is taking photos.'));
 });
 
 test('all 50 approved Unit 1 Writing outputs appear exactly as sentence-stage answers', () => {
@@ -70,6 +89,7 @@ test('sourceSentenceIds trace covers 1–50 and lesson identity stays unique', (
   assert.deepEqual([...traced].sort((a, b) => a - b), Array.from({ length: 50 }, (_, index) => index + 1));
   assert.equal(new Set(g7U1WritingRegistry.map(lesson => lesson.id)).size, 44);
   assert.equal(new Set(g7U1WritingRegistry.map(lesson => lesson.lessonSlug)).size, 44);
+  assert.ok(g7U1WritingRegistry.every(lesson => lesson.expectedTimeMinutes >= 15 && lesson.expectedTimeMinutes <= 20));
 });
 
 test('Final Writing lessons build complete 40–60 word hobby paragraphs at the 20-minute cap', () => {
@@ -82,6 +102,7 @@ test('Final Writing lessons build complete 40–60 word hobby paragraphs at the 
     const content = getG7U1WritingTypingContent(key);
     const finalAnswer = content.items.at(-1).en;
     const wordCount = finalAnswer.trim().split(/\s+/).length;
+    assert.ok(content.items.filter(item => item.stage === 'word').length > 3, `${descriptor.id} final must prepare paragraph vocabulary`);
     assert.ok(wordCount >= 40, `${descriptor.id} paragraph too short: ${wordCount}`);
     assert.ok(wordCount <= 60, `${descriptor.id} paragraph too long: ${wordCount}`);
   }

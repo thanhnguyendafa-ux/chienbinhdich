@@ -1,3 +1,6 @@
+import { dependencyIdsForText, expandWritingWords } from './writing-lexical-scaffold.js';
+import { g6U1WritingScaffold } from './g6-u1-writing-lexicon.js';
+
 const THEORY_BY_MINDSET = Object.freeze({
   'GÁN': 'MINDSET FIRST → GÁN. Xác định host bên trái rồi dùng BE phù hợp để gán danh tính, đặc điểm hoặc vị trí; không chèn action marker khi câu không kể hành động.',
   'AURA': 'MINDSET FIRST → AURA. Dùng THERE IS/THERE ARE để dựng cảnh và đưa một hoặc nhiều sự vật vào scene; chọn IS/ARE theo số lượng của thing xuất hiện.',
@@ -22,31 +25,37 @@ function typingItem(id, stage, vi, en, buildsFrom = [], teaching = null) {
 }
 
 function buildLesson(key, lessonSpec) {
-  const wordIds = lessonSpec.words.map((_, index) => `${key}-w${index + 1}`);
+  const words = expandWritingWords(lessonSpec.words, lessonSpec.phrases, lessonSpec.sentences, g6U1WritingScaffold);
+  const wordIds = words.map((_, index) => `${key}-w${index + 1}`);
   const phraseIds = lessonSpec.phrases.map((_, index) => `${key}-p${index + 1}`);
   const items = [];
 
-  lessonSpec.words.forEach(([vi, en], index) => {
+  words.forEach(([vi, en], index) => {
     items.push(typingItem(wordIds[index], 'word', vi, en));
   });
 
   lessonSpec.phrases.forEach(([vi, en], index) => {
-    const dependencies = index === 0 ? [wordIds[0]] : index === 1 ? wordIds.slice(0, 2) : wordIds;
+    const dependencies = dependencyIdsForText(en, words, wordIds, g6U1WritingScaffold);
     items.push(typingItem(phraseIds[index], 'phrase', vi, en, dependencies));
   });
 
   lessonSpec.sentences.forEach(([vi, en, note], index) => {
+    const phraseDependencies = dependencyIdsForText(en, lessonSpec.phrases, phraseIds, g6U1WritingScaffold);
+    const wordDependencies = dependencyIdsForText(en, words, wordIds, g6U1WritingScaffold);
     items.push(typingItem(
       `${key}-s${index + 1}`,
       'sentence',
       vi,
       en,
-      phraseIds,
+      [...new Set([...wordDependencies, ...phraseDependencies])],
       teachingFeedback(en, lessonSpec, note)
     ));
   });
 
-  return Object.freeze({ items: Object.freeze(items) });
+  return Object.freeze({
+    items: Object.freeze(items),
+    scaffold: Object.freeze({ wordCount: words.length, phraseCount: lessonSpec.phrases.length, sentenceCount: lessonSpec.sentences.length })
+  });
 }
 
 export function buildLessonMap(specs) {
