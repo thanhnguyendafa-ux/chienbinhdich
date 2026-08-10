@@ -107,8 +107,8 @@ test('Explorer type filters distinguish single-type lessons from mixed lessons',
   assert.equal(lessonMatchesType(mixed, 'mcq'), false);
   assert.equal(lessonMatchesType(global5Mixed, 'mix'), true);
   assert.equal(lessonMatchesType(reviewMixed, 'mix'), true);
-  assert.equal(lessonMatchesType(reviewMixed, 'order'), true);
-  assert.equal(lessonMatchesType(reviewMixed, 'classify'), true);
+  assert.equal(lessonMatchesType(reviewMixed, 'order'), false);
+  assert.equal(lessonMatchesType(reviewMixed, 'classify'), false);
   assert.equal(lessonMatchesType(writing, 'order'), true);
   assert.equal(lessonMatchesType(classificationOnly, 'classify'), true);
 });
