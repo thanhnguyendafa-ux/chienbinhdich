@@ -30,11 +30,11 @@ export function renderLessonBrowser({ tree, state, sets, preview, fixedUrlFor })
     <div class="admin-lesson-workspace ${hasPreview ? `has-preview ${previewWidthClass(state.previewWidth)}` : 'no-preview'}" data-lesson-workspace>
       <div class="admin-file-list-wrap">
         <table class="admin-file-table">
-          <thead><tr><th>Tên</th><th>Dạng</th><th>Câu</th><th>Mastery</th><th>Link</th></tr></thead>
+          <thead><tr><th>Tên</th><th>Dạng</th><th>Câu</th><th>Thời gian</th><th>Mastery</th><th>Link</th></tr></thead>
           <tbody>
             ${folderRows.map(renderFolderListRow).join('')}
             ${visibleSets.map(set => renderLessonListRow(set, state.selectedSetId === set.id, query ? lessonLocation(tree, set) : '', fixedUrlFor(set))).join('')}
-            ${folderRows.length + visibleSets.length ? '' : '<tr><td colspan="5" class="admin-empty-cell">Không có bài phù hợp.</td></tr>'}
+            ${folderRows.length + visibleSets.length ? '' : '<tr><td colspan="6" class="admin-empty-cell">Không có bài phù hợp.</td></tr>'}
           </tbody>
         </table>
       </div>
@@ -44,16 +44,18 @@ export function renderLessonBrowser({ tree, state, sets, preview, fixedUrlFor })
 
 function renderFolderListRow(folder) {
   return `<tr class="admin-folder-list-row">
-    <td colspan="5"><button type="button" data-folder-select="${escAttr(folder.id)}"><span>📁</span><strong>${esc(folder.label)}</strong><small>${folderLessonCount(folder)} bài</small></button></td>
+    <td colspan="6"><button type="button" data-folder-select="${escAttr(folder.id)}"><span>📁</span><strong>${esc(folder.label)}</strong><small>${folderLessonCount(folder)} bài</small></button></td>
   </tr>`;
 }
 
 function renderLessonListRow(set, selected, location, fixedUrl) {
   const custom = set.masteryPolicy?.source === 'admin-override';
+  const expectedTime = Number.isInteger(set.expectedTimeMinutes) ? `${set.expectedTimeMinutes} phút` : '—';
   return `<tr class="admin-lesson-row ${selected ? 'is-selected' : ''}" tabindex="0" data-select-set="${escAttr(set.id)}">
     <td><div class="admin-file-name"><span>📄</span><div><div class="admin-file-title-row"><strong>${esc(set.title)}</strong>${set.difficulty === 'hard' ? '<span class="lesson-difficulty-badge">KHÓ</span>' : ''}</div>${location ? `<small>${esc(location)}</small>` : `<small>${esc(set.unit)}</small>`}</div></div></td>
     <td><span class="admin-type-badge">${esc(typeSummary(set.activityTypes))}</span></td>
     <td>${Number(set.itemCount)}</td>
+    <td>${esc(expectedTime)}</td>
     <td><div class="admin-mastery-inline"><strong>${Number(set.passThreshold)}%</strong><span class="admin-mastery-badge ${custom ? 'is-custom' : ''}">${custom ? 'Custom' : 'Default'}</span><button class="ghost-btn admin-mini-btn admin-mastery-edit-btn" type="button" data-edit-mastery="${escAttr(set.id)}" aria-label="Chỉnh Mastery cho ${escAttr(set.title)}">✎</button></div></td>
     <td><button class="ghost-btn admin-mini-btn admin-row-copy" type="button" data-copy-fixed-link="${escAttr(fixedUrl)}">Copy</button></td>
   </tr>`;
