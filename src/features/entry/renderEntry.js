@@ -1,9 +1,12 @@
 import { sessionPassThreshold } from '../../core/masteryPolicy.js';
+import { sessionTypingTolerance } from '../../core/typingPolicy.js';
 
 export function renderEntry({ root, lastName, directSet = null, resumeSession, previewMode = false, onBack = null, onStart, onResume }) {
   const threshold = Number(directSet?.passThreshold ?? 80);
   const resumeThreshold = resumeSession ? sessionPassThreshold(resumeSession, directSet) : null;
   const teacher = directSet?.teacher ?? 'Thầy Thành MRT';
+  const newSessionTypingTolerance = directSet?.typingTolerance === true;
+  const resumeTypingTolerance = resumeSession ? sessionTypingTolerance(resumeSession, directSet) : null;
   root.innerHTML = `
     <main class="page page-centered entry-page">
       <section class="entry-card ${directSet ? 'direct-entry-card' : ''}">
@@ -12,12 +15,13 @@ export function renderEntry({ root, lastName, directSet = null, resumeSession, p
         <p class="eyebrow">${directSet ? esc(directSet.course) : 'GLOBAL SUCCESS · OUTPUT TRAINING'}</p>
         <h1>Chiến Binh Dịch</h1>
         ${directSet
-          ? `<div class="direct-set"><strong>${esc(directSet.unit)}</strong><span>${esc(directSet.title)}</span></div>
-             <p class="welcome-copy">Chào mừng con đến với bài test <strong>${esc(teacher)}</strong>.<br />Con hãy cố gắng vượt qua <strong>${threshold}% Mastery</strong> nhé!</p>`
+          ? `<div class="direct-set"><strong>${esc(directSet.unit)}</strong><div class="entry-lesson-title-row"><span>${esc(directSet.title)}</span>${directSet.difficulty === 'hard' ? '<b class="lesson-difficulty-badge">KHÓ</b>' : ''}</div></div>
+             <p class="welcome-copy">Chào mừng con đến với bài test <strong>${esc(teacher)}</strong>.<br />Con hãy cố gắng vượt qua <strong>${threshold}% Mastery</strong> nhé!</p>
+             ${newSessionTypingTolerance ? '<p class="typing-policy-note">⌨️ Bài này không trừ vì viết hoa hoặc dấu câu. Con vẫn cần gõ đúng từ và đúng thứ tự nhé.</p>' : ''}`
           : '<p class="lead">Nhớ tiếng Anh từ đơn vị nhỏ, rồi tự xây lên câu hoàn chỉnh.</p>'}
         ${directSet ? '' : '<div class="learning-path" aria-label="Từ đến câu"><span>TỪ</span><i></i><span>CỤM TỪ</span><i></i><span>CÂU</span></div>'}
 
-        ${resumeSession ? `<button class="resume-card" id="resume-btn" type="button"><span>Tiếp tục bài đang làm</span><strong>${esc(resumeSession.studentName)}</strong><small>Mục tiêu lượt này: ${resumeThreshold}% Mastery</small></button>` : ''}
+        ${resumeSession ? `<button class="resume-card" id="resume-btn" type="button"><span>Tiếp tục bài đang làm</span><strong>${esc(resumeSession.studentName)}</strong><small>Mục tiêu lượt này: ${resumeThreshold}% Mastery${resumeTypingTolerance ? ' · Chấm lớp nhỏ' : ''}</small></button>` : ''}
 
         <form id="name-form" class="entry-form">
           <label for="student-name">Tên của em</label>
