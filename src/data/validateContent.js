@@ -1,5 +1,5 @@
 import { validateCatalog } from './catalogValidator.js';
-import { lessonFolders, lessonRegistry } from './lessonCatalog.js';
+import { lessonFolders, lessonRegistry } from './publishedLessonCatalog.js';
 import { validateSet } from './contentValidator.js';
 import { loadLessonSet } from '../repositories/lessonRepository.js';
 

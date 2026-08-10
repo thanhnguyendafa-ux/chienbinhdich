@@ -1,13 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { lessonFolders, lessonRegistry } from '../src/data/lessonCatalog.js';
+import { lessonFolders, lessonRegistry } from '../src/data/publishedLessonCatalog.js';
 import { validateCatalog } from '../src/data/catalogValidator.js';
 import { validateSet } from '../src/data/contentValidator.js';
 import { listSetDescriptors } from '../src/repositories/lessonRepository.js';
 
 test('all currently published fixed lessons still default to 80% Mastery', () => {
   const descriptors = listSetDescriptors();
-  assert.equal(descriptors.length, 21);
+  assert.equal(descriptors.length, lessonRegistry.length);
   assert.equal(descriptors.filter(set => set.passThreshold !== 80).length, 0);
   assert.ok(descriptors.every(set => set.lessonSlug));
 });

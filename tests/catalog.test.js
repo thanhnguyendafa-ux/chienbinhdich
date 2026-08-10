@@ -1,16 +1,21 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { validateCatalog } from '../src/data/catalogValidator.js';
-import { lessonFolders, lessonRegistry } from '../src/data/lessonCatalog.js';
+import { lessonFolders, lessonRegistry } from '../src/data/publishedLessonCatalog.js';
 import { validateSet } from '../src/data/contentValidator.js';
 import { getSetDescriptor, getSetDescriptorBySlug, listFolders, listSetDescriptors, listSetsByFolder, loadLessonSet } from '../src/repositories/lessonRepository.js';
 
-test('catalog exposes hierarchical Global 2, Global 5, Global 7 and MRT folders with published Sets', () => {
+test('catalog exposes hierarchical Global 2, 5, 6, 7 and MRT folders with their published Sets', () => {
   assert.deepEqual(validateCatalog(lessonFolders, lessonRegistry), []);
   assert.deepEqual(listFolders().map(folder => folder.id), [
     'samples',
     'global2', 'global2-unit6', 'global2-unit6-translation',
     'global5', 'global5-unit1', 'global5-unit2', 'global5-review',
+    'global6', 'global6-unit1-writing-typing',
+    'global6-unit1-writing-s1', 'global6-unit1-writing-s2', 'global6-unit1-writing-s3',
+    'global6-unit1-writing-s4', 'global6-unit1-writing-s5', 'global6-unit1-writing-s6',
+    'global6-unit1-writing-s7', 'global6-unit1-writing-s8', 'global6-unit1-writing-s9',
+    'global6-unit1-writing-final',
     'global7', 'global7-unit1',
     'mrt-lessons'
   ]);
@@ -25,6 +30,10 @@ test('catalog exposes hierarchical Global 2, Global 5, Global 7 and MRT folders 
   ]);
   assert.deepEqual(listSetsByFolder('global5-unit2').map(set => set.id), ['g5-u2-stress-vocab-01']);
   assert.deepEqual(listSetsByFolder('global5-review').map(set => set.id), ['g5-review-main-idea-01']);
+  assert.equal(listSetsByFolder('global6-unit1-writing-s1').length, 4);
+  assert.equal(listSetsByFolder('global6-unit1-writing-s6').length, 5);
+  assert.equal(listSetsByFolder('global6-unit1-writing-final').length, 3);
+  assert.equal(listSetsByFolder('global6-unit1-writing-typing').length, 0);
   assert.deepEqual(listSetsByFolder('global7-unit1').map(set => set.id), ['g7-u1-translation-01', 'g7-u1-translation-02']);
   assert.deepEqual(listSetsByFolder('mrt-lessons').map(set => set.id), ['mrt-g6-gan-aura-action-01', 'mrt-left-cut-right-01']);
 });
@@ -45,11 +54,12 @@ test('published Set ids and fixed lesson slugs are unique and repository-resolva
   }
 });
 
-test('catalog validator rejects duplicate ids, dangling folders, duplicate fixed slugs and invalid new metadata', () => {
+test('catalog validator rejects duplicate ids, dangling folders, duplicate fixed slugs and invalid metadata', () => {
   const folder = { id: 'sample', name: 'Sample', order: 1 };
   const entry = {
     id: 'one', folderId: 'missing', title: 'One', course: 'Course', unit: 'Unit', itemCount: 1,
-    passThreshold: 80, typingTolerance: 'yes', difficulty: 'super-hard', activityTypes: ['mcq'], lessonSlug: 'one-mcq', order: 1,
+    passThreshold: 80, typingTolerance: 'yes', difficulty: 'super-hard', expectedTimeMinutes: 21,
+    activityTypes: ['mcq'], lessonSlug: 'one-mcq', order: 1,
     loadContent: async () => ({ items: [] })
   };
   const errors = validateCatalog([folder, folder], [entry, entry]);
@@ -59,4 +69,5 @@ test('catalog validator rejects duplicate ids, dangling folders, duplicate fixed
   assert.ok(errors.some(error => error.includes('lessonSlug bị trùng')));
   assert.ok(errors.some(error => error.includes('typingTolerance không hợp lệ')));
   assert.ok(errors.some(error => error.includes('difficulty không hợp lệ')));
+  assert.ok(errors.some(error => error.includes('expectedTimeMinutes không hợp lệ')));
 });

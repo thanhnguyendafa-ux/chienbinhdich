@@ -22,6 +22,7 @@ export function renderLessonInspector({
   const hasTyping = (set.activityTypes ?? []).includes('typing');
   const typingCustom = set.typingPolicy?.source === 'admin-override';
   const typingDefault = set.typingPolicy?.defaultTolerance === true;
+  const expectedTime = Number.isInteger(set.expectedTimeMinutes) ? set.expectedTimeMinutes : null;
 
   root.innerHTML = `
     <main class="page admin-page">
@@ -37,6 +38,7 @@ export function renderLessonInspector({
           <div class="admin-inspector-meta">
             <span>${set.items.length} câu</span>
             <span>${esc(typeSummary(set.activityTypes))}</span>
+            ${expectedTime ? `<span>Expected time · ${expectedTime} phút</span>` : ''}
             ${set.difficulty === 'hard' ? '<span>Độ khó · KHÓ</span>' : ''}
             <span>Mastery ≥ ${set.passThreshold}% · ${custom ? `Custom (mặc định ${defaultThreshold}%)` : 'Default'}</span>
             <span>Completion · ${esc(completionLabel)}</span>
