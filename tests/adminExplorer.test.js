@@ -69,7 +69,7 @@ test('Explorer breadcrumbs and recursive lesson counts match the hierarchy', () 
 });
 
 test('Explorer search finds lessons by title, slug, Set id, Unit and activity type', () => {
-  assert.deepEqual(searchLessonDescriptors(sets, 'aura').map(set => set.id), ['mrt-g6-gan-aura-action-01']);
+  assert.deepEqual(searchLessonDescriptors(sets, 'aura').map(set => set.id), ['g6-u1-writing-s4-04', 'mrt-g6-gan-aura-action-01']);
   assert.deepEqual(searchLessonDescriptors(sets, 'g2u6-dich-cau-9').map(set => set.id), ['g2-u6-translation-09']);
   assert.deepEqual(searchLessonDescriptors(sets, 'g5u1-tu-vung-1').map(set => set.id), ['g5-u1-vocab-01']);
   assert.deepEqual(searchLessonDescriptors(sets, 'g5u1-mau-cau-1').map(set => set.id), ['g5-u1-pattern-01']);
