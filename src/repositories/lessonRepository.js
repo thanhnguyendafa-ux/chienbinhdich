@@ -1,4 +1,4 @@
-import { lessonFolders, lessonRegistry } from '../data/lessonCatalog.js';
+import { lessonFolders, lessonRegistry } from '../data/publishedLessonCatalog.js';
 import { catalogPassThreshold } from '../core/masteryPolicy.js';
 import { normalizeLessonSlug } from '../core/lessonLinks.js';
 
