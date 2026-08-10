@@ -20,8 +20,10 @@ service cloud.firestore {
     }
 
     function validLessonSetting() {
-      return request.resource.data.keys().hasOnly(['passThreshold', 'updatedAt', 'updatedBy'])
-        && validPassThreshold(request.resource.data.passThreshold)
+      return request.resource.data.keys().hasOnly(['passThreshold', 'typingTolerance', 'updatedAt', 'updatedBy'])
+        && request.resource.data.keys().hasAny(['passThreshold', 'typingTolerance'])
+        && (!('passThreshold' in request.resource.data) || validPassThreshold(request.resource.data.passThreshold))
+        && (!('typingTolerance' in request.resource.data) || request.resource.data.typingTolerance is bool)
         && request.resource.data.updatedAt is int
         && request.resource.data.updatedBy == request.auth.uid;
     }
@@ -68,6 +70,10 @@ service cloud.firestore {
         && (
           !('passThresholdAtStart' in request.resource.data)
           || validPassThreshold(request.resource.data.passThresholdAtStart)
+        )
+        && (
+          !('typingToleranceAtStart' in request.resource.data)
+          || request.resource.data.typingToleranceAtStart is bool
         );
 
       allow read: if isAdmin() || (signedIn() && resource.data.ownerUid == request.auth.uid);
@@ -86,6 +92,14 @@ service cloud.firestore {
             'passThresholdAtStart' in request.resource.data
             && 'passThresholdAtStart' in resource.data
             && request.resource.data.passThresholdAtStart == resource.data.passThresholdAtStart
+          )
+        )
+        && (
+          (!('typingToleranceAtStart' in request.resource.data) && !('typingToleranceAtStart' in resource.data))
+          || (
+            'typingToleranceAtStart' in request.resource.data
+            && 'typingToleranceAtStart' in resource.data
+            && request.resource.data.typingToleranceAtStart == resource.data.typingToleranceAtStart
           )
         )
         && (
