@@ -1,0 +1,40 @@
+const entry = (vi, en = null) => Object.freeze(en ? { vi, en } : { vi });
+
+export const g6U1WritingScaffold = Object.freeze({
+  ignore: Object.freeze(['is', 'are', 'am', 'was', 'were']),
+  aliases: Object.freeze({ building: 'building' }),
+  lexicon: Object.freeze({
+    school: entry('trường'), name: entry('tên'), secondary: entry('trung học cơ sở'),
+    small: entry('nhỏ'), big: entry('lớn'), beautiful: entry('đẹp'), village: entry('làng'),
+    study: entry('học'), centre: entry('trung tâm'), near: entry('gần'), next: entry('bên cạnh'),
+    street: entry('đường phố'), class: entry('lớp / lớp học'), student: entry('học sinh'),
+    over: entry('hơn'), twenty: entry('hai mươi'), classroom: entry('lớp học'),
+    playground: entry('sân chơi'), large: entry('lớn'), behind: entry('phía sau'),
+    library: entry('thư viện'), modern: entry('hiện đại'), computer: entry('máy tính'),
+    art: entry('mỹ thuật'), room: entry('phòng'), desk: entry('bàn học'), board: entry('bảng'),
+    teacher: entry('giáo viên'), schoolyard: entry('sân trường'), building: entry('tòa nhà'),
+    tree: entry('cây'), flower: entry('hoa'), around: entry('xung quanh / quanh'),
+    have: entry('có', 'have'), maths: entry('toán'), english: entry('tiếng Anh', 'English'),
+    science: entry('khoa học'), history: entry('lịch sử'), subject: entry('môn học'),
+    favourite: entry('yêu thích'), every: entry('mỗi'), day: entry('ngày'),
+    learn: entry('học / học được'), word: entry('từ'), grammar: entry('ngữ pháp'),
+    lesson: entry('bài học / tiết học'), experiment: entry('thí nghiệm'), text: entry('bài đọc / văn bản'),
+    interesting: entry('thú vị'), read: entry('đọc'), often: entry('thường xuyên'),
+    play: entry('chơi'), game: entry('trò chơi'), during: entry('trong suốt / trong'),
+    break: entry('giờ ra chơi / nghỉ'), time: entry('thời gian'), usually: entry('thường'),
+    football: entry('bóng đá'), friend: entry('bạn / bạn bè'), after: entry('sau'),
+    book: entry('sách'), sometimes: entry('đôi khi'), work: entry('làm việc'),
+    group: entry('nhóm'), join: entry('tham gia'), club: entry('câu lạc bộ'),
+    always: entry('luôn luôn'), badminton: entry('cầu lông'), homework: entry('bài tập về nhà'),
+    listen: entry('lắng nghe'), carefully: entry('cẩn thận / chăm chú'), evening: entry('buổi tối'),
+    friendly: entry('thân thiện'), helpful: entry('hay giúp đỡ'), kind: entry('tốt bụng'),
+    funny: entry('vui tính'), good: entry('tốt'), active: entry('năng động'), polite: entry('lịch sự'),
+    patient: entry('kiên nhẫn'), best: entry('thân nhất / tốt nhất'), classmate: entry('bạn cùng lớp'),
+    same: entry('cùng / giống nhau'), clean: entry('sạch'), hard: entry('chăm chỉ / hết sức'),
+    also: entry('cũng'), fun: entry('vui / niềm vui'), like: entry('thích'), love: entry('yêu thích'),
+    very: entry('rất'), much: entry('nhiều / rất nhiều'), because: entry('bởi vì'),
+    can: entry('có thể'), enjoy: entry('thích / thích thú'), happy: entry('vui'),
+    town: entry('thị trấn'), many: entry('nhiều'), all: entry('tất cả'), new: entry('mới'),
+    there: entry('ở đó / THERE'), and: entry('và'), but: entry('nhưng')
+  })
+});
