@@ -16,7 +16,11 @@ test('catalog exposes hierarchical Global 2, 5, 6, 7 and MRT folders with their 
     'global6-unit1-writing-s4', 'global6-unit1-writing-s5', 'global6-unit1-writing-s6',
     'global6-unit1-writing-s7', 'global6-unit1-writing-s8', 'global6-unit1-writing-s9',
     'global6-unit1-writing-final',
-    'global7', 'global7-unit1',
+    'global7', 'global7-unit1', 'global7-unit1-writing-typing',
+    'global7-unit1-writing-s1', 'global7-unit1-writing-s2', 'global7-unit1-writing-s3',
+    'global7-unit1-writing-s4', 'global7-unit1-writing-s5', 'global7-unit1-writing-s6',
+    'global7-unit1-writing-s7', 'global7-unit1-writing-s8', 'global7-unit1-writing-s9',
+    'global7-unit1-writing-s10', 'global7-unit1-writing-final',
     'mrt-lessons'
   ]);
   assert.deepEqual(listSetsByFolder('samples').map(set => set.id), ['g7-u1-mixed-demo', 'g7-u1-s1']);
@@ -35,6 +39,11 @@ test('catalog exposes hierarchical Global 2, 5, 6, 7 and MRT folders with their 
   assert.equal(listSetsByFolder('global6-unit1-writing-final').length, 3);
   assert.equal(listSetsByFolder('global6-unit1-writing-typing').length, 0);
   assert.deepEqual(listSetsByFolder('global7-unit1').map(set => set.id), ['g7-u1-translation-01', 'g7-u1-translation-02']);
+  assert.equal(listSetsByFolder('global7-unit1-writing-s1').length, 4);
+  assert.equal(listSetsByFolder('global7-unit1-writing-s4').length, 5);
+  assert.equal(listSetsByFolder('global7-unit1-writing-s10').length, 5);
+  assert.equal(listSetsByFolder('global7-unit1-writing-final').length, 3);
+  assert.equal(listSetsByFolder('global7-unit1-writing-typing').length, 0);
   assert.deepEqual(listSetsByFolder('mrt-lessons').map(set => set.id), ['mrt-g6-gan-aura-action-01', 'mrt-left-cut-right-01']);
 });
 
