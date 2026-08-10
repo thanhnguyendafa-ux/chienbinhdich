@@ -51,16 +51,27 @@ export function createAdminLessonSettingsRepository(project) {
 
 async function mutateSetting(adminClient, setId, updatedAt, mutate) {
   const { client, user } = await requireAdmin(adminClient);
+  return mutateLessonSettingTransaction({ client, user, setId, updatedAt, mutate });
+}
+
+export async function mutateLessonSettingTransaction({ client, user, setId, updatedAt, mutate }) {
   const ref = client.firestore.doc(client.db, 'lessonSettings', String(setId));
-  const current = await readSetting(client, setId);
-  const nextOverrides = mutate(lessonSettingOverrides(current));
-  if (Object.keys(nextOverrides).length === 0) {
-    await client.firestore.deleteDoc(ref);
-    return null;
-  }
-  const document = lessonSettingDocumentFor(setId, nextOverrides, user.uid, updatedAt);
-  await client.firestore.setDoc(ref, document);
-  return normalizeLessonSettingRecord(String(setId), document);
+  return client.firestore.runTransaction(client.db, async transaction => {
+    const snapshot = await transaction.get(ref);
+    const current = snapshot.exists()
+      ? normalizeLessonSettingRecord(snapshot.id, snapshot.data())
+      : null;
+    const nextOverrides = mutate(lessonSettingOverrides(current));
+
+    if (Object.keys(nextOverrides).length === 0) {
+      transaction.delete(ref);
+      return null;
+    }
+
+    const document = lessonSettingDocumentFor(setId, nextOverrides, user.uid, updatedAt);
+    transaction.set(ref, document);
+    return normalizeLessonSettingRecord(String(setId), document);
+  });
 }
 
 async function readSetting(client, setId) {
