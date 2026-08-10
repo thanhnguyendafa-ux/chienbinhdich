@@ -1,0 +1,96 @@
+export const g7U1WritingFolders = Object.freeze([
+  Object.freeze({"id": "global7-unit1-writing-typing", "name": "G7Unit1 Writing Typing", "description": "Typing Việt → Anh cho Unit 1 · Hobbies; mỗi micro-lesson đi WORD → PHRASE → SENTENCE và có Expected time tối đa 20 phút.", "parentId": "global7-unit1", "order": 10}),
+  Object.freeze({"id": "global7-unit1-writing-s1", "name": "Cấu trúc 1 · Hobby Identification", "description": "GÁN sở thích bằng My hobby is / favourite / interested in.", "parentId": "global7-unit1-writing-typing", "order": 1}),
+  Object.freeze({"id": "global7-unit1-writing-s2", "name": "Cấu trúc 2 · Like / Love / Enjoy / Dislike", "description": "HÀNH ĐỘNG XYZ + activity V-ing, gồm affirmative và negative preference.", "parentId": "global7-unit1-writing-typing", "order": 2}),
+  Object.freeze({"id": "global7-unit1-writing-s3", "name": "Cấu trúc 3 · Habits + Frequency", "description": "Present actions với usually / often / sometimes / every morning / times a week.", "parentId": "global7-unit1-writing-typing", "order": 3}),
+  Object.freeze({"id": "global7-unit1-writing-s4", "name": "Cấu trúc 4 · Started / Began + Time", "description": "Past action markers với started / began / became interested + ago / when / last time.", "parentId": "global7-unit1-writing-typing", "order": 4}),
+  Object.freeze({"id": "global7-unit1-writing-s5", "name": "Cấu trúc 5 · Hobby with Somebody", "description": "SHARE / WITH / TOGETHER và compound host X and I.", "parentId": "global7-unit1-writing-typing", "order": 5}),
+  Object.freeze({"id": "global7-unit1-writing-s6", "name": "Cấu trúc 6 · Need / Use / Keep", "description": "NEED / USE / KEEP + things, purpose chunk TO + verb và place detail.", "parentId": "global7-unit1-writing-typing", "order": 6}),
+  Object.freeze({"id": "global7-unit1-writing-s7", "name": "Cấu trúc 7 · Hobby Benefits", "description": "Activity host + HELPS + object + core verb, tránh double marking.", "parentId": "global7-unit1-writing-typing", "order": 7}),
+  Object.freeze({"id": "global7-unit1-writing-s8", "name": "Cấu trúc 8 · Feelings + Reasons", "description": "MAKES + object + adjective/feel và BECAUSE + complete reason core.", "parentId": "global7-unit1-writing-typing", "order": 8}),
+  Object.freeze({"id": "global7-unit1-writing-s9", "name": "Cấu trúc 9 · Other People's Hobbies", "description": "Third-person singular, past actions và negative DOESN'T LIKE.", "parentId": "global7-unit1-writing-typing", "order": 9}),
+  Object.freeze({"id": "global7-unit1-writing-s10", "name": "Cấu trúc 10 · Extended Sentences", "description": "AND / BUT / SO / BECAUSE + multiple meaning cores để chuẩn bị paragraph.", "parentId": "global7-unit1-writing-typing", "order": 10}),
+  Object.freeze({"id": "global7-unit1-writing-final", "name": "Final Writing Integration", "description": "Ghép các core frames của Hobbies thành paragraph 40–60 từ.", "parentId": "global7-unit1-writing-typing", "order": 11})
+]);
+
+function descriptor({
+  key,
+  folderId,
+  order,
+  title,
+  expectedTimeMinutes,
+  sourceSentenceIds = [],
+  difficulty
+}) {
+  const id = `g7-u1-writing-${key}`;
+  const value = {
+    id,
+    folderId,
+    order,
+    version: 1,
+    course: 'Global Success 7',
+    unit: 'Unit 1 · Hobbies',
+    title,
+    subtitle: 'Typing · Việt → Anh · WORD → PHRASE → SENTENCE',
+    expectedTimeMinutes,
+    lessonSlug: `g7u1-writing-${key}`,
+    passThreshold: 80,
+    completionPolicy: 'all-items',
+    typingTolerance: false,
+    teacher: 'Thầy Thành MRT',
+    description: `9 lượt Typing độc lập đi từ WORD → PHRASE → SENTENCE. Expected time: ${expectedTimeMinutes} phút; nội dung vượt trần 20 phút được tách sang lesson kế tiếp.`,
+    activityTypes: Object.freeze(['typing']),
+    itemCount: 9,
+    sourceSentenceIds: Object.freeze([...sourceSentenceIds]),
+    loadContent: () => import('./g7-u1-writing-typing-content.js').then(module => module.getG7U1WritingTypingContent(key))
+  };
+  if (difficulty) value.difficulty = difficulty;
+  return Object.freeze(value);
+}
+
+export const g7U1WritingRegistry = Object.freeze([
+  descriptor({ key: "s1-01", folderId: "global7-unit1-writing-s1", order: 1, title: "01 · My hobby is + ACTIVITY", expectedTimeMinutes: 15, sourceSentenceIds: [1] }),
+  descriptor({ key: "s1-02", folderId: "global7-unit1-writing-s1", order: 2, title: "02 · Favourite / Main hobby", expectedTimeMinutes: 16, sourceSentenceIds: [2, 5] }),
+  descriptor({ key: "s1-03", folderId: "global7-unit1-writing-s1", order: 3, title: "03 · One of my favourite hobbies", expectedTimeMinutes: 17, sourceSentenceIds: [3] }),
+  descriptor({ key: "s1-04", folderId: "global7-unit1-writing-s1", order: 4, title: "04 · I am interested in + V-ing", expectedTimeMinutes: 18, sourceSentenceIds: [4] }),
+  descriptor({ key: "s2-01", folderId: "global7-unit1-writing-s2", order: 1, title: "01 · LIKE + V-ing", expectedTimeMinutes: 16, sourceSentenceIds: [6] }),
+  descriptor({ key: "s2-02", folderId: "global7-unit1-writing-s2", order: 2, title: "02 · LOVE / ENJOY + V-ing", expectedTimeMinutes: 17, sourceSentenceIds: [7, 8] }),
+  descriptor({ key: "s2-03", folderId: "global7-unit1-writing-s2", order: 3, title: "03 · DON'T LIKE + V-ing", expectedTimeMinutes: 18, sourceSentenceIds: [9] }),
+  descriptor({ key: "s2-04", folderId: "global7-unit1-writing-s2", order: 4, title: "04 · DISLIKE + V-ing · Mixed", expectedTimeMinutes: 19, sourceSentenceIds: [10] }),
+  descriptor({ key: "s3-01", folderId: "global7-unit1-writing-s3", order: 1, title: "01 · Usually / Often + action", expectedTimeMinutes: 16, sourceSentenceIds: [11, 12] }),
+  descriptor({ key: "s3-02", folderId: "global7-unit1-writing-s3", order: 2, title: "02 · Sometimes + after clause", expectedTimeMinutes: 17, sourceSentenceIds: [13] }),
+  descriptor({ key: "s3-03", folderId: "global7-unit1-writing-s3", order: 3, title: "03 · Every morning", expectedTimeMinutes: 18, sourceSentenceIds: [14] }),
+  descriptor({ key: "s3-04", folderId: "global7-unit1-writing-s3", order: 4, title: "04 · Three times a week", expectedTimeMinutes: 19, sourceSentenceIds: [15] }),
+  descriptor({ key: "s4-01", folderId: "global7-unit1-writing-s4", order: 1, title: "01 · STARTED + time ago", expectedTimeMinutes: 16, sourceSentenceIds: [16] }),
+  descriptor({ key: "s4-02", folderId: "global7-unit1-writing-s4", order: 2, title: "02 · STARTED + V-ing + when", expectedTimeMinutes: 17, sourceSentenceIds: [17] }),
+  descriptor({ key: "s4-03", folderId: "global7-unit1-writing-s4", order: 3, title: "03 · BEGAN + V-ing + last time", expectedTimeMinutes: 18, sourceSentenceIds: [18] }),
+  descriptor({ key: "s4-04", folderId: "global7-unit1-writing-s4", order: 4, title: "04 · STARTED taking photos + ago", expectedTimeMinutes: 18, sourceSentenceIds: [19] }),
+  descriptor({ key: "s4-05", folderId: "global7-unit1-writing-s4", order: 5, title: "05 · BECAME INTERESTED + when", expectedTimeMinutes: 20, sourceSentenceIds: [20], difficulty: "hard" }),
+  descriptor({ key: "s5-01", folderId: "global7-unit1-writing-s5", order: 1, title: "01 · Action + WITH somebody", expectedTimeMinutes: 16, sourceSentenceIds: [22, 24] }),
+  descriptor({ key: "s5-02", folderId: "global7-unit1-writing-s5", order: 2, title: "02 · SHARE + hobby + WITH", expectedTimeMinutes: 17, sourceSentenceIds: [21] }),
+  descriptor({ key: "s5-03", folderId: "global7-unit1-writing-s5", order: 3, title: "03 · X and I / together", expectedTimeMinutes: 19, sourceSentenceIds: [23, 25] }),
+  descriptor({ key: "s6-01", folderId: "global7-unit1-writing-s6", order: 1, title: "01 · NEED + things", expectedTimeMinutes: 16, sourceSentenceIds: [27] }),
+  descriptor({ key: "s6-02", folderId: "global7-unit1-writing-s6", order: 2, title: "02 · To do / play, I NEED...", expectedTimeMinutes: 18, sourceSentenceIds: [26, 29] }),
+  descriptor({ key: "s6-03", folderId: "global7-unit1-writing-s6", order: 3, title: "03 · USE + things + TO action", expectedTimeMinutes: 18, sourceSentenceIds: [28] }),
+  descriptor({ key: "s6-04", folderId: "global7-unit1-writing-s6", order: 4, title: "04 · KEEP + collection + place", expectedTimeMinutes: 19, sourceSentenceIds: [30] }),
+  descriptor({ key: "s7-01", folderId: "global7-unit1-writing-s7", order: 1, title: "01 · HELPS me learn / reduce", expectedTimeMinutes: 17, sourceSentenceIds: [31, 32] }),
+  descriptor({ key: "s7-02", folderId: "global7-unit1-writing-s7", order: 2, title: "02 · HELPS me stay + adjective", expectedTimeMinutes: 18, sourceSentenceIds: [33] }),
+  descriptor({ key: "s7-03", folderId: "global7-unit1-writing-s7", order: 3, title: "03 · HELPS me learn about / improve", expectedTimeMinutes: 19, sourceSentenceIds: [34, 35] }),
+  descriptor({ key: "s8-01", folderId: "global7-unit1-writing-s8", order: 1, title: "01 · MAKES me feel + adjective", expectedTimeMinutes: 17, sourceSentenceIds: [36] }),
+  descriptor({ key: "s8-02", folderId: "global7-unit1-writing-s8", order: 2, title: "02 · MAKES me + adjective", expectedTimeMinutes: 18, sourceSentenceIds: [37] }),
+  descriptor({ key: "s8-03", folderId: "global7-unit1-writing-s8", order: 3, title: "03 · BECAUSE + GÁN reason", expectedTimeMinutes: 19, sourceSentenceIds: [38, 39] }),
+  descriptor({ key: "s8-04", folderId: "global7-unit1-writing-s8", order: 4, title: "04 · BECAUSE + CAN action", expectedTimeMinutes: 20, sourceSentenceIds: [40], difficulty: "hard" }),
+  descriptor({ key: "s9-01", folderId: "global7-unit1-writing-s9", order: 1, title: "01 · HE/SHE + ENJOYS", expectedTimeMinutes: 16, sourceSentenceIds: [41] }),
+  descriptor({ key: "s9-02", folderId: "global7-unit1-writing-s9", order: 2, title: "02 · LIKES + because it HELPS", expectedTimeMinutes: 18, sourceSentenceIds: [42] }),
+  descriptor({ key: "s9-03", folderId: "global7-unit1-writing-s9", order: 3, title: "03 · COLLECTS and KEEPS", expectedTimeMinutes: 18, sourceSentenceIds: [43] }),
+  descriptor({ key: "s9-04", folderId: "global7-unit1-writing-s9", order: 4, title: "04 · STARTED + when she WAS", expectedTimeMinutes: 19, sourceSentenceIds: [44] }),
+  descriptor({ key: "s9-05", folderId: "global7-unit1-writing-s9", order: 5, title: "05 · DOESN'T LIKE + THINKS", expectedTimeMinutes: 20, sourceSentenceIds: [45], difficulty: "hard" }),
+  descriptor({ key: "s10-01", folderId: "global7-unit1-writing-s10", order: 1, title: "01 · SO · cause → result", expectedTimeMinutes: 18, sourceSentenceIds: [46] }),
+  descriptor({ key: "s10-02", folderId: "global7-unit1-writing-s10", order: 2, title: "02 · AND NOW · past → present", expectedTimeMinutes: 18, sourceSentenceIds: [47] }),
+  descriptor({ key: "s10-03", folderId: "global7-unit1-writing-s10", order: 3, title: "03 · BECAUSE + AND", expectedTimeMinutes: 19, sourceSentenceIds: [48] }),
+  descriptor({ key: "s10-04", folderId: "global7-unit1-writing-s10", order: 4, title: "04 · Multiple predicates + AND", expectedTimeMinutes: 20, sourceSentenceIds: [49], difficulty: "hard" }),
+  descriptor({ key: "s10-05", folderId: "global7-unit1-writing-s10", order: 5, title: "05 · BUT + STILL + BECAUSE", expectedTimeMinutes: 20, sourceSentenceIds: [50], difficulty: "hard" }),
+  descriptor({ key: "final-01", folderId: "global7-unit1-writing-final", order: 1, title: "01 · Final Writing · Reading", expectedTimeMinutes: 20, sourceSentenceIds: [], difficulty: "hard" }),
+  descriptor({ key: "final-02", folderId: "global7-unit1-writing-final", order: 2, title: "02 · Final Writing · Gardening", expectedTimeMinutes: 20, sourceSentenceIds: [], difficulty: "hard" }),
+  descriptor({ key: "final-03", folderId: "global7-unit1-writing-final", order: 3, title: "03 · Final Writing · Collecting stamps", expectedTimeMinutes: 20, sourceSentenceIds: [], difficulty: "hard" })
+]);
