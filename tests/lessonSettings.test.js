@@ -6,6 +6,7 @@ import {
   lessonSettingOverrides,
   normalizeLessonSettingRecord
 } from '../src/repositories/lessonSettingsModel.js';
+import { mutateLessonSettingTransaction } from '../src/repositories/adminLessonSettingsRepository.js';
 import { sessionDocumentFor } from '../src/repositories/firebaseSessionRepository.js';
 
 const rules = readFileSync(new URL('../firestore.rules', import.meta.url), 'utf8');
@@ -61,7 +62,7 @@ test('persisted setting parser accepts either override and rejects corrupt value
   assert.throws(() => normalizeLessonSettingRecord('x', { updatedAt: 1 }), /không có override/);
 });
 
-test('student reader is read-only while Admin repository owns independent save and reset operations', () => {
+test('student reader is read-only while Admin repository owns transactional independent save and reset operations', () => {
   assert.match(studentReader, /getLessonSetting/);
   assert.doesNotMatch(studentReader, /setDoc|deleteDoc|listLessonSettings/);
   assert.match(adminWriter, /listLessonSettings/);
@@ -69,10 +70,38 @@ test('student reader is read-only while Admin repository owns independent save a
   assert.match(adminWriter, /resetPassThreshold/);
   assert.match(adminWriter, /saveTypingTolerance/);
   assert.match(adminWriter, /resetTypingTolerance/);
-  assert.match(adminWriter, /mutateSetting/);
+  assert.match(adminWriter, /runTransaction/);
+  assert.match(adminWriter, /transaction\.get\(ref\)/);
+  assert.match(adminWriter, /transaction\.set\(ref, document\)/);
+  assert.match(adminWriter, /transaction\.delete\(ref\)/);
   assert.match(adminWriter, /delete next\.passThreshold/);
   assert.match(adminWriter, /delete next\.typingTolerance/);
   assert.match(adminWriter, /Object\.keys\(nextOverrides\)\.length === 0/);
+});
+
+test('simultaneous independent lesson setting mutations retain both overrides', async () => {
+  const state = createSerializedTransactionClient();
+  await Promise.all([
+    mutateLessonSettingTransaction({
+      client: state.client,
+      user: { uid: 'admin-1' },
+      setId: 'g2-u6-translation-01',
+      updatedAt: 100,
+      mutate: overrides => ({ ...overrides, passThreshold: 90 })
+    }),
+    mutateLessonSettingTransaction({
+      client: state.client,
+      user: { uid: 'admin-1' },
+      setId: 'g2-u6-translation-01',
+      updatedAt: 101,
+      mutate: overrides => ({ ...overrides, typingTolerance: true })
+    })
+  ]);
+
+  const stored = state.read();
+  assert.equal(stored.passThreshold, 90);
+  assert.equal(stored.typingTolerance, true);
+  assert.equal(stored.updatedBy, 'admin-1');
 });
 
 test('Firestore allows signed-in reads, Admin-only setting writes, and immutable session policy snapshots', () => {
@@ -138,3 +167,34 @@ test('settings read failures are retryable instead of silently falling back to i
   assert.match(app, /Chưa tải được cài đặt bài/);
   assert.match(app, /onRetry: bootstrap/);
 });
+
+function createSerializedTransactionClient(initial = null) {
+  let stored = initial ? structuredClone(initial) : null;
+  let queue = Promise.resolve();
+  const firestore = {
+    doc: (_db, _collection, id) => ({ id: String(id) }),
+    runTransaction: (_db, callback) => {
+      const run = queue.then(async () => {
+        let pending = stored ? structuredClone(stored) : null;
+        const transaction = {
+          get: async ref => ({
+            id: ref.id,
+            exists: () => stored !== null,
+            data: () => structuredClone(stored)
+          }),
+          set: (_ref, document) => { pending = structuredClone(document); },
+          delete: () => { pending = null; }
+        };
+        const result = await callback(transaction);
+        stored = pending;
+        return result;
+      });
+      queue = run.then(() => undefined, () => undefined);
+      return run;
+    }
+  };
+  return {
+    client: { db: {}, firestore },
+    read: () => structuredClone(stored)
+  };
+}
