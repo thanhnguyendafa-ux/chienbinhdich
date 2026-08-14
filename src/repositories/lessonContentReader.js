@@ -21,7 +21,8 @@ export function createLessonContentReader(project) {
       const ref = client.firestore.doc(client.db, 'lessonContent', String(setId));
       const snapshot = await client.firestore.getDoc(ref);
       if (!snapshot.exists()) return null;
-      return normalizeLessonContentRecord(String(setId), snapshot.data());
+      const record = normalizeLessonContentRecord(String(setId), snapshot.data());
+      return record.active ? record : null;
     },
 
     async getRevisionContent(setId, revision) {
