@@ -50,7 +50,7 @@ export function createAdminLessonContentRepository(project) {
         .sort((a, b) => b.revision - a.revision);
     },
 
-    async publishContent(setId, { baseVersion = 1, items }, updatedAt = Date.now()) {
+    async publishContent(setId, { baseVersion = 1, items, passages, printGroups }, updatedAt = Date.now()) {
       const { client, user } = await requireAdmin(adminClient);
       const currentRef = client.firestore.doc(client.db, 'lessonContent', String(setId));
       try {
@@ -65,6 +65,8 @@ export function createAdminLessonContentRepository(project) {
             revision: nextRevision,
             baseVersion,
             items,
+            passages,
+            printGroups,
             updatedBy: user.uid,
             updatedAt,
             active: true
@@ -99,6 +101,8 @@ export function createAdminLessonContentRepository(project) {
             revision: current.revision,
             baseVersion: current.baseVersion,
             items: current.items,
+            passages: current.passages,
+            printGroups: current.printGroups,
             updatedBy: user.uid,
             updatedAt,
             active: false
