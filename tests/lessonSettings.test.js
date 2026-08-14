@@ -40,23 +40,13 @@ test('lesson setting document supports independent mastery and typing overrides'
 });
 
 test('persisted setting parser accepts either override and rejects corrupt values', () => {
-  const mastery = normalizeLessonSettingRecord('x', {
-    passThreshold: 70,
-    updatedAt: 10,
-    updatedBy: 'admin'
-  });
+  const mastery = normalizeLessonSettingRecord('x', { passThreshold: 70, updatedAt: 10, updatedBy: 'admin' });
   assert.equal(mastery.passThreshold, 70);
   assert.equal(mastery.typingTolerance, undefined);
-
-  const typing = normalizeLessonSettingRecord('x', {
-    typingTolerance: false,
-    updatedAt: 11,
-    updatedBy: 'admin'
-  });
+  const typing = normalizeLessonSettingRecord('x', { typingTolerance: false, updatedAt: 11, updatedBy: 'admin' });
   assert.equal(typing.passThreshold, undefined);
   assert.equal(typing.typingTolerance, false);
   assert.deepEqual(lessonSettingOverrides(typing), { typingTolerance: false });
-
   assert.throws(() => normalizeLessonSettingRecord('x', { passThreshold: 0 }), /không hợp lệ/);
   assert.throws(() => normalizeLessonSettingRecord('x', { typingTolerance: 'yes' }), /không hợp lệ/);
   assert.throws(() => normalizeLessonSettingRecord('x', { updatedAt: 1 }), /không có override/);
@@ -82,22 +72,9 @@ test('student reader is read-only while Admin repository owns transactional inde
 test('simultaneous independent lesson setting mutations retain both overrides', async () => {
   const state = createSerializedTransactionClient();
   await Promise.all([
-    mutateLessonSettingTransaction({
-      client: state.client,
-      user: { uid: 'admin-1' },
-      setId: 'g2-u6-translation-01',
-      updatedAt: 100,
-      mutate: overrides => ({ ...overrides, passThreshold: 90 })
-    }),
-    mutateLessonSettingTransaction({
-      client: state.client,
-      user: { uid: 'admin-1' },
-      setId: 'g2-u6-translation-01',
-      updatedAt: 101,
-      mutate: overrides => ({ ...overrides, typingTolerance: true })
-    })
+    mutateLessonSettingTransaction({ client: state.client, user: { uid: 'admin-1' }, setId: 'g2-u6-translation-01', updatedAt: 100, mutate: overrides => ({ ...overrides, passThreshold: 90 }) }),
+    mutateLessonSettingTransaction({ client: state.client, user: { uid: 'admin-1' }, setId: 'g2-u6-translation-01', updatedAt: 101, mutate: overrides => ({ ...overrides, typingTolerance: true }) })
   ]);
-
   const stored = state.read();
   assert.equal(stored.passThreshold, 90);
   assert.equal(stored.typingTolerance, true);
@@ -119,15 +96,7 @@ test('Firestore allows signed-in reads, Admin-only setting writes, and immutable
 });
 
 test('Session V7 persistence carries both policy snapshots without embedding attempts', () => {
-  const session = {
-    schemaVersion: 7,
-    id: 'MRT-ABC123',
-    setId: 'g2-u6-translation-01',
-    setVersion: 1,
-    passThresholdAtStart: 80,
-    typingToleranceAtStart: true,
-    attempts: [{ id: 'a1' }]
-  };
+  const session = { schemaVersion: 7, id: 'MRT-ABC123', setId: 'g2-u6-translation-01', setVersion: 1, passThresholdAtStart: 80, typingToleranceAtStart: true, attempts: [{ id: 'a1' }] };
   const document = sessionDocumentFor(session, 'uid-1', 999);
   assert.equal(document.passThresholdAtStart, 80);
   assert.equal(document.typingToleranceAtStart, true);
@@ -144,19 +113,24 @@ test('Admin policy editors are UI-only and state new-session snapshot semantics'
   assert.doesNotMatch(typingEditor, /firebase|firestore|setDoc|deleteDoc/i);
 });
 
-test('app refreshes live lesson settings before a new start and uses session snapshots while active', () => {
+test('app refreshes live lesson settings and current content before a new start, then snapshots policies and revision', () => {
   assert.match(app, /ensureSet\(\{ refreshSettings: true \}\)/);
-  assert.match(app, /applySessionMasterySnapshot\(currentLesson, session\)/);
+  assert.match(app, /readStudentCurrentContent\(activeSetId\)/);
+  assert.match(app, /contentRevisionAtStart: Number\(lesson\.contentPolicy\?\.revision \?\? 0\)/);
+  assert.match(app, /applySessionMasterySnapshot\(applyLessonMasterySetting\(historical, null\), sessionSnapshot\)/);
   assert.match(app, /saveTypingTolerance/);
   assert.match(app, /resetTypingTolerance/);
   assert.match(app, /lesson_settings_unavailable/);
+  assert.match(app, /lesson_content_unavailable/);
 });
 
-test('historical report rendering uses static content plus session snapshots, not a live settings read', () => {
-  const helper = app.match(/async function loadSessionHistoricalLesson\(\)[\s\S]*?\n}\n/)?.[0] ?? '';
-  assert.match(helper, /loadLessonSet\(activeSetId\)/);
+test('historical drill and report rendering use base plus snapshotted content revision, not live settings/content', () => {
+  const helper = app.match(/async function loadHistoricalLessonForSession\([\s\S]*?\n}\n/)?.[0] ?? '';
+  assert.match(helper, /loadLessonSet\(sessionSnapshot\.setId\)/);
+  assert.match(helper, /contentRevisionAtStart/);
+  assert.match(helper, /readStudentRevisionContent/);
   assert.match(helper, /applySessionMasterySnapshot/);
-  assert.doesNotMatch(helper, /readStudentLessonSetting|ensureSet/);
+  assert.doesNotMatch(helper, /readStudentLessonSetting|readStudentCurrentContent|ensureSet/);
   assert.match(app, /const lesson = await loadSessionHistoricalLesson\(\)/);
 });
 
@@ -177,11 +151,7 @@ function createSerializedTransactionClient(initial = null) {
       const run = queue.then(async () => {
         let pending = stored ? structuredClone(stored) : null;
         const transaction = {
-          get: async ref => ({
-            id: ref.id,
-            exists: () => stored !== null,
-            data: () => structuredClone(stored)
-          }),
+          get: async ref => ({ id: ref.id, exists: () => stored !== null, data: () => structuredClone(stored) }),
           set: (_ref, document) => { pending = structuredClone(document); },
           delete: () => { pending = null; }
         };
@@ -193,8 +163,5 @@ function createSerializedTransactionClient(initial = null) {
       return run;
     }
   };
-  return {
-    client: { db: {}, firestore },
-    read: () => structuredClone(stored)
-  };
+  return { client: { db: {}, firestore }, read: () => structuredClone(stored) };
 }
