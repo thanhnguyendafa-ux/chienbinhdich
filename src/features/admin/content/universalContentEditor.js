@@ -21,6 +21,8 @@ const ADD_TYPES = Object.freeze([
   ['typing', 'Typing']
 ]);
 
+let activeRender = null;
+
 export function openUniversalContentEditor({
   root,
   lesson,
@@ -65,7 +67,7 @@ export function openUniversalContentEditor({
         <div class="admin-content-toolbar">
           <button class="secondary-btn" type="button" data-content-toggle-original>${originalOpen ? 'Ẩn bản gốc' : 'Xem bản gốc'}</button>
           <button class="secondary-btn" type="button" data-content-preview>${previewOpen ? 'Ẩn Preview' : 'Preview draft'}</button>
-          <button class="secondary-btn" type="button" data-content-history>${historyOpen ? 'Ẩn lịch sử' : 'Lịch sử revision'}</button>
+          ${onListRevisions ? `<button class="secondary-btn" type="button" data-content-history>${historyOpen ? 'Ẩn lịch sử' : 'Lịch sử revision'}</button>` : ''}
           <label class="admin-inline-field">Thêm câu
             <select data-add-type>${ADD_TYPES.map(([value, label]) => `<option value="${value}">${label}</option>`).join('')}</select>
           </label>
@@ -102,6 +104,7 @@ export function openUniversalContentEditor({
 
   const bind = () => {
     const close = () => {
+      if (activeRender === render) activeRender = null;
       if (dialog.open) dialog.close();
       dialog.remove();
     };
@@ -147,7 +150,7 @@ export function openUniversalContentEditor({
       }
       setBusy(true, 'Đang Publish revision mới...');
       try {
-        await onPublish?.(result.content);
+        await onPublish?.(bridgeContentForExistingCallback(result.content));
         close();
         await onDone?.();
       } catch (error) {
@@ -210,10 +213,14 @@ export function openUniversalContentEditor({
       if (!item) return;
 
       card.querySelectorAll('[data-item-field]').forEach(input => input.addEventListener('input', () => {
-        item[input.dataset.itemField] = input.value;
+        const field = input.dataset.itemField;
+        if (['classificationHint'].includes(field) && !input.value.trim()) delete item[field];
+        else item[field] = input.value;
       }));
       card.querySelectorAll('[data-item-select]').forEach(input => input.addEventListener('change', () => {
-        item[input.dataset.itemSelect] = input.dataset.valueType === 'boolean' ? input.value === 'true' : input.value;
+        const field = input.dataset.itemSelect;
+        if (field === 'passageId' && !input.value) delete item.passageId;
+        else item[field] = input.dataset.valueType === 'boolean' ? input.value === 'true' : input.value;
         render();
       }));
 
@@ -248,6 +255,7 @@ export function openUniversalContentEditor({
     }
   };
 
+  activeRender = render;
   render();
   dialog.showModal();
 }
@@ -345,7 +353,6 @@ function renderSentenceOrder(item) {
     <label>Token pool (mỗi dòng một token)<textarea rows="6" data-order-tokens>${esc(tokens.join('\n'))}</textarea></label>
     <label>Correct order (mỗi dòng một token)<textarea rows="6" data-order-correct>${esc((item.correctOrder ?? []).join('\n'))}</textarea></label>
     <label>Accepted orders (mỗi đáp án một dòng; token cách nhau bằng ||)<textarea rows="4" data-order-accepted>${esc(accepted.map(order => order.join(' || ')).join('\n'))}</textarea></label>
-    <label>Classification hint / Gợi ý<textarea rows="2" data-item-field="classificationHint">${esc(item.classificationHint ?? '')}</textarea></label>
     ${item.orderDiagnostics ? `<details><summary>Advanced: Order diagnostics JSON</summary><textarea rows="8" data-order-diagnostics>${esc(JSON.stringify(item.orderDiagnostics, null, 2))}</textarea><small>JSON không hợp lệ sẽ không được áp dụng; validator vẫn chặn Publish nếu diagnostics không khớp token.</small></details>` : ''}
   </div>`;
 }
@@ -402,7 +409,7 @@ function bindMcq(card, item) {
       item.stimulus ??= { title: 'Stimulus / Dữ liệu', text: '' };
       delete item.passageId;
     } else delete item.stimulus;
-    rerender(card);
+    rerender();
   });
   card.querySelectorAll('[data-stimulus-field]').forEach(input => input.addEventListener('input', () => {
     item.stimulus ??= { title: '', text: '' };
@@ -413,7 +420,7 @@ function bindMcq(card, item) {
       item.passageId = event.currentTarget.value;
       delete item.stimulus;
     } else delete item.passageId;
-    rerender(card);
+    rerender();
   });
   card.querySelectorAll('[data-choice-index]').forEach(row => {
     const index = Number(row.dataset.choiceIndex);
@@ -435,7 +442,7 @@ function bindMcq(card, item) {
     let id = `c${n}`;
     while (used.has(id)) id = `c${++n}`;
     item.choices.push({ id, text: `Choice ${n} / Lựa chọn ${n}` });
-    rerender(card);
+    rerender();
   });
   card.querySelectorAll('[data-choice-delete]').forEach(button => button.addEventListener('click', () => {
     if ((item.choices ?? []).length <= 2) return;
@@ -443,7 +450,7 @@ function bindMcq(card, item) {
     const removed = item.choices[index];
     item.choices.splice(index, 1);
     if (removed?.id === item.correctChoiceId) item.correctChoiceId = item.choices[0]?.id ?? '';
-    rerender(card);
+    rerender();
   }));
 }
 
@@ -484,7 +491,7 @@ function bindClassification(card, item) {
     item.groups ??= [];
     const id = uniqueLocalId('group', item.groups.map(group => group.id));
     item.groups.push({ id, label: `New group / Nhóm mới ${item.groups.length + 1}` });
-    rerender(card);
+    rerender();
   });
   card.querySelectorAll('[data-group-delete]').forEach(button => button.addEventListener('click', () => {
     if ((item.groups ?? []).length <= 2) return;
@@ -493,7 +500,7 @@ function bindClassification(card, item) {
     item.groups.splice(index, 1);
     const fallback = item.groups[0]?.id ?? '';
     for (const token of item.tokens ?? []) if (token.correctGroupId === removed?.id) token.correctGroupId = fallback;
-    rerender(card);
+    rerender();
   }));
 
   card.querySelectorAll('[data-token-index]').forEach(row => {
@@ -521,14 +528,14 @@ function bindClassification(card, item) {
     const token = { id, text: `New item ${item.tokens.length + 1}`, correctGroupId: item.groups?.[0]?.id ?? '' };
     item.tokens.push(token);
     if (item.teachingFeedback?.answerAnalysis) item.teachingFeedback.answerAnalysis.push({ word: token.text, sound: '', explanation: '' });
-    rerender(card);
+    rerender();
   });
   card.querySelectorAll('[data-token-delete]').forEach(button => button.addEventListener('click', () => {
     if ((item.tokens ?? []).length <= 2) return;
     const index = Number(button.dataset.tokenDelete);
     item.tokens.splice(index, 1);
     if (item.teachingFeedback?.answerAnalysis) item.teachingFeedback.answerAnalysis.splice(index, 1);
-    rerender(card);
+    rerender();
   }));
 }
 
@@ -539,7 +546,7 @@ function bindFeedback(card, item) {
       delete item.teachingFeedback;
       delete item.theorySupport;
     }
-    rerender(card);
+    rerender();
   });
   card.querySelector('[data-theory-access]')?.addEventListener('change', event => {
     const access = event.currentTarget.value;
@@ -548,7 +555,7 @@ function bindFeedback(card, item) {
       ensureFeedback(item);
       item.theorySupport = { access };
     }
-    rerender(card);
+    rerender();
   });
   card.querySelectorAll('[data-feedback-field]').forEach(input => input.addEventListener('input', () => {
     ensureFeedback(item)[input.dataset.feedbackField] = input.value;
@@ -568,9 +575,6 @@ function ensureFeedback(item) {
     theory: 'Add the rule or theory here. / Thêm quy luật hoặc lý thuyết ở đây.',
     example: 'Add one useful example. / Thêm một ví dụ hữu ích.'
   };
-  if (questionTypeForItem(item) === 'classification' && item.teachingFeedback.answerAnalysis) {
-    item.teachingFeedback.answerAnalysis = (item.tokens ?? []).map((token, index) => item.teachingFeedback.answerAnalysis[index] ?? { word: token.text, sound: '', explanation: '' });
-  }
   return item.teachingFeedback;
 }
 
@@ -580,6 +584,13 @@ function ensureAnalysisEntry(item, index, token) {
   feedback.answerAnalysis[index] ??= { word: token.text, sound: '', explanation: '' };
   feedback.answerAnalysis[index].word = token.text;
   return feedback.answerAnalysis[index];
+}
+
+function bridgeContentForExistingCallback(content) {
+  const items = content.items.map(item => structuredClone(item));
+  if (content.passages !== undefined) items.passages = content.passages.map(value => structuredClone(value));
+  if (content.printGroups !== undefined) items.printGroups = content.printGroups.map(value => structuredClone(value));
+  return items;
 }
 
 function lines(value) {
@@ -594,6 +605,6 @@ function uniqueLocalId(prefix, values = []) {
   return id;
 }
 
-function rerender(card) {
-  card.closest('[data-content-editor]')?.dispatchEvent(new CustomEvent('admin-content-rerender', { bubbles: true }));
+function rerender() {
+  activeRender?.();
 }
