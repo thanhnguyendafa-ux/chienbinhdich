@@ -60,12 +60,15 @@ test('every G7 lesson keeps 15–20 minutes and uses variable WORD → 3 PHRASE 
   }
 });
 
-test('G7 regression: hobby identity lesson prepares gardening and taking photos before sentence typing', () => {
+test('G7 regression: hobby identity lesson preserves exact learner-facing surface forms', () => {
   const content = getG7U1WritingTypingContent('s1-01');
   const wordAnswers = content.items.filter(item => item.stage === 'word').map(item => item.en.toLowerCase());
-  assert.ok(wordAnswers.includes('garden'));
-  assert.ok(wordAnswers.includes('take'));
-  assert.ok(wordAnswers.includes('photo'));
+  assert.ok(wordAnswers.includes('gardening'));
+  assert.ok(wordAnswers.includes('taking'));
+  assert.ok(wordAnswers.includes('photos'));
+  assert.ok(!wordAnswers.includes('garden'));
+  assert.ok(!wordAnswers.includes('take'));
+  assert.ok(!wordAnswers.includes('photo'));
   assert.ok(content.items.find(item => item.en === 'My hobby is gardening.'));
   assert.ok(content.items.find(item => item.en === 'My hobby is taking photos.'));
 });
@@ -104,6 +107,6 @@ test('Final Writing lessons build complete 40–60 word hobby paragraphs at the 
     const wordCount = finalAnswer.trim().split(/\s+/).length;
     assert.ok(content.items.filter(item => item.stage === 'word').length > 3, `${descriptor.id} final must prepare paragraph vocabulary`);
     assert.ok(wordCount >= 40, `${descriptor.id} paragraph too short: ${wordCount}`);
-    assert.ok(wordCount <= 60, `${descriptor.id} paragraph too long: ${wordCount}`);
+    assert.ok(wordCount <= 60, `${descriptor.id} paragraph too short: ${wordCount}`);
   }
 });
