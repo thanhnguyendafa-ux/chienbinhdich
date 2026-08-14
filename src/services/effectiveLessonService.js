@@ -1,6 +1,35 @@
 import { resolveMasteryPolicy, sessionPassThreshold } from '../core/masteryPolicy.js';
 import { resolveTypingPolicy, sessionTypingTolerance } from '../core/typingPolicy.js';
 
+export function applyLessonContentOverride(lesson, content = null) {
+  if (!lesson) throw new Error('Lesson is required.');
+  const defaultPolicy = Object.freeze({
+    source: 'base',
+    revision: 0,
+    revisionId: null,
+    baseVersion: Number(lesson.version ?? 1),
+    updatedAt: null,
+    updatedBy: null
+  });
+  if (!content) {
+    return Object.freeze({ ...lesson, contentPolicy: defaultPolicy });
+  }
+  return Object.freeze({
+    ...lesson,
+    items: Object.freeze(content.items.map(item => Object.freeze(structuredClone(item)))),
+    itemCount: content.items.length,
+    contentPolicy: Object.freeze({
+      source: 'admin-override',
+      revision: Number(content.revision),
+      revisionId: content.revisionId ?? null,
+      baseVersion: Number(content.baseVersion ?? lesson.version ?? 1),
+      updatedAt: content.updatedAt ?? null,
+      updatedBy: content.updatedBy ?? null,
+      baseChanged: Number(content.baseVersion ?? 1) !== Number(lesson.version ?? 1)
+    })
+  });
+}
+
 export function applyLessonMasterySetting(lesson, setting = null) {
   if (!lesson) throw new Error('Lesson is required.');
   const masteryPolicy = resolveMasteryPolicy(lesson, setting);
