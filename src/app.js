@@ -4,9 +4,11 @@ import { localSessionRepository as sessions } from './repositories/localSessionR
 import { createFirebaseAdminRepository } from './repositories/adminRepository.js';
 import { createAdminLessonSettingsRepository } from './repositories/adminLessonSettingsRepository.js';
 import { createLessonSettingsReader } from './repositories/lessonSettingsReader.js';
+import { createAdminLessonContentRepository } from './repositories/adminLessonContentRepository.js';
+import { createLessonContentReader } from './repositories/lessonContentReader.js';
 import { createLegacyAssignmentRepository } from './repositories/legacyAssignmentRepository.js';
 import { getSetDescriptor, getSetDescriptorBySlug, listFolders, listSetDescriptors, loadLessonSet } from './repositories/lessonRepository.js';
-import { applyLessonMasterySetting, applyLessonMasterySettings, applySessionMasterySnapshot } from './services/effectiveLessonService.js';
+import { applyLessonContentOverride, applyLessonMasterySetting, applyLessonMasterySettings, applySessionMasterySnapshot } from './services/effectiveLessonService.js';
 import { abandonSession, continueQualifiedSession, createSession, qualifySessionIfEligible, submitAnswer, submitPassedSession } from './core/sessionMachine.js';
 import { resolveAccessRoute } from './core/accessRouting.js';
 import { buildFixedLessonUrl, buildLegacyAssignmentUrl } from './core/lessonLinks.js';
@@ -18,6 +20,8 @@ const moduleCache = new Map();
 let adminRepository = null;
 let adminLessonSettingsRepository = null;
 let lessonSettingsReader = null;
+let adminLessonContentRepository = null;
+let lessonContentReader = null;
 let legacyAssignmentRepository = null;
 let currentStudentName = sessions.getLastStudentName();
 let session = ['lesson-link', 'legacy-assignment'].includes(route.kind) ? sessions.loadActive() : null;
@@ -61,6 +65,18 @@ function getLessonSettingsReader() {
   return lessonSettingsReader;
 }
 
+function getAdminLessonContentRepository() {
+  if (!firebaseConfig.enabled) throw new Error('Firebase chưa được bật cho Chiến Binh Dịch.');
+  adminLessonContentRepository ??= createAdminLessonContentRepository(firebaseConfig.project);
+  return adminLessonContentRepository;
+}
+
+function getLessonContentReader() {
+  if (!firebaseConfig.enabled) return null;
+  lessonContentReader ??= createLessonContentReader(firebaseConfig.project);
+  return lessonContentReader;
+}
+
 function getLegacyAssignmentRepository() {
   if (!firebaseConfig.enabled) throw new Error('Firebase chưa được bật cho Chiến Binh Dịch.');
   legacyAssignmentRepository ??= createLegacyAssignmentRepository(firebaseConfig.project);
@@ -85,32 +101,78 @@ async function readStudentLessonSetting(setId) {
   }
 }
 
+async function readStudentCurrentContent(setId) {
+  const reader = getLessonContentReader();
+  if (!reader) return null;
+  try {
+    return await reader.getCurrentContent(setId);
+  } catch (cause) {
+    const error = new Error('Không tải được nội dung bài hiện tại. Hãy thử lại để tránh dùng sai phiên bản bài.');
+    error.code = 'lesson_content_unavailable';
+    error.cause = cause;
+    throw error;
+  }
+}
+
+async function readStudentRevisionContent(setId, revision) {
+  if (!Number.isInteger(Number(revision)) || Number(revision) < 1) return null;
+  const reader = getLessonContentReader();
+  if (!reader) return null;
+  try {
+    const content = await reader.getRevisionContent(setId, Number(revision));
+    if (!content) throw new Error(`Missing lesson content revision ${revision}.`);
+    return content;
+  } catch (cause) {
+    const error = new Error('Không tải được đúng phiên bản nội dung của lượt làm này. Hãy thử lại.');
+    error.code = 'lesson_content_unavailable';
+    error.cause = cause;
+    throw error;
+  }
+}
+
 async function ensureSet({ refreshSettings = false } = {}) {
   if (!activeSetId) throw new Error('Không có Set đang hoạt động.');
   if (set && !refreshSettings) return set;
-  const [staticLesson, setting] = await Promise.all([
+  const [staticLesson, setting, content] = await Promise.all([
     loadLessonSet(activeSetId),
-    readStudentLessonSetting(activeSetId)
+    readStudentLessonSetting(activeSetId),
+    readStudentCurrentContent(activeSetId)
   ]);
-  set = applyLessonMasterySetting(staticLesson, setting);
+  set = applyLessonMasterySetting(applyLessonContentOverride(staticLesson, content), setting);
   validateLesson(set);
   return set;
 }
 
+async function loadHistoricalLessonForSession(sessionSnapshot, { admin = false } = {}) {
+  if (!sessionSnapshot?.setId) throw new Error('Không có session hợp lệ.');
+  const staticLesson = await loadLessonSet(sessionSnapshot.setId);
+  const revision = Number(sessionSnapshot.contentRevisionAtStart ?? 0);
+  let content = null;
+  if (revision > 0) {
+    content = admin
+      ? await getAdminLessonContentRepository().getRevisionContent(sessionSnapshot.setId, revision)
+      : await readStudentRevisionContent(sessionSnapshot.setId, revision);
+    if (!content) throw new Error(`Không tìm thấy content revision ${revision} của ${sessionSnapshot.setId}.`);
+  }
+  const historical = applyLessonContentOverride(staticLesson, content);
+  validateLesson(historical);
+  return applySessionMasterySnapshot(applyLessonMasterySetting(historical, null), sessionSnapshot);
+}
+
 async function loadSessionHistoricalLesson() {
   if (!activeSetId || !session) throw new Error('Không có session đang hoạt động.');
-  const staticLesson = await loadLessonSet(activeSetId);
-  validateLesson(staticLesson);
-  return applySessionMasterySnapshot(applyLessonMasterySetting(staticLesson, null), session);
+  return loadHistoricalLessonForSession(session);
 }
 
 async function loadAdminEffectiveLesson(setId) {
   const settingsRepository = getAdminLessonSettingsRepository();
-  const [staticLesson, setting] = await Promise.all([
+  const contentRepository = getAdminLessonContentRepository();
+  const [staticLesson, setting, content] = await Promise.all([
     loadLessonSet(setId),
-    settingsRepository.getLessonSetting(setId)
+    settingsRepository.getLessonSetting(setId),
+    contentRepository.getCurrentContent(setId)
   ]);
-  const lesson = applyLessonMasterySetting(staticLesson, setting);
+  const lesson = applyLessonMasterySetting(applyLessonContentOverride(staticLesson, content), setting);
   validateLesson(lesson);
   return lesson;
 }
@@ -133,7 +195,10 @@ function canResumeCurrentSet() {
 }
 
 function createCurrentSession(studentName, lesson) {
-  const created = createSession({ studentName, set: lesson });
+  const created = {
+    ...createSession({ studentName, set: lesson }),
+    contentRevisionAtStart: Number(lesson.contentPolicy?.revision ?? 0)
+  };
   if (previewMode) return { ...created, persistenceMode: 'preview' };
   if (!accessContext) throw new Error('Nguồn truy cập bài học chưa được xác định.');
   if (accessContext.kind === 'fixed-link') {
@@ -209,7 +274,7 @@ async function showEntry() {
     onBack: previewMode ? () => navigateAdmin({ inspect: activeSetId }) : null,
     onStart: async name => {
       currentStudentName = name;
-      renderLoading(root, 'Đang xác nhận cài đặt bài mới nhất...');
+      renderLoading(root, 'Đang xác nhận nội dung và cài đặt bài mới nhất...');
       const latestLesson = previewMode ? lesson : await ensureSet({ refreshSettings: true });
       session = createCurrentSession(name, latestLesson);
       saveActiveSession();
@@ -222,8 +287,7 @@ async function showEntry() {
 async function showDrill() {
   if (!session) return showEntry();
   if (!set) renderLoading(root, 'Đang tải bài luyện...');
-  const currentLesson = await ensureSet();
-  const lesson = applySessionMasterySnapshot(currentLesson, session);
+  const lesson = await loadSessionHistoricalLesson();
   const reconciled = qualifySessionIfEligible(session, lesson);
   if (reconciled !== session) {
     session = reconciled;
@@ -308,6 +372,7 @@ async function showReport() {
       set: lesson,
       onRetry: async () => {
         renderLoading(root, 'Đang tạo lượt làm mới...');
+        set = null;
         const latestLesson = await ensureSet({ refreshSettings: true });
         session = createCurrentSession(session.studentName, latestLesson);
         saveActiveSession();
@@ -405,11 +470,16 @@ async function showAdminDashboard() {
 
 async function showAdminInspector(setId) {
   const settingsRepository = getAdminLessonSettingsRepository();
-  const lesson = await loadAdminEffectiveLesson(setId);
+  const contentRepository = getAdminLessonContentRepository();
+  const [lesson, baseLesson] = await Promise.all([
+    loadAdminEffectiveLesson(setId),
+    loadLessonSet(setId)
+  ]);
   const { renderLessonInspector } = await getScreen('admin', 'Đang tải nội dung bài...');
   renderLessonInspector({
     root,
     set: lesson,
+    baseSet: baseLesson,
     fixedUrl: buildFixedLessonUrl(window.location, lesson),
     onBack: () => navigateAdmin(),
     onStudentPreview: () => navigateAdmin({ preview: setId }),
@@ -418,13 +488,20 @@ async function showAdminInspector(setId) {
     onResetMastery: id => settingsRepository.resetPassThreshold(id),
     onSaveTypingTolerance: (id, value) => settingsRepository.saveTypingTolerance(id, value),
     onResetTypingTolerance: id => settingsRepository.resetTypingTolerance(id),
+    onPublishContent: async (id, items) => {
+      const base = id === setId ? baseLesson : await loadLessonSet(id);
+      const candidate = { ...lesson, items };
+      validateLesson(candidate);
+      return contentRepository.publishContent(id, { baseVersion: base.version ?? 1, items });
+    },
+    onResetContent: id => contentRepository.resetToBase(id),
     onRefresh: () => showAdminInspector(setId)
   });
 }
 
 async function showAdminLessonPrint(setId) {
   renderLoading(root, 'Đang chuẩn bị bản in...');
-  const lesson = await loadLessonSet(setId);
+  const lesson = await loadAdminEffectiveLesson(setId);
   validateLesson(lesson);
   const { renderLessonPrint } = await getScreen('admin', 'Đang mở bản in...');
   renderLessonPrint({
@@ -450,7 +527,7 @@ async function showAdminSession(sessionId) {
   renderLoading(root, 'Đang tải kết quả học sinh...');
   const detail = await repository.getSessionDetail(sessionId);
   const currentLesson = await loadAdminEffectiveLesson(detail.session.setId);
-  const sessionLesson = applySessionMasterySnapshot(currentLesson, detail.session);
+  const sessionLesson = await loadHistoricalLessonForSession(detail.session, { admin: true });
   const { renderAdminSessionDetail } = await getScreen('admin', 'Đang mở kết quả...');
   renderAdminSessionDetail({
     root,
@@ -493,11 +570,11 @@ bootstrap().catch(showFatalError);
 
 async function showFatalError(error) {
   console.error(error);
-  if (error?.code === 'lesson_settings_unavailable') {
+  if (error?.code === 'lesson_settings_unavailable' || error?.code === 'lesson_content_unavailable') {
     const { renderRetryableAccessError } = await getScreen('access', 'Đang chuẩn bị thử lại...');
     return renderRetryableAccessError({
       root,
-      title: 'Chưa tải được cài đặt bài',
+      title: error.code === 'lesson_content_unavailable' ? 'Chưa tải được nội dung bài' : 'Chưa tải được cài đặt bài',
       message: error.message,
       onRetry: bootstrap
     });
