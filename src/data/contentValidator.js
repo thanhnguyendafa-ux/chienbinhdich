@@ -1,4 +1,5 @@
-import { questionTypeForItem, SUPPORTED_QUESTION_TYPES } from '../core/questionTypes.js';
+import { SUPPORTED_QUESTION_TYPES, questionTypeForItem } from '../core/questionTypes.js';
+import { validatePassThreshold } from '../core/masteryPolicy.js';
 
 const stageRank = Object.freeze({ word: 0, phrase: 1, sentence: 2 });
 
@@ -46,8 +47,7 @@ export function validateSet(set) {
   }
 
   if (set.passThreshold !== undefined) {
-    const value = Number(set.passThreshold);
-    if (!Number.isFinite(value) || value <= 0 || value > 100) errors.push(`Set ${set.id} passThreshold không hợp lệ`);
+    errors.push(...validatePassThreshold(set.passThreshold, `Set ${set.id} passThreshold`));
   }
   return errors;
 }
