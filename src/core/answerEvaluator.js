@@ -28,6 +28,7 @@ function normalizeYoungLearnerTyping(value) {
     [/\bwhere'?s\b/gi, 'where is'],
     [/\bthere'?s\b/gi, 'there is'],
     [/\bthat'?s\b/gi, 'that is'],
+    [/\bname'?s\b/gi, 'name is'],
     [/\bisn'?t\b/gi, 'is not'],
     [/\baren'?t\b/gi, 'are not'],
     [/\bdon'?t\b/gi, 'do not'],
