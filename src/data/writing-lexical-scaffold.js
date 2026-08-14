@@ -133,12 +133,16 @@ function surfaceVariantsForSeed(answer, targetTexts, scaffold, explicitAnswers) 
   const seedWords = normalizedWords(answer);
   if (!seedWords.length) return [];
   const aliases = scaffold.aliases ?? {};
+  const protectedChunks = explicitAnswers
+    .map(normalizedWords)
+    .filter(words => words.length > seedWords.length);
   const exactVariants = [];
 
   for (const text of targetTexts) {
     const targetWords = normalizedWords(text);
     for (let start = 0; start <= targetWords.length - seedWords.length; start += 1) {
       if (!matchesSequence(targetWords, seedWords, start)) continue;
+      if (insideProtectedChunk(targetWords, start, seedWords.length, protectedChunks)) continue;
       exactVariants.push(surfaceFromRange(targetWords, start, seedWords.length, scaffold));
     }
   }
@@ -146,9 +150,6 @@ function surfaceVariantsForSeed(answer, targetTexts, scaffold, explicitAnswers) 
   if (exactVariants.length) return uniqueByKey(exactVariants, surfaceKey);
 
   const seedCanonical = seedWords.map(word => canonicalWritingToken(word, aliases));
-  const protectedChunks = explicitAnswers
-    .map(normalizedWords)
-    .filter(words => words.length > seedWords.length);
   const variants = [];
 
   for (const text of targetTexts) {
