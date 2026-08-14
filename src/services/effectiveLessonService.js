@@ -14,7 +14,7 @@ export function applyLessonContentOverride(lesson, content = null) {
   if (!content) {
     return Object.freeze({ ...lesson, contentPolicy: defaultPolicy });
   }
-  return Object.freeze({
+  const overridden = {
     ...lesson,
     items: Object.freeze(content.items.map(item => Object.freeze(structuredClone(item)))),
     itemCount: content.items.length,
@@ -27,7 +27,14 @@ export function applyLessonContentOverride(lesson, content = null) {
       updatedBy: content.updatedBy ?? null,
       baseChanged: Number(content.baseVersion ?? 1) !== Number(lesson.version ?? 1)
     })
-  });
+  };
+  if (content.passages !== undefined) {
+    overridden.passages = Object.freeze(content.passages.map(value => Object.freeze(structuredClone(value))));
+  }
+  if (content.printGroups !== undefined) {
+    overridden.printGroups = Object.freeze(content.printGroups.map(value => Object.freeze(structuredClone(value))));
+  }
+  return Object.freeze(overridden);
 }
 
 export function applyLessonMasterySetting(lesson, setting = null) {

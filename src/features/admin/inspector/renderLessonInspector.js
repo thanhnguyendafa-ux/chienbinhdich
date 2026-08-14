@@ -2,8 +2,9 @@ import { REVIEW_VIEW } from '../../../repositories/lessonReviewModel.js';
 import { adminTopbar, copyText, esc, escAttr, typeSummary } from '../shared/adminUi.js';
 import { openMasteryEditor } from '../mastery/masteryEditor.js';
 import { openTypingToleranceEditor } from '../typing/typingToleranceEditor.js';
-import { openTypingContentEditor } from '../typing/typingContentEditor.js';
-import { isEditableStagedTypingLesson } from '../typing/typingContentDraft.js';
+import { openUniversalContentEditor } from '../content/universalContentEditor.js';
+import { isUniversalContentEditableLesson } from '../content/universalContentDraft.js';
+import { listContentRevisions, restoreContentRevision } from '../content/contentRevisionController.js';
 import { renderLessonContent } from '../shared/renderLessonContent.js';
 
 export function renderLessonInspector({
@@ -21,6 +22,8 @@ export function renderLessonInspector({
   onResetTypingTolerance,
   onPublishContent,
   onResetContent,
+  onListContentRevisions,
+  onRestoreContent,
   onSaveReview,
   onClearReview,
   onRefresh
@@ -29,7 +32,7 @@ export function renderLessonInspector({
   const defaultThreshold = Number(set.masteryPolicy?.defaultThreshold ?? set.passThreshold);
   const completionLabel = set.completionPolicy === 'all-items' ? 'All items' : 'Theo Mastery';
   const hasTyping = (set.activityTypes ?? []).includes('typing');
-  const contentEditable = isEditableStagedTypingLesson(set);
+  const contentEditable = isUniversalContentEditableLesson(set);
   const typingCustom = set.typingPolicy?.source === 'admin-override';
   const typingDefault = set.typingPolicy?.defaultTolerance === true;
   const contentCustom = set.contentPolicy?.source === 'admin-override';
@@ -99,12 +102,18 @@ export function renderLessonInspector({
     });
   });
   root.querySelector('#admin-edit-content-btn')?.addEventListener('click', () => {
-    openTypingContentEditor({
+    openUniversalContentEditor({
       root,
       lesson: set,
       baseLesson: baseSet ?? set,
-      onPublish: items => onPublishContent?.(set.id, items),
+      onPublish: content => onPublishContent?.(set.id, content),
       onReset: () => onResetContent?.(set.id),
+      onListRevisions: () => onListContentRevisions
+        ? onListContentRevisions(set.id)
+        : listContentRevisions(set.id),
+      onRestore: (_id, revision) => onRestoreContent
+        ? onRestoreContent(set.id, revision)
+        : restoreContentRevision(set.id, revision),
       onDone: onRefresh
     });
   });
