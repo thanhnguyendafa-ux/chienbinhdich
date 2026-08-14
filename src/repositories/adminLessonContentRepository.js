@@ -15,12 +15,15 @@ export function createAdminLessonContentRepository(project) {
     async listCurrentContent() {
       const { client } = await requireAdmin(adminClient);
       const snapshot = await client.firestore.getDocs(client.firestore.collection(client.db, 'lessonContent'));
-      return snapshot.docs.map(doc => normalizeLessonContentRecord(doc.id, doc.data()));
+      return snapshot.docs
+        .map(doc => normalizeLessonContentRecord(doc.id, doc.data()))
+        .filter(record => record.active);
     },
 
     async getCurrentContent(setId) {
       const { client } = await requireAdmin(adminClient);
-      return readCurrent(client, setId);
+      const current = await readCurrentRecord(client, setId);
+      return current?.active ? current : null;
     },
 
     async getRevisionContent(setId, revision) {
@@ -52,7 +55,8 @@ export function createAdminLessonContentRepository(project) {
           baseVersion,
           items,
           updatedBy: user.uid,
-          updatedAt
+          updatedAt,
+          active: true
         });
         const revisionRef = client.firestore.doc(
           client.db,
@@ -67,16 +71,31 @@ export function createAdminLessonContentRepository(project) {
       });
     },
 
-    async resetToBase(setId) {
-      const { client } = await requireAdmin(adminClient);
+    async resetToBase(setId, updatedAt = Date.now()) {
+      const { client, user } = await requireAdmin(adminClient);
       const currentRef = client.firestore.doc(client.db, 'lessonContent', String(setId));
-      await client.firestore.deleteDoc(currentRef);
-      return null;
+      return client.firestore.runTransaction(client.db, async transaction => {
+        const snapshot = await transaction.get(currentRef);
+        if (!snapshot.exists()) return null;
+        const current = normalizeLessonContentRecord(String(setId), snapshot.data());
+        if (!current.active) return null;
+        const inactive = lessonContentDocumentFor({
+          setId,
+          revision: current.revision,
+          baseVersion: current.baseVersion,
+          items: current.items,
+          updatedBy: user.uid,
+          updatedAt,
+          active: false
+        });
+        transaction.set(currentRef, inactive);
+        return null;
+      });
     }
   });
 }
 
-async function readCurrent(client, setId) {
+async function readCurrentRecord(client, setId) {
   const ref = client.firestore.doc(client.db, 'lessonContent', String(setId));
   const snapshot = await client.firestore.getDoc(ref);
   if (!snapshot.exists()) return null;
