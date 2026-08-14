@@ -26,12 +26,28 @@ test('every published lesson using native question types is editable by Universa
   }
 });
 
-test('Lesson Inspector exposes Universal Content CMS instead of Typing-only content gating', async () => {
+test('Lesson Inspector exposes Universal Content CMS, revision history, and no Typing-only content gate', async () => {
   const source = await readFile(new URL('../src/features/admin/inspector/renderLessonInspector.js', import.meta.url), 'utf8');
+  const revisionController = await readFile(new URL('../src/features/admin/content/contentRevisionController.js', import.meta.url), 'utf8');
   assert.match(source, /openUniversalContentEditor/);
   assert.match(source, /isUniversalContentEditableLesson/);
+  assert.match(source, /listContentRevisions/);
+  assert.match(source, /restoreContentRevision/);
   assert.doesNotMatch(source, /isEditableStagedTypingLesson/);
   assert.match(source, /id="admin-edit-content-btn"/);
+  assert.match(revisionController, /listRevisions/);
+  assert.match(revisionController, /getRevisionContent/);
+  assert.match(revisionController, /publishContent/);
+});
+
+test('staged Typing edits still rebuild dependencies and block orphaned scaffold content', async () => {
+  const lesson = await loadLessonSet('g7-u1-writing-s1-01');
+  const draft = createUniversalDraft(lesson);
+  const word = draft.items.find(item => item.stage === 'word');
+  assert.ok(word);
+  word.en = 'orphaned scaffold token';
+  const result = validateUniversalDraft(lesson, draft);
+  assert.ok(result.errors.some(error => error.includes('không xuất hiện')), result.errors.join('\n'));
 });
 
 test('pronunciation MIX lesson keeps theory, classification analysis and print groups editable', async () => {
