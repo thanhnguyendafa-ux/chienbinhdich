@@ -1,7 +1,9 @@
 import { SUPPORTED_QUESTION_TYPES, questionTypeForItem } from '../../../core/questionTypes.js';
 import { validateSet } from '../../../data/contentValidator.js';
+import { rebuildTypingDraftItems, validateTypingDraft } from '../typing/typingContentDraft.js';
 
 const QUESTION_TYPES = Object.freeze([...SUPPORTED_QUESTION_TYPES]);
+const TYPING_STAGES = Object.freeze(['word', 'phrase', 'sentence']);
 
 function clone(value) {
   return value === undefined ? undefined : structuredClone(value);
@@ -30,11 +32,17 @@ export function validateUniversalDraft(lesson, draft) {
   else delete candidate.passages;
   if ('printGroups' in content) candidate.printGroups = content.printGroups;
   else delete candidate.printGroups;
-  return Object.freeze({ content: freezeContent(content), errors: Object.freeze(validateSet(candidate)) });
+
+  const errors = [...validateSet(candidate)];
+  if (isStagedTypingDraft(content.items)) {
+    errors.push(...validateTypingDraft(candidate, content.items).errors);
+  }
+  return Object.freeze({ content: freezeContent(content), errors: Object.freeze([...new Set(errors)]) });
 }
 
 export function normalizeUniversalDraft(lesson, draft) {
-  const items = clone(draft?.items ?? []);
+  let items = clone(draft?.items ?? []);
+  if (isStagedTypingDraft(items)) items = rebuildTypingDraftItems(items);
   const result = { items };
 
   if (draft && Object.prototype.hasOwnProperty.call(draft, 'passages')) {
@@ -164,6 +172,12 @@ export function removeDraftPassage(lesson, draft, passageId) {
   return next;
 }
 
+function isStagedTypingDraft(items) {
+  return Array.isArray(items)
+    && items.length > 0
+    && items.every(item => questionTypeForItem(item) === 'typing' && TYPING_STAGES.includes(item.stage));
+}
+
 function normalizePrintGroups(groups, items) {
   if (!Array.isArray(groups)) return [];
   const itemIds = new Set(items.map(item => String(item.id)));
@@ -179,6 +193,7 @@ function normalizePrintGroups(groups, items) {
     }
     if (!ids.length) continue;
     normalized.push({
+      ...clone(raw),
       id: String(raw?.id ?? `group-${index + 1}`),
       title: String(raw?.title ?? `Group ${index + 1}`),
       itemIds: ids
