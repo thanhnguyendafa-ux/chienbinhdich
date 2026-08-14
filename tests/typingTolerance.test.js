@@ -21,7 +21,7 @@ test('typing stays strict by default', () => {
   assert.equal(evaluateQuestion(item, 'there is a fox on the farm').correct, false);
 });
 
-test('young learner typing ignores case and sentence punctuation only', () => {
+test('young learner typing ignores case and sentence punctuation while preserving grammar', () => {
   for (const response of [
     'There is a fox on the farm.',
     'there is a fox on the farm.',
@@ -42,10 +42,15 @@ test('young learner typing ignores case and sentence punctuation only', () => {
   }
 });
 
-test('young learner punctuation tolerance preserves contraction apostrophes', () => {
+test('young learner tolerance accepts light apostrophe and hyphen variation', () => {
   const answer = { id: 'no', vi: 'Không, ở đó không có.', en: "No, there isn't." };
   assert.equal(evaluateQuestion(answer, "no there isn't", { typingTolerance: true }).correct, true);
-  assert.equal(evaluateQuestion(answer, 'no there isnt', { typingTolerance: true }).correct, false);
+  assert.equal(evaluateQuestion(answer, 'no there isnt', { typingTolerance: true }).correct, true);
+  assert.equal(evaluateQuestion(answer, 'no there is not', { typingTolerance: true }).correct, true);
+
+  const hyphen = { id: 'game', vi: 'Mình chơi trốn tìm.', en: 'I play hide-and-seek.' };
+  assert.equal(evaluateQuestion(hyphen, 'i play hide and seek', { typingTolerance: true }).correct, true);
+  assert.equal(evaluateQuestion(hyphen, 'i play football', { typingTolerance: true }).correct, false);
 });
 
 test('typing policy resolves catalog default and independent Admin override', () => {
