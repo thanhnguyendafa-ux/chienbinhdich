@@ -65,7 +65,7 @@ test('WORD and PHRASE scaffolds keep exact surface forms inside downstream targe
   }
 });
 
-test('PAIR short answers always carry their Vietnamese parent context', () => {
+test('PAIR short answers always show their parent context inside the learner prompt', () => {
   for (const [unitId, unit] of Object.entries(gs23WritingUnits)) {
     const expected = unit.rows.filter(row => row.mode === 'pair');
     for (const row of expected) {
@@ -74,6 +74,10 @@ test('PAIR short answers always carry their Vietnamese parent context', () => {
       const item = content.items.find(candidate => candidate.sourceSentenceId === row.id);
       const parent = unit.rows.find(candidate => candidate.id === row.contextSourceId);
       assert.equal(item.contextVi, parent.vi, row.id);
+      assert.match(item.vi, /^Ngữ cảnh:/, row.id);
+      assert.ok(item.vi.includes(parent.vi), row.id);
+      assert.match(item.vi, /Em trả lời:/, row.id);
+      assert.equal(item.vi.includes('trả lời theo câu ngay phía trên'), false, row.id);
     }
   }
 });
