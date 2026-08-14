@@ -1,15 +1,14 @@
 import { g6U1WritingFolders, g6U1WritingRegistry as baseRegistry } from './g6-u1-writing-typing-catalog.js';
-import { g6U1WritingScaffoldItemCounts } from './g6-u1-writing-scaffold-meta.js';
+import { getG6U1WritingTypingContent } from './g6-u1-writing-typing-content.js';
 
 export { g6U1WritingFolders };
 
 export const g6U1WritingRegistry = Object.freeze(baseRegistry.map(descriptor => {
   const key = descriptor.id.replace('g6-u1-writing-', '');
-  const itemCount = g6U1WritingScaffoldItemCounts[key];
-  if (!Number.isInteger(itemCount)) throw new Error(`Thiếu itemCount scaffold cho ${descriptor.id}`);
+  const itemCount = getG6U1WritingTypingContent(key).items.length;
   return Object.freeze({
     ...descriptor,
     itemCount,
-    description: `${itemCount} lượt Typing theo WORD → PHRASE → SENTENCE; WORD stage tự bổ sung lexical material xuất hiện ở PHRASE/SENTENCE để tránh cold words. Expected time: ${descriptor.expectedTimeMinutes} phút.`
+    description: `${itemCount} lượt Typing theo WORD → PHRASE → SENTENCE; WORD stage giữ nguyên surface form xuất hiện ở PHRASE/SENTENCE để không bắt học sinh tự biến đổi từ. Expected time: ${descriptor.expectedTimeMinutes} phút.`
   });
 }));
