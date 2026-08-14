@@ -33,13 +33,14 @@ export function normalizeLessonContentRecord(setId, data) {
     revision,
     revisionId: nonEmpty(data.revisionId) ? String(data.revisionId) : revisionIdFor(revision),
     baseVersion,
+    active: data.active !== false,
     items: Object.freeze(data.items.map(item => Object.freeze(cloneSerializable(item)))),
     updatedAt: Number.isFinite(Number(data.updatedAt)) ? Number(data.updatedAt) : null,
     updatedBy: data.updatedBy ? String(data.updatedBy) : null
   });
 }
 
-export function lessonContentDocumentFor({ setId, revision, baseVersion = 1, items, updatedBy, updatedAt = Date.now() }) {
+export function lessonContentDocumentFor({ setId, revision, baseVersion = 1, items, updatedBy, updatedAt = Date.now(), active = true }) {
   if (!String(setId ?? '').trim()) throw new Error('setId is required.');
   if (!Number.isInteger(Number(revision)) || Number(revision) < 1) throw new Error('revision must be a positive integer.');
   if (!Array.isArray(items) || items.length === 0) throw new Error('items must be a non-empty array.');
@@ -52,6 +53,7 @@ export function lessonContentDocumentFor({ setId, revision, baseVersion = 1, ite
     revision: normalizedRevision,
     revisionId: revisionIdFor(normalizedRevision),
     baseVersion: Number.isInteger(Number(baseVersion)) ? Number(baseVersion) : 1,
+    active: active !== false,
     items: cloneSerializable(items),
     updatedAt: Number(updatedAt),
     updatedBy: String(updatedBy)
