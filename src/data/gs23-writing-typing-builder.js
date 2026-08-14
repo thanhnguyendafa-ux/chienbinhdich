@@ -127,6 +127,15 @@ function parentRow(unit, row) {
   return unit.rows.find(candidate => candidate.id === row.contextSourceId) ?? null;
 }
 
+function learnerSentencePrompt(row, parent) {
+  if (row.mode !== 'pair' || !parent) return row.vi;
+  const answerCue = String(row.vi ?? '')
+    .replace(/\s*\([^)]*\)\s*/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return `Ngữ cảnh: ${parent.vi} → Em trả lời: ${answerCue}`;
+}
+
 export function buildGs23WritingLesson(unitId, lessonNumber) {
   const unit = gs23WritingUnits[unitId];
   const spec = gs23WritingPlans[unitId]?.[lessonNumber - 1];
@@ -174,7 +183,14 @@ export function buildGs23WritingLesson(unitId, lessonNumber) {
       ...(parent ? { contextVi: parent.vi } : {}),
       ...(row.acceptedAnswers?.length ? { acceptedAnswers: row.acceptedAnswers } : {})
     };
-    items.push(typingItem(`${lessonKey}-s${index + 1}`, 'sentence', row.vi, row.en, dependencies, extra));
+    items.push(typingItem(
+      `${lessonKey}-s${index + 1}`,
+      'sentence',
+      learnerSentencePrompt(row, parent),
+      row.en,
+      dependencies,
+      extra
+    ));
   });
 
   return Object.freeze({
