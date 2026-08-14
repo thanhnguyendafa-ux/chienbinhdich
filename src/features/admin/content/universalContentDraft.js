@@ -35,7 +35,11 @@ export function validateUniversalDraft(lesson, draft) {
 
   const errors = [...validateSet(candidate)];
   if (isStagedTypingDraft(content.items)) {
-    errors.push(...validateTypingDraft(candidate, content.items).errors);
+    const baselineErrors = isStagedTypingDraft(lesson?.items)
+      ? new Set(validateTypingDraft(lesson, lesson.items).errors)
+      : new Set();
+    const draftErrors = validateTypingDraft(candidate, content.items).errors;
+    errors.push(...draftErrors.filter(error => !baselineErrors.has(error)));
   }
   return Object.freeze({ content: freezeContent(content), errors: Object.freeze([...new Set(errors)]) });
 }
