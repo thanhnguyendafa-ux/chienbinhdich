@@ -8,7 +8,7 @@ export const lessonFolders = Object.freeze([
   Object.freeze({ id: 'global5-unit2', name: 'Unit 2 · Our homes', description: 'Bài luyện Global Success 5 Unit 2 · Our homes, tập trung trọng âm, từ vựng và ngôn ngữ về nhà ở, địa chỉ và khoảng cách.', parentId: 'global5', order: 2 }),
   Object.freeze({ id: 'global5-review', name: 'Global Success 5 Review', description: 'Kho ôn tập tổng hợp Global Success 5 theo kỹ năng, tái sử dụng ngôn ngữ từ nhiều Unit.', parentId: 'global5', order: 99 }),
   Object.freeze({ id: 'global7', name: 'Global Success 7', description: 'Kho bài luyện Global Success 7 được tổ chức theo từng Unit.', parentId: null, order: 4 }),
-  Object.freeze({ id: 'global7-unit1', name: 'Unit 1 · Hobbies', description: 'Kho bài luyện Global Success 7 Unit 1 · Hobbies, tập trung dịch và sử dụng ngôn ngữ theo từng bước.', parentId: 'global7', order: 1 }),
+  Object.freeze({ id: 'global7-unit1', name: 'Unit 1 · Hobbies', description: 'Kho bài luyện Global Success 7 Unit 1 · Hobbies, gồm dịch, viết và phát âm theo từng bước.', parentId: 'global7', order: 1 }),
   Object.freeze({ id: 'mrt-lessons', name: 'Bài học Thầy Thành MRT', description: 'Các bài luyện theo hệ tư duy ngữ pháp Mister Thành MRT.', parentId: null, order: 5 })
 ]);
 
@@ -192,6 +192,20 @@ export const lessonRegistry = Object.freeze([
     description: '23 clause độc lập từ bài Reading Unit 1. Mỗi câu có một bản dịch chính xác, ba bẫy nghĩa gần đúng và giải thích theo từng chunk cho học sinh.',
     activityTypes: Object.freeze(['mcq']), itemCount: 23,
     loadContent: () => import('./g7-u1-translation-02.js').then(module => module.g7U1Translation02Content)
+  }),
+  Object.freeze({
+    id: 'g7-u1-pronunciation-01', folderId: 'global7-unit1', order: 3, version: 1,
+    course: 'Global Success 7', unit: 'Unit 1 · Hobbies', title: 'Phát âm 1 · /ə/ và /ɜː/ · Mai Lan Hương',
+    subtitle: '17 câu · Theory Recall · Guided Reasoning · Classification', lessonSlug: 'g7u1-phat-am-schwa-er', passThreshold: 80,
+    completionPolicy: 'all-items', teacher: 'Thầy Thành MRT',
+    description: 'Bài scaffold song ngữ cho học sinh yếu: xây nền /ə/ và /ɜː/, luyện word → clue → rule → sound, rồi phân loại đủ 26 từ Mai Lan Hương theo nhóm 4–5 từ. Theory được mở tự do ở phần nền và chỉ mở sau submit ở phần phân loại.',
+    printGroups: Object.freeze([
+      Object.freeze({ id: 'foundation', title: 'A. BUILD THE FOUNDATION / XÂY NỀN', itemIds: Object.freeze(['g7u1-pr-q01', 'g7u1-pr-q02', 'g7u1-pr-q03', 'g7u1-pr-q04', 'g7u1-pr-q05', 'g7u1-pr-q06', 'g7u1-pr-q07', 'g7u1-pr-q08']) }),
+      Object.freeze({ id: 'guided', title: 'B. GUIDED REASONING / SUY LUẬN CÓ HƯỚNG DẪN', itemIds: Object.freeze(['g7u1-pr-q09', 'g7u1-pr-q10', 'g7u1-pr-q11']) }),
+      Object.freeze({ id: 'classification', title: 'C. SOUND CLASSIFICATION / PHÂN LOẠI ÂM', itemIds: Object.freeze(['g7u1-pr-q12', 'g7u1-pr-q13', 'g7u1-pr-q14', 'g7u1-pr-q15', 'g7u1-pr-q16', 'g7u1-pr-q17']) })
+    ]),
+    activityTypes: Object.freeze(['mcq', 'true_false', 'classification']), itemCount: 17,
+    loadContent: () => import('./g7-u1-pronunciation-01.js').then(module => module.global7Unit1Pronunciation01Content)
   }),
   Object.freeze({
     id: 'mrt-g6-gan-aura-action-01', folderId: 'mrt-lessons', order: 1, version: 1,

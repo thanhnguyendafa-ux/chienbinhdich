@@ -7,6 +7,8 @@ import { stageLabel } from '../../core/formatters.js';
 import { animateMasteryProgress, formatMasteryPercent, renderMasteryProgress } from '../../ui/masteryProgress.js';
 import { bindQuestionInteraction, renderQuestionInteraction } from './questionTypeRegistry.js';
 import { getQuestionContext } from './questionContext.js';
+import { bindTheorySupport, renderTheorySupport } from './theorySupportRenderer.js';
+import { renderAnswerAnalysis } from './answerAnalysisRenderer.js';
 
 export function renderDrill({ root, session, set, feedback = null, onSubmit, onExit, onFinishQualified }) {
   const item = getCurrentItem(session, set);
@@ -50,6 +52,8 @@ export function renderDrill({ root, session, set, feedback = null, onSubmit, onE
             ${renderQuestionInteraction(item, { reviewMode, exposureKey, passages: set.passages ?? [] })}
           </div>
 
+          ${renderTheorySupport({ item, session, esc, escAttr })}
+
           <p class="encouragement">${extendedMode
             ? `Con đã vượt ${formatMasteryPercent(set.passThreshold)}%. Làm tiếp để củng cố; khi muốn dừng, bấm Nộp bài.`
             : revealAnswer
@@ -76,6 +80,7 @@ export function renderDrill({ root, session, set, feedback = null, onSubmit, onE
 
   window.requestAnimationFrame(() => animateMasteryProgress(root, masteryTransition));
   const refocus = bindQuestionInteraction({ root, item, onSubmit, attemptStartedAt: Date.now() });
+  bindTheorySupport(root);
 
   const dialog = root.querySelector('#exit-dialog');
   root.querySelector('#exit-btn')?.addEventListener('click', () => dialog?.showModal());
@@ -225,6 +230,7 @@ function renderTeachingFeedback({ item = null, entered, answer, teachingFeedback
       <div class="teaching-copy"><span>Lý thuyết</span><p>${esc(teachingFeedback.theory)}</p></div>
       ${workedLine}
       <div class="teaching-copy teaching-example"><span>Ví dụ</span><p>${esc(teachingFeedback.example)}</p></div>
+      ${renderAnswerAnalysis(teachingFeedback, esc)}
       ${includeContinue ? '<button class="primary-btn teaching-continue-btn" id="teaching-continue-btn" type="button">Tiếp tục</button>' : ''}
     </section>`;
 }
@@ -260,4 +266,8 @@ function reviewLabel(kind) {
 
 function esc(value) {
   return String(value ?? '').replace(/[&<>'"]/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[char]);
+}
+
+function escAttr(value) {
+  return esc(value);
 }

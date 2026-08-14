@@ -29,6 +29,7 @@ export function validateSet(set) {
     validateStimulus(item, type, errors);
     validateReadingItem(item, set, errors);
     validateTeachingFeedback(item, errors);
+    validateTheorySupport(item, errors);
 
     if (item.stage !== undefined) {
       if (!(item.stage in stageRank)) errors.push(`Stage không hợp lệ tại ${item.id}`);
@@ -148,9 +149,7 @@ function validateSentenceOrder(item, errors) {
       errors.push(`Sentence Order ${item.id} có acceptedOrder không hợp lệ`);
       continue;
     }
-    if (!isSubMultiset(order, tokens)) {
-      errors.push(`Sentence Order ${item.id} có acceptedOrder dùng token ngoài token pool`);
-    }
+    if (!isSubMultiset(order, tokens)) errors.push(`Sentence Order ${item.id} có acceptedOrder dùng token ngoài token pool`);
     const key = sequenceKey(order);
     if (acceptedKeys.has(key)) errors.push(`Sentence Order ${item.id} có acceptedOrder bị trùng`);
     acceptedKeys.add(key);
@@ -159,10 +158,7 @@ function validateSentenceOrder(item, errors) {
 
   if (!canonicalFound) errors.push(`Sentence Order ${item.id} phải chứa correctOrder trong acceptedOrders`);
   if (!isSubMultiset(item.correctOrder, tokens)) errors.push(`Sentence Order ${item.id} có correctOrder dùng token ngoài token pool`);
-  if (item.displayOrder && !sameMultiset(item.displayOrder, tokens)) {
-    errors.push(`Sentence Order ${item.id} có displayOrder không khớp token pool`);
-  }
-
+  if (item.displayOrder && !sameMultiset(item.displayOrder, tokens)) errors.push(`Sentence Order ${item.id} có displayOrder không khớp token pool`);
   validateOrderDiagnostics(item, tokens, accepted, errors);
 }
 
@@ -173,11 +169,9 @@ function validateOrderDiagnostics(item, tokens, accepted, errors) {
     errors.push(`Sentence Order diagnostics không hợp lệ tại ${item.id}`);
     return;
   }
-
   const distractors = diagnostics.distractors ?? [];
-  if (!Array.isArray(distractors)) {
-    errors.push(`Sentence Order ${item.id} distractors phải là mảng`);
-  } else {
+  if (!Array.isArray(distractors)) errors.push(`Sentence Order ${item.id} distractors phải là mảng`);
+  else {
     const seenTokens = new Set();
     for (const distractor of distractors) {
       if (!nonEmpty(distractor?.token) || !nonEmpty(distractor?.code) || !nonEmpty(distractor?.hint)) {
@@ -186,12 +180,8 @@ function validateOrderDiagnostics(item, tokens, accepted, errors) {
       }
       if (seenTokens.has(distractor.token)) errors.push(`Sentence Order ${item.id} có distractor trùng: ${distractor.token}`);
       seenTokens.add(distractor.token);
-      if (!tokens.map(String).includes(String(distractor.token))) {
-        errors.push(`Sentence Order ${item.id} có distractor không nằm trong token pool: ${distractor.token}`);
-      }
-      if (accepted.some(order => order.map(String).includes(String(distractor.token)))) {
-        errors.push(`Sentence Order ${item.id} gắn distractor cho token thuộc acceptedOrder: ${distractor.token}`);
-      }
+      if (!tokens.map(String).includes(String(distractor.token))) errors.push(`Sentence Order ${item.id} có distractor không nằm trong token pool: ${distractor.token}`);
+      if (accepted.some(order => order.map(String).includes(String(distractor.token)))) errors.push(`Sentence Order ${item.id} gắn distractor cho token thuộc acceptedOrder: ${distractor.token}`);
     }
   }
 
@@ -206,9 +196,7 @@ function validateOrderDiagnostics(item, tokens, accepted, errors) {
       continue;
     }
     for (const token of [...rule.all, ...(rule.none ?? [])]) {
-      if (!tokens.map(String).includes(String(token))) {
-        errors.push(`Sentence Order ${item.id} diagnostic rule dùng token ngoài pool: ${token}`);
-      }
+      if (!tokens.map(String).includes(String(token))) errors.push(`Sentence Order ${item.id} diagnostic rule dùng token ngoài pool: ${token}`);
     }
   }
 }
@@ -256,19 +244,12 @@ function validatePrintGroups(set, errors) {
     errors.push(`Set ${set.id} không được dùng printGroups cùng passages; Reading tự group theo passage.`);
     return;
   }
-
-  const sourceItemIds = set.items
-    .filter(item => item?.id !== undefined && item?.id !== null)
-    .map(item => String(item.id));
+  const sourceItemIds = set.items.filter(item => item?.id !== undefined && item?.id !== null).map(item => String(item.id));
   const validItemIds = new Set(sourceItemIds);
   const seenItemIds = new Set();
   const seenGroupIds = new Set();
   const groupedItemIds = [];
-
-  for (const [index, group] of set.printGroups.entries()) {
-    validatePrintGroup({ group, index, validItemIds, seenItemIds, seenGroupIds, groupedItemIds, errors });
-  }
-
+  for (const [index, group] of set.printGroups.entries()) validatePrintGroup({ group, index, validItemIds, seenItemIds, seenGroupIds, groupedItemIds, errors });
   validatePrintGroupCoverage(validItemIds, seenItemIds, errors);
   validatePrintGroupOrder(sourceItemIds, groupedItemIds, validItemIds, seenItemIds, errors, set.id);
 }
@@ -301,16 +282,12 @@ function validatePrintGroupItems(groupId, itemIds, validItemIds, seenItemIds, gr
 }
 
 function validatePrintGroupCoverage(validItemIds, seenItemIds, errors) {
-  for (const itemId of validItemIds) {
-    if (!seenItemIds.has(itemId)) errors.push(`Print groups thiếu item: ${itemId}`);
-  }
+  for (const itemId of validItemIds) if (!seenItemIds.has(itemId)) errors.push(`Print groups thiếu item: ${itemId}`);
 }
 
 function validatePrintGroupOrder(sourceItemIds, groupedItemIds, validItemIds, seenItemIds, errors, setId) {
   if (seenItemIds.size !== validItemIds.size || groupedItemIds.length !== sourceItemIds.length) return;
-  if (!sourceItemIds.every((itemId, index) => groupedItemIds[index] === itemId)) {
-    errors.push(`Print groups phải giữ nguyên thứ tự item của Set ${setId}.`);
-  }
+  if (!sourceItemIds.every((itemId, index) => groupedItemIds[index] === itemId)) errors.push(`Print groups phải giữ nguyên thứ tự item của Set ${setId}.`);
 }
 
 function validateReadingItem(item, set, errors) {
@@ -325,7 +302,6 @@ function validateReadingItem(item, set, errors) {
     errors.push(`Reading item ${item.id} phải có đúng 4 choices diagnostic`);
     return;
   }
-
   const quadrants = new Set();
   for (const choice of item.choices) {
     const diagnostic = choice?.diagnostic;
@@ -335,18 +311,12 @@ function validateReadingItem(item, set, errors) {
     }
     quadrants.add(`${diagnostic.verdictCorrect}:${diagnostic.reasonCorrect}`);
     const isFullyCorrect = diagnostic.verdictCorrect && diagnostic.reasonCorrect;
-    if (isFullyCorrect && choice.id !== item.correctChoiceId) {
-      errors.push(`Reading item ${item.id} có choice đúng cả verdict/reason nhưng không phải correctChoiceId`);
-    }
-    if (!isFullyCorrect && !nonEmpty(diagnostic.errorCode)) {
-      errors.push(`Reading choice ${item.id}/${choice.id} thiếu errorCode`);
-    }
+    if (isFullyCorrect && choice.id !== item.correctChoiceId) errors.push(`Reading item ${item.id} có choice đúng cả verdict/reason nhưng không phải correctChoiceId`);
+    if (!isFullyCorrect && !nonEmpty(diagnostic.errorCode)) errors.push(`Reading choice ${item.id}/${choice.id} thiếu errorCode`);
   }
   if (quadrants.size !== 4) errors.push(`Reading item ${item.id} phải đủ 4 quadrant verdict × reason`);
   const correct = item.choices.find(choice => choice.id === item.correctChoiceId);
-  if (!(correct?.diagnostic?.verdictCorrect && correct?.diagnostic?.reasonCorrect)) {
-    errors.push(`Reading item ${item.id} correctChoiceId phải đúng cả verdict và reason`);
-  }
+  if (!(correct?.diagnostic?.verdictCorrect && correct?.diagnostic?.reasonCorrect)) errors.push(`Reading item ${item.id} correctChoiceId phải đúng cả verdict và reason`);
 }
 
 function validateTypingUi(item, errors) {
@@ -355,9 +325,7 @@ function validateTypingUi(item, errors) {
     errors.push(`Typing UI không hợp lệ tại ${item.id}`);
     return;
   }
-  for (const field of ['promptLabel', 'contextLabel', 'instruction', 'inputLabel', 'placeholder']) {
-    if (!nonEmpty(item.typingUi[field])) errors.push(`Typing UI ${item.id} thiếu ${field}`);
-  }
+  for (const field of ['promptLabel', 'contextLabel', 'instruction', 'inputLabel', 'placeholder']) if (!nonEmpty(item.typingUi[field])) errors.push(`Typing UI ${item.id} thiếu ${field}`);
 }
 
 function validateTeachingFeedback(item, errors) {
@@ -367,10 +335,20 @@ function validateTeachingFeedback(item, errors) {
     errors.push(`Teaching feedback không hợp lệ tại ${item.id}`);
     return;
   }
-  for (const field of ['correctLabel', 'reason', 'theory', 'example']) {
-    if (!nonEmpty(value[field])) errors.push(`Teaching feedback ${item.id} thiếu ${field}`);
-  }
+  for (const field of ['correctLabel', 'reason', 'theory', 'example']) if (!nonEmpty(value[field])) errors.push(`Teaching feedback ${item.id} thiếu ${field}`);
   validateWorkedExample(item.id, value.workedExample, errors);
+  validateAnswerAnalysis(item, value.answerAnalysis, errors);
+}
+
+function validateTheorySupport(item, errors) {
+  if (item.theorySupport === undefined) return;
+  const value = item.theorySupport;
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    errors.push(`Theory support không hợp lệ tại ${item.id}`);
+    return;
+  }
+  if (!['anytime', 'after_submit'].includes(value.access)) errors.push(`Theory support ${item.id} có access không hợp lệ`);
+  if (!item.teachingFeedback || !nonEmpty(item.teachingFeedback.theory) || !nonEmpty(item.teachingFeedback.example)) errors.push(`Theory support ${item.id} cần teachingFeedback.theory và example`);
 }
 
 function validateWorkedExample(itemId, workedExample, errors) {
@@ -381,6 +359,30 @@ function validateWorkedExample(itemId, workedExample, errors) {
   }
   if (!nonEmpty(workedExample.label)) errors.push(`Worked example ${itemId} thiếu label`);
   if (!nonEmpty(workedExample.text)) errors.push(`Worked example ${itemId} thiếu text`);
+}
+
+function validateAnswerAnalysis(item, answerAnalysis, errors) {
+  if (answerAnalysis === undefined) return;
+  if (questionTypeForItem(item) !== 'classification') {
+    errors.push(`Answer analysis chỉ hỗ trợ Classification tại ${item.id}`);
+    return;
+  }
+  if (!Array.isArray(answerAnalysis) || answerAnalysis.length === 0) {
+    errors.push(`Answer analysis không hợp lệ tại ${item.id}`);
+    return;
+  }
+  const tokenTexts = new Set((item.tokens ?? []).map(token => String(token.text)));
+  const seen = new Set();
+  for (const entry of answerAnalysis) {
+    if (!nonEmpty(entry?.word) || !nonEmpty(entry?.sound) || !nonEmpty(entry?.explanation)) {
+      errors.push(`Answer analysis ${item.id} có entry không hợp lệ`);
+      continue;
+    }
+    if (!tokenTexts.has(String(entry.word))) errors.push(`Answer analysis ${item.id} có word ngoài token: ${entry.word}`);
+    if (seen.has(String(entry.word))) errors.push(`Answer analysis ${item.id} trùng word: ${entry.word}`);
+    seen.add(String(entry.word));
+  }
+  if (seen.size !== tokenTexts.size) errors.push(`Answer analysis ${item.id} phải giải thích đủ từng token`);
 }
 
 function isSubMultiset(subset = [], superset = []) {
