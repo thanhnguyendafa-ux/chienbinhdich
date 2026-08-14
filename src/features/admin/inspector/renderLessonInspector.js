@@ -1,11 +1,13 @@
 import { adminTopbar, copyText, esc, escAttr, typeSummary } from '../shared/adminUi.js';
 import { openMasteryEditor } from '../mastery/masteryEditor.js';
 import { openTypingToleranceEditor } from '../typing/typingToleranceEditor.js';
+import { openTypingContentEditor } from '../typing/typingContentEditor.js';
 import { renderLessonContent } from '../shared/renderLessonContent.js';
 
 export function renderLessonInspector({
   root,
   set,
+  baseSet,
   fixedUrl,
   onBack,
   onStudentPreview,
@@ -14,6 +16,8 @@ export function renderLessonInspector({
   onResetMastery,
   onSaveTypingTolerance,
   onResetTypingTolerance,
+  onPublishContent,
+  onResetContent,
   onRefresh
 }) {
   const custom = set.masteryPolicy?.source === 'admin-override';
@@ -22,6 +26,9 @@ export function renderLessonInspector({
   const hasTyping = (set.activityTypes ?? []).includes('typing');
   const typingCustom = set.typingPolicy?.source === 'admin-override';
   const typingDefault = set.typingPolicy?.defaultTolerance === true;
+  const contentCustom = set.contentPolicy?.source === 'admin-override';
+  const contentRevision = Number(set.contentPolicy?.revision ?? 0);
+  const baseChanged = set.contentPolicy?.baseChanged === true;
   const expectedTime = Number.isInteger(set.expectedTimeMinutes) ? set.expectedTimeMinutes : null;
 
   root.innerHTML = `
@@ -40,6 +47,8 @@ export function renderLessonInspector({
             <span>${esc(typeSummary(set.activityTypes))}</span>
             ${expectedTime ? `<span>Expected time · ${expectedTime} phút</span>` : ''}
             ${set.difficulty === 'hard' ? '<span>Độ khó · KHÓ</span>' : ''}
+            <span>Content · ${contentCustom ? `CUSTOM · Rev ${contentRevision}` : 'BASE'}</span>
+            ${baseChanged ? '<span class="lesson-difficulty-badge">BASE ĐÃ ĐỔI · CẦN REVIEW OVERRIDE</span>' : ''}
             <span>Mastery ≥ ${set.passThreshold}% · ${custom ? `Custom (mặc định ${defaultThreshold}%)` : 'Default'}</span>
             <span>Completion · ${esc(completionLabel)}</span>
             ${hasTyping ? `<span>Typing lớp nhỏ · ${set.typingTolerance ? 'BẬT' : 'TẮT'} · ${typingCustom ? `Custom (mặc định ${typingDefault ? 'BẬT' : 'TẮT'})` : 'Default'}</span>` : ''}
@@ -51,6 +60,7 @@ export function renderLessonInspector({
           <button class="secondary-btn" id="admin-print-btn" type="button">In / PDF</button>
           <button class="secondary-btn" id="admin-edit-mastery-btn" type="button">Chỉnh Mastery</button>
           ${hasTyping ? '<button class="secondary-btn" id="admin-edit-typing-btn" type="button">Chỉnh Typing</button>' : ''}
+          ${hasTyping ? `<button class="secondary-btn" id="admin-edit-content-btn" type="button">Chỉnh nội dung${contentCustom ? ` · Rev ${contentRevision}` : ''}</button>` : ''}
           <button class="primary-btn" id="admin-copy-fixed-btn" type="button" data-url="${escAttr(fixedUrl)}">Copy link cố định</button>
           <p id="admin-copy-fixed-status" class="copy-status"></p>
         </div>
@@ -76,6 +86,16 @@ export function renderLessonInspector({
       lesson: set,
       onSave: value => onSaveTypingTolerance?.(set.id, value),
       onReset: () => onResetTypingTolerance?.(set.id),
+      onDone: onRefresh
+    });
+  });
+  root.querySelector('#admin-edit-content-btn')?.addEventListener('click', () => {
+    openTypingContentEditor({
+      root,
+      lesson: set,
+      baseLesson: baseSet ?? set,
+      onPublish: items => onPublishContent?.(set.id, items),
+      onReset: () => onResetContent?.(set.id),
       onDone: onRefresh
     });
   });
