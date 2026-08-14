@@ -2,6 +2,7 @@ import { adminTopbar, copyText, esc, escAttr, typeSummary } from '../shared/admi
 import { openMasteryEditor } from '../mastery/masteryEditor.js';
 import { openTypingToleranceEditor } from '../typing/typingToleranceEditor.js';
 import { openTypingContentEditor } from '../typing/typingContentEditor.js';
+import { isEditableStagedTypingLesson } from '../typing/typingContentDraft.js';
 import { renderLessonContent } from '../shared/renderLessonContent.js';
 
 export function renderLessonInspector({
@@ -24,6 +25,7 @@ export function renderLessonInspector({
   const defaultThreshold = Number(set.masteryPolicy?.defaultThreshold ?? set.passThreshold);
   const completionLabel = set.completionPolicy === 'all-items' ? 'All items' : 'Theo Mastery';
   const hasTyping = (set.activityTypes ?? []).includes('typing');
+  const contentEditable = isEditableStagedTypingLesson(set);
   const typingCustom = set.typingPolicy?.source === 'admin-override';
   const typingDefault = set.typingPolicy?.defaultTolerance === true;
   const contentCustom = set.contentPolicy?.source === 'admin-override';
@@ -60,7 +62,7 @@ export function renderLessonInspector({
           <button class="secondary-btn" id="admin-print-btn" type="button">In / PDF</button>
           <button class="secondary-btn" id="admin-edit-mastery-btn" type="button">Chỉnh Mastery</button>
           ${hasTyping ? '<button class="secondary-btn" id="admin-edit-typing-btn" type="button">Chỉnh Typing</button>' : ''}
-          ${hasTyping ? `<button class="secondary-btn" id="admin-edit-content-btn" type="button">Chỉnh nội dung${contentCustom ? ` · Rev ${contentRevision}` : ''}</button>` : ''}
+          ${contentEditable ? `<button class="secondary-btn" id="admin-edit-content-btn" type="button">Chỉnh nội dung${contentCustom ? ` · Rev ${contentRevision}` : ''}</button>` : ''}
           <button class="primary-btn" id="admin-copy-fixed-btn" type="button" data-url="${escAttr(fixedUrl)}">Copy link cố định</button>
           <p id="admin-copy-fixed-status" class="copy-status"></p>
         </div>
