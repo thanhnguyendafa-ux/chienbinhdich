@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import { listSetDescriptors, loadLessonSet } from '../src/repositories/lessonRepository.js';
 import {
   appendDraftItem,
@@ -23,6 +24,14 @@ test('every published lesson using native question types is editable by Universa
     assert.deepEqual(result.errors, [], descriptor.id);
     assert.equal(result.content.items.length, lesson.items.length, descriptor.id);
   }
+});
+
+test('Lesson Inspector exposes Universal Content CMS instead of Typing-only content gating', async () => {
+  const source = await readFile(new URL('../src/features/admin/inspector/renderLessonInspector.js', import.meta.url), 'utf8');
+  assert.match(source, /openUniversalContentEditor/);
+  assert.match(source, /isUniversalContentEditableLesson/);
+  assert.doesNotMatch(source, /isEditableStagedTypingLesson/);
+  assert.match(source, /id="admin-edit-content-btn"/);
 });
 
 test('pronunciation MIX lesson keeps theory, classification analysis and print groups editable', async () => {
@@ -64,7 +73,7 @@ test('Universal Content CMS can add a valid MCQ while keeping print-group covera
 });
 
 test('lesson content revisions round-trip passages and printGroups without breaking legacy item-only records', async () => {
-  const reading = await loadLessonSet('g5-review-main-idea-01');
+  const reading = await loadLessonSet('g5-u1-reading-01');
   assert.ok(reading.passages?.length > 0);
   const readingDraft = createUniversalDraft(reading);
   readingDraft.passages[0].text = `${readingDraft.passages[0].text} Updated.`;
