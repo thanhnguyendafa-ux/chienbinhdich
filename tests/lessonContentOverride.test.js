@@ -1,8 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { lessonContentDocumentFor, normalizeLessonContentRecord } from '../src/repositories/lessonContentModel.js';
 import { applyLessonContentOverride } from '../src/services/effectiveLessonService.js';
 import { isEditableStagedTypingLesson, validateTypingDraft } from '../src/features/admin/typing/typingContentDraft.js';
+
+const studentContentReader = readFileSync(new URL('../src/repositories/lessonContentReader.js', import.meta.url), 'utf8');
+const adminContentRepository = readFileSync(new URL('../src/repositories/adminLessonContentRepository.js', import.meta.url), 'utf8');
 
 test('lesson content model creates immutable numbered revisions', () => {
   const document = lessonContentDocumentFor({
@@ -74,4 +78,17 @@ test('typing draft blocks empty, orphaned scaffold, and missing sentence targets
     { id: 's1', stage: 'sentence', vi: 'Pizza ngon.', en: 'The pizza is yummy.', buildsFrom: [] }
   ]);
   assert.ok(orphan.errors.some(error => error.includes('PHRASE p1 không xuất hiện')));
+});
+
+test('current-content reads can use Base Content while new Firestore rules are pending, but historical revisions never silently fall back', () => {
+  assert.match(studentContentReader, /Lesson Content CMS rules are not available yet; using Base Content/);
+  assert.match(studentContentReader, /if \(isPermissionDenied\(error\)\)[\s\S]*return null/);
+  const historicalSection = studentContentReader.match(/async getRevisionContent[\s\S]*?\n    }\n/)?.[0] ?? '';
+  assert.doesNotMatch(historicalSection, /isPermissionDenied|using Base Content/);
+});
+
+test('Admin content writes report missing Firestore rules instead of breaking the lesson inspector', () => {
+  assert.match(adminContentRepository, /Content CMS chưa được bật trên Firestore/);
+  assert.match(adminContentRepository, /lesson_content_rules_unavailable/);
+  assert.match(adminContentRepository, /async getCurrentContent[\s\S]*isPermissionDenied\(error\)[\s\S]*return null/);
 });
