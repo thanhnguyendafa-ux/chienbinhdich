@@ -6,6 +6,8 @@ import { createAdminLessonSettingsRepository } from './repositories/adminLessonS
 import { createLessonSettingsReader } from './repositories/lessonSettingsReader.js';
 import { createAdminLessonContentRepository } from './repositories/adminLessonContentRepository.js';
 import { createLessonContentReader } from './repositories/lessonContentReader.js';
+import { createAdminLessonReviewRepository } from './repositories/adminLessonReviewRepository.js';
+import { deriveLessonReviewState } from './repositories/lessonReviewModel.js';
 import { createLegacyAssignmentRepository } from './repositories/legacyAssignmentRepository.js';
 import { getSetDescriptor, getSetDescriptorBySlug, listFolders, listSetDescriptors, loadLessonSet } from './repositories/lessonRepository.js';
 import { applyLessonContentOverride, applyLessonMasterySetting, applyLessonMasterySettings, applySessionMasterySnapshot } from './services/effectiveLessonService.js';
@@ -22,6 +24,7 @@ let adminLessonSettingsRepository = null;
 let lessonSettingsReader = null;
 let adminLessonContentRepository = null;
 let lessonContentReader = null;
+let adminLessonReviewRepository = null;
 let legacyAssignmentRepository = null;
 let currentStudentName = sessions.getLastStudentName();
 let session = ['lesson-link', 'legacy-assignment'].includes(route.kind) ? sessions.loadActive() : null;
@@ -75,6 +78,12 @@ function getLessonContentReader() {
   if (!firebaseConfig.enabled) return null;
   lessonContentReader ??= createLessonContentReader(firebaseConfig.project);
   return lessonContentReader;
+}
+
+function getAdminLessonReviewRepository() {
+  if (!firebaseConfig.enabled) throw new Error('Firebase chưa được bật cho Chiến Binh Dịch.');
+  adminLessonReviewRepository ??= createAdminLessonReviewRepository(firebaseConfig.project);
+  return adminLessonReviewRepository;
 }
 
 function getLegacyAssignmentRepository() {
@@ -442,10 +451,14 @@ async function showAdmin() {
 async function showAdminDashboard() {
   const repository = getAdminRepository();
   const settingsRepository = getAdminLessonSettingsRepository();
+  const contentRepository = getAdminLessonContentRepository();
+  const reviewRepository = getAdminLessonReviewRepository();
   renderLoading(root, 'Đang tải Dashboard...');
-  const [remoteSessions, lessonSettings] = await Promise.all([
+  const [remoteSessions, lessonSettings, currentContents, reviews] = await Promise.all([
     repository.listSessions(),
-    settingsRepository.listLessonSettings()
+    settingsRepository.listLessonSettings(),
+    contentRepository.listCurrentContent(),
+    reviewRepository.listLessonReviews()
   ]);
   const { renderAdminDashboard } = await getScreen('admin', 'Đang mở Dashboard...');
   const sets = applyLessonMasterySettings(listSetDescriptors(), lessonSettings);
@@ -454,12 +467,16 @@ async function showAdminDashboard() {
     folders: listFolders(),
     sets,
     sessions: remoteSessions,
+    reviews,
+    currentContents,
     fixedUrlFor: descriptor => buildFixedLessonUrl(window.location, descriptor),
     loadLesson: loadAdminEffectiveLesson,
     onInspect: setId => navigateAdmin({ inspect: setId }),
     onOpenSession: sessionId => navigateAdmin({ session: sessionId }),
     onSaveMastery: (setId, value) => settingsRepository.savePassThreshold(setId, value),
     onResetMastery: setId => settingsRepository.resetPassThreshold(setId),
+    onSaveReview: (setId, review) => reviewRepository.saveLessonReview(setId, review),
+    onClearReview: setId => reviewRepository.clearLessonReview(setId),
     onRefresh: showAdminDashboard,
     onSignOut: async () => {
       await repository.signOutAdmin();
@@ -471,15 +488,19 @@ async function showAdminDashboard() {
 async function showAdminInspector(setId) {
   const settingsRepository = getAdminLessonSettingsRepository();
   const contentRepository = getAdminLessonContentRepository();
-  const [lesson, baseLesson] = await Promise.all([
+  const reviewRepository = getAdminLessonReviewRepository();
+  const [lesson, baseLesson, review] = await Promise.all([
     loadAdminEffectiveLesson(setId),
-    loadLessonSet(setId)
+    loadLessonSet(setId),
+    reviewRepository.getLessonReview(setId)
   ]);
+  const reviewState = deriveLessonReviewState(lesson, review);
   const { renderLessonInspector } = await getScreen('admin', 'Đang tải nội dung bài...');
   renderLessonInspector({
     root,
     set: lesson,
     baseSet: baseLesson,
+    reviewState,
     fixedUrl: buildFixedLessonUrl(window.location, lesson),
     onBack: () => navigateAdmin(),
     onStudentPreview: () => navigateAdmin({ preview: setId }),
@@ -495,6 +516,8 @@ async function showAdminInspector(setId) {
       return contentRepository.publishContent(id, { baseVersion: base.version ?? 1, items });
     },
     onResetContent: id => contentRepository.resetToBase(id),
+    onSaveReview: (id, nextReview) => reviewRepository.saveLessonReview(id, nextReview),
+    onClearReview: id => reviewRepository.clearLessonReview(id),
     onRefresh: () => showAdminInspector(setId)
   });
 }
