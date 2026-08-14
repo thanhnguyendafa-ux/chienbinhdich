@@ -4,6 +4,7 @@ import { openMasteryEditor } from '../mastery/masteryEditor.js';
 import { openTypingToleranceEditor } from '../typing/typingToleranceEditor.js';
 import { openUniversalContentEditor } from '../content/universalContentEditor.js';
 import { isUniversalContentEditableLesson } from '../content/universalContentDraft.js';
+import { listContentRevisions, restoreContentRevision } from '../content/contentRevisionController.js';
 import { renderLessonContent } from '../shared/renderLessonContent.js';
 
 export function renderLessonInspector({
@@ -107,8 +108,12 @@ export function renderLessonInspector({
       baseLesson: baseSet ?? set,
       onPublish: content => onPublishContent?.(set.id, content),
       onReset: () => onResetContent?.(set.id),
-      onListRevisions: () => onListContentRevisions?.(set.id),
-      onRestore: (_id, revision) => onRestoreContent?.(set.id, revision),
+      onListRevisions: () => onListContentRevisions
+        ? onListContentRevisions(set.id)
+        : listContentRevisions(set.id),
+      onRestore: (_id, revision) => onRestoreContent
+        ? onRestoreContent(set.id, revision)
+        : restoreContentRevision(set.id, revision),
       onDone: onRefresh
     });
   });
