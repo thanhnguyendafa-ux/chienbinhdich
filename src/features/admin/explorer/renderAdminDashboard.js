@@ -106,15 +106,17 @@ export function renderAdminDashboard({
     const alreadyActive = current.state === status && current.stale !== true;
     if (alreadyActive) {
       await onClearReview?.(setId);
+      reviewBySetId.delete(setId);
     } else {
-      await onSaveReview?.(setId, {
+      const saved = await onSaveReview?.(setId, {
         status,
         note: current.note ?? '',
         contentRevision: current.contentRevision,
         baseVersion: current.baseVersion
       });
+      if (saved) reviewBySetId.set(setId, saved);
     }
-    await onRefresh?.();
+    render();
   };
 
   const bindEvents = () => {
