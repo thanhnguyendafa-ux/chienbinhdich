@@ -28,6 +28,20 @@ service cloud.firestore {
         && request.resource.data.updatedBy == request.auth.uid;
     }
 
+    function validLessonContent(setId) {
+      return request.resource.data.keys().hasOnly(['setId', 'revision', 'revisionId', 'baseVersion', 'items', 'updatedAt', 'updatedBy'])
+        && request.resource.data.setId == setId
+        && request.resource.data.revision is int
+        && request.resource.data.revision >= 1
+        && request.resource.data.revisionId is string
+        && request.resource.data.baseVersion is int
+        && request.resource.data.baseVersion >= 1
+        && request.resource.data.items is list
+        && request.resource.data.items.size() > 0
+        && request.resource.data.updatedAt is int
+        && request.resource.data.updatedBy == request.auth.uid;
+    }
+
     match /admins/{uid} {
       allow get: if signedIn() && request.auth.uid == uid;
       allow list, create, update, delete: if false;
@@ -38,6 +52,22 @@ service cloud.firestore {
       allow list: if isAdmin();
       allow create, update: if isAdmin() && validLessonSetting();
       allow delete: if isAdmin();
+    }
+
+    match /lessonContent/{setId} {
+      allow get: if signedIn();
+      allow list: if isAdmin();
+      allow create, update: if isAdmin() && validLessonContent(setId);
+      allow delete: if isAdmin();
+
+      match /revisions/{revisionId} {
+        allow get: if signedIn();
+        allow list: if isAdmin();
+        allow create: if isAdmin()
+          && validLessonContent(setId)
+          && request.resource.data.revisionId == revisionId;
+        allow update, delete: if false;
+      }
     }
 
     match /assignments/{assignmentId} {
@@ -74,6 +104,10 @@ service cloud.firestore {
         && (
           !('typingToleranceAtStart' in request.resource.data)
           || request.resource.data.typingToleranceAtStart is bool
+        )
+        && (
+          !('contentRevisionAtStart' in request.resource.data)
+          || (request.resource.data.contentRevisionAtStart is int && request.resource.data.contentRevisionAtStart >= 0)
         );
 
       allow read: if isAdmin() || (signedIn() && resource.data.ownerUid == request.auth.uid);
@@ -100,6 +134,14 @@ service cloud.firestore {
             'typingToleranceAtStart' in request.resource.data
             && 'typingToleranceAtStart' in resource.data
             && request.resource.data.typingToleranceAtStart == resource.data.typingToleranceAtStart
+          )
+        )
+        && (
+          (!('contentRevisionAtStart' in request.resource.data) && !('contentRevisionAtStart' in resource.data))
+          || (
+            'contentRevisionAtStart' in request.resource.data
+            && 'contentRevisionAtStart' in resource.data
+            && request.resource.data.contentRevisionAtStart == resource.data.contentRevisionAtStart
           )
         )
         && (
