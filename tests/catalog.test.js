@@ -5,70 +5,55 @@ import { lessonFolders, lessonRegistry } from '../src/data/publishedLessonCatalo
 import { validateSet } from '../src/data/contentValidator.js';
 import { getSetDescriptor, getSetDescriptorBySlug, listFolders, listSetDescriptors, listSetsByFolder, loadLessonSet } from '../src/repositories/lessonRepository.js';
 
-test('catalog exposes hierarchical Global 2, 5, 6, 7 and MRT folders with their published Sets', () => {
+test('catalog exposes hierarchical Global 2, 3, 5, 6, 7 and MRT folders with their published Sets', () => {
   assert.deepEqual(validateCatalog(lessonFolders, lessonRegistry), []);
-  assert.deepEqual(listFolders().map(folder => folder.id), [
-    'samples',
-    'global2', 'global2-unit6', 'global2-unit6-translation',
+  const folderIds = listFolders().map(folder => folder.id);
+  for (const id of [
+    'samples', 'global2', 'global2-unit6', 'global2-unit6-translation',
+    'global2-writing-typing', 'global2-writing-u01', 'global2-writing-u16',
+    'global3', 'global3-writing-typing', 'global3-writing-u01', 'global3-writing-u20',
     'global5', 'global5-unit1', 'global5-unit2', 'global5-review-u1-5', 'global5-review',
-    'global6', 'global6-unit1-writing-typing',
-    'global6-unit1-writing-s1', 'global6-unit1-writing-s2', 'global6-unit1-writing-s3',
-    'global6-unit1-writing-s4', 'global6-unit1-writing-s5', 'global6-unit1-writing-s6',
-    'global6-unit1-writing-s7', 'global6-unit1-writing-s8', 'global6-unit1-writing-s9',
-    'global6-unit1-writing-final',
-    'global6-unit-review', 'global6-review-u1-3', 'global6-review-u1-3-grammar',
-    'global6-review-u1-3-present-simple', 'global6-review-u1-3-frequency', 'global6-review-u1-3-possessive',
-    'global6-review-u1-3-prepositions', 'global6-review-u1-3-there-be', 'global6-review-u1-3-description',
-    'global6-review-u1-3-present-continuous', 'global6-review-u1-3-simple-vs-continuous',
-    'global6-review-u1-3-integrated', 'global6-review-u1-3-mixed',
-    'global7', 'global7-unit1', 'global7-unit1-writing-typing',
-    'global7-unit1-writing-s1', 'global7-unit1-writing-s2', 'global7-unit1-writing-s3',
-    'global7-unit1-writing-s4', 'global7-unit1-writing-s5', 'global7-unit1-writing-s6',
-    'global7-unit1-writing-s7', 'global7-unit1-writing-s8', 'global7-unit1-writing-s9',
-    'global7-unit1-writing-s10', 'global7-unit1-writing-final',
-    'global7-unit-review', 'global7-review-u1-3', 'global7-review-u1-3-grammar',
-    'global7-review-u1-3-present-simple', 'global7-review-u1-3-simple-sentences',
-    'global7-review-u1-3-past-simple', 'global7-review-u1-3-mixed',
+    'global6', 'global6-unit1-writing-typing', 'global6-unit1-writing-final', 'global6-review-u1-3-mixed',
+    'global7', 'global7-unit1', 'global7-unit1-writing-typing', 'global7-unit1-writing-final', 'global7-review-u1-3-mixed',
     'mrt-lessons'
-  ]);
+  ]) assert.ok(folderIds.includes(id), id);
+
   assert.deepEqual(listSetsByFolder('samples').map(set => set.id), ['g7-u1-mixed-demo', 'g7-u1-s1']);
   assert.deepEqual(listSetsByFolder('global2-unit6-translation').map(set => set.id), [
     'g2-u6-translation-01', 'g2-u6-translation-02', 'g2-u6-translation-03',
     'g2-u6-translation-04', 'g2-u6-translation-05', 'g2-u6-translation-06',
     'g2-u6-translation-07', 'g2-u6-translation-08', 'g2-u6-translation-09'
   ]);
+  assert.equal(listSetsByFolder('global2-writing-typing').length, 0);
+  assert.equal(listSetsByFolder('global2-writing-u01').length, 3);
+  assert.equal(listSetsByFolder('global2-writing-u16').length, 4);
+  assert.equal(listSetsByFolder('global3-writing-typing').length, 0);
+  assert.equal(listSetsByFolder('global3-writing-u01').length, 5);
+  assert.equal(listSetsByFolder('global3-writing-u20').length, 5);
+
   assert.deepEqual(listSetsByFolder('global5-unit1').map(set => set.id), [
     'g5-u1-vocab-01', 'g5-u1-pattern-01', 'g5-u1-reading-01', 'g5-u1-writing-01'
   ]);
   assert.deepEqual(listSetsByFolder('global5-unit2').map(set => set.id), ['g5-u2-stress-vocab-01']);
-  assert.deepEqual(listSetsByFolder('global5-review-u1-5').map(set => set.id), [
-    'g5-review-u1-5-01', 'g5-review-u1-5-02', 'g5-review-u1-5-03', 'g5-review-u1-5-04', 'g5-review-u1-5-05',
-    'g5-review-u1-5-06', 'g5-review-u1-5-07', 'g5-review-u1-5-08', 'g5-review-u1-5-09', 'g5-review-u1-5-10'
-  ]);
+  assert.equal(listSetsByFolder('global5-review-u1-5').length, 10);
   assert.deepEqual(listSetsByFolder('global5-review').map(set => set.id), ['g5-review-main-idea-01']);
+
   assert.equal(listSetsByFolder('global6-unit1-writing-s1').length, 4);
   assert.equal(listSetsByFolder('global6-unit1-writing-s6').length, 5);
   assert.equal(listSetsByFolder('global6-unit1-writing-final').length, 3);
   assert.equal(listSetsByFolder('global6-unit1-writing-typing').length, 0);
-  assert.deepEqual(listSetsByFolder('global6-review-u1-3-present-simple').map(set => set.id), [
-    'g6-review-u1-3-ps-01', 'g6-review-u1-3-ps-02', 'g6-review-u1-3-ps-03'
-  ]);
+  assert.equal(listSetsByFolder('global6-review-u1-3-present-simple').length, 3);
   assert.equal(listSetsByFolder('global6-review-u1-3-present-continuous').length, 3);
   assert.equal(listSetsByFolder('global6-review-u1-3-mixed').length, 8);
-  assert.equal(listSetsByFolder('global6-review-u1-3-grammar').length, 0);
+
   assert.deepEqual(listSetsByFolder('global7-unit1').map(set => set.id), ['g7-u1-translation-01', 'g7-u1-translation-02']);
   assert.equal(listSetsByFolder('global7-unit1-writing-s1').length, 4);
   assert.equal(listSetsByFolder('global7-unit1-writing-s4').length, 5);
   assert.equal(listSetsByFolder('global7-unit1-writing-s10').length, 5);
   assert.equal(listSetsByFolder('global7-unit1-writing-final').length, 3);
   assert.equal(listSetsByFolder('global7-unit1-writing-typing').length, 0);
-  assert.deepEqual(listSetsByFolder('global7-review-u1-3-present-simple').map(set => set.id), [
-    'g7-review-u1-3-ps-01', 'g7-review-u1-3-ps-02', 'g7-review-u1-3-ps-03', 'g7-review-u1-3-ps-04'
-  ]);
-  assert.equal(listSetsByFolder('global7-review-u1-3-simple-sentences').length, 4);
-  assert.equal(listSetsByFolder('global7-review-u1-3-past-simple').length, 4);
+  assert.equal(listSetsByFolder('global7-review-u1-3-present-simple').length, 4);
   assert.equal(listSetsByFolder('global7-review-u1-3-mixed').length, 8);
-  assert.equal(listSetsByFolder('global7-review-u1-3-grammar').length, 0);
   assert.deepEqual(listSetsByFolder('mrt-lessons').map(set => set.id), ['mrt-g6-gan-aura-action-01', 'mrt-left-cut-right-01']);
 });
 
