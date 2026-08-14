@@ -40,9 +40,8 @@ export function canonicalWritingToken(rawToken, aliases = {}) {
 export function lexicalWritingTokens(text, config = {}) {
   const aliases = config.aliases ?? {};
   const ignore = new Set([...(config.ignore ?? []), ...BASIC_FUNCTION_WORDS, ...PROPER_NAME_TOKENS]);
-  const rawTokens = String(text ?? '').match(/[A-Za-z]+(?:['’][A-Za-z]+)?|\d+/g) ?? [];
   const out = [];
-  for (const raw of rawTokens) {
+  for (const raw of rawWritingWords(text)) {
     if (/^\d+$/.test(raw)) continue;
     const token = canonicalWritingToken(raw, aliases);
     if (!token || ignore.has(token)) continue;
@@ -51,23 +50,46 @@ export function lexicalWritingTokens(text, config = {}) {
   return out;
 }
 
+export function surfaceWritingTokens(text, config = {}) {
+  const aliases = config.aliases ?? {};
+  const ignore = new Set([...(config.ignore ?? []), ...BASIC_FUNCTION_WORDS, ...PROPER_NAME_TOKENS]);
+  const out = [];
+  for (const raw of rawWritingWords(text)) {
+    if (/^\d+$/.test(raw)) continue;
+    const canonical = canonicalWritingToken(raw, aliases);
+    if (!canonical || ignore.has(canonical)) continue;
+    out.push(learnerSurfaceToken(raw, canonical, config));
+  }
+  return out;
+}
+
 export function expandWritingWords(explicitWords, phrases, sentences, scaffold) {
-  const words = (explicitWords ?? []).map(entry => [...entry]);
-  const seen = new Set(words.flatMap(([, en]) => lexicalWritingTokens(en, scaffold)));
   const targetTexts = [
     ...(phrases ?? []).map(entry => entry?.[1] ?? ''),
     ...(sentences ?? []).map(entry => entry?.[1] ?? '')
   ];
+  const words = [];
+  const seenAnswers = new Set();
 
-  for (const token of unique(lexicalWritingTokens(targetTexts.join(' '), scaffold))) {
-    if (seen.has(token)) continue;
-    const lexical = scaffold.lexicon?.[token];
-    if (!lexical) continue;
-    const answer = lexical.en ?? token;
-    words.push([lexical.vi, answer]);
-    lexicalWritingTokens(answer, scaffold).forEach(value => seen.add(value));
-    seen.add(token);
+  for (const [vi, en] of explicitWords ?? []) {
+    const variants = surfaceVariantsForSeed(en, targetTexts, scaffold);
+    for (const variant of variants) addWord(words, seenAnswers, vi, variant);
   }
+
+  const covered = new Set(
+    words.flatMap(([, en]) => surfaceWritingTokens(en, scaffold).map(surfaceKey))
+  );
+
+  for (const token of unique(targetTexts.flatMap(text => surfaceWritingTokens(text, scaffold)))) {
+    const key = surfaceKey(token);
+    if (covered.has(key)) continue;
+    const canonical = canonicalWritingToken(token, scaffold.aliases ?? {});
+    const lexical = scaffold.lexicon?.[canonical];
+    if (!lexical) continue;
+    addWord(words, seenAnswers, lexical.vi, token);
+    surfaceWritingTokens(token, scaffold).forEach(value => covered.add(surfaceKey(value)));
+  }
+
   return words;
 }
 
@@ -83,31 +105,72 @@ export function unknownWritingTokens(phrases, sentences, scaffold) {
 }
 
 export function coldWritingTokens(words, phrases, sentences, scaffold) {
-  const covered = new Set((words ?? []).flatMap(([, en]) => lexicalWritingTokens(en, scaffold)));
+  const covered = new Set(
+    (words ?? []).flatMap(([, en]) => surfaceWritingTokens(en, scaffold).map(surfaceKey))
+  );
   const targets = [
     ...(phrases ?? []).map(entry => entry?.[1] ?? ''),
     ...(sentences ?? []).map(entry => entry?.[1] ?? '')
   ];
   return unique(
-    lexicalWritingTokens(targets.join(' '), scaffold)
-      .filter(token => scaffold.lexicon?.[token] && !covered.has(token))
+    targets.flatMap(text => surfaceWritingTokens(text, scaffold))
+      .filter(token => scaffold.lexicon?.[canonicalWritingToken(token, scaffold.aliases ?? {})])
+      .filter(token => !covered.has(surfaceKey(token)))
   );
 }
 
 export function dependencyIdsForText(text, wordEntries, wordIds, scaffold) {
-  const targetTokens = new Set(lexicalWritingTokens(text, scaffold));
+  void scaffold;
   const normalizedTarget = normalizedWords(text);
   return wordEntries.flatMap((entry, index) => {
     const answer = entry?.[1] ?? '';
-    const entryTokens = lexicalWritingTokens(answer, scaffold);
-    const lexicalMatch = entryTokens.some(token => targetTokens.has(token));
-    const explicitChunkMatch = containsWordSequence(normalizedTarget, normalizedWords(answer));
-    return lexicalMatch || explicitChunkMatch ? [wordIds[index]] : [];
+    return containsWordSequence(normalizedTarget, normalizedWords(answer)) ? [wordIds[index]] : [];
   });
 }
 
+function surfaceVariantsForSeed(answer, targetTexts, scaffold) {
+  const seedWords = normalizedWords(answer);
+  if (!seedWords.length) return [];
+  const aliases = scaffold.aliases ?? {};
+  const seedCanonical = seedWords.map(word => canonicalWritingToken(word, aliases));
+  const variants = [];
+
+  for (const text of targetTexts) {
+    const targetWords = normalizedWords(text);
+    const targetCanonical = targetWords.map(word => canonicalWritingToken(word, aliases));
+    for (let start = 0; start <= targetCanonical.length - seedCanonical.length; start += 1) {
+      const matches = seedCanonical.every((word, offset) => targetCanonical[start + offset] === word);
+      if (!matches) continue;
+      const matchedSurface = targetWords.slice(start, start + seedCanonical.length)
+        .map(word => learnerSurfaceToken(word, canonicalWritingToken(word, aliases), scaffold))
+        .join(' ');
+      variants.push(matchedSurface);
+    }
+  }
+
+  return uniqueByKey(variants, surfaceKey);
+}
+
+function learnerSurfaceToken(rawToken, canonical, scaffold) {
+  const surface = String(rawToken ?? '').replace(/[’]/g, "'").toLocaleLowerCase('en');
+  const lexical = scaffold.lexicon?.[canonical];
+  if (surface === canonical && lexical?.en) return lexical.en;
+  return surface;
+}
+
+function addWord(words, seenAnswers, vi, en) {
+  const key = normalizedWords(en).join(' ');
+  if (!key || seenAnswers.has(key)) return;
+  words.push([vi, en]);
+  seenAnswers.add(key);
+}
+
+function rawWritingWords(value) {
+  return (String(value ?? '').replace(/[’]/g, "'").match(/[A-Za-z]+(?:'[A-Za-z]+)?|\d+/g) ?? []);
+}
+
 function normalizedWords(value) {
-  return (String(value ?? '').toLocaleLowerCase('en').replace(/[’]/g, "'").match(/[a-z]+(?:'[a-z]+)?|\d+/g) ?? []);
+  return rawWritingWords(value).map(word => word.toLocaleLowerCase('en'));
 }
 
 function containsWordSequence(target, phrase) {
@@ -118,6 +181,20 @@ function containsWordSequence(target, phrase) {
   return false;
 }
 
+function surfaceKey(value) {
+  return String(value ?? '').toLocaleLowerCase('en').replace(/[’]/g, "'").trim();
+}
+
 function unique(values) {
   return [...new Set(values)];
+}
+
+function uniqueByKey(values, keyFn) {
+  const seen = new Set();
+  return values.filter(value => {
+    const key = keyFn(value);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
