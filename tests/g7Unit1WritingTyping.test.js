@@ -107,6 +107,6 @@ test('Final Writing lessons build complete 40–60 word hobby paragraphs at the 
     const wordCount = finalAnswer.trim().split(/\s+/).length;
     assert.ok(content.items.filter(item => item.stage === 'word').length > 3, `${descriptor.id} final must prepare paragraph vocabulary`);
     assert.ok(wordCount >= 40, `${descriptor.id} paragraph too short: ${wordCount}`);
-    assert.ok(wordCount <= 60, `${descriptor.id} paragraph too short: ${wordCount}`);
+    assert.ok(wordCount <= 60, `${descriptor.id} paragraph too long: ${wordCount}`);
   }
 });
