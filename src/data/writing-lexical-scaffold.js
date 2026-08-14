@@ -68,11 +68,12 @@ export function expandWritingWords(explicitWords, phrases, sentences, scaffold) 
     ...(phrases ?? []).map(entry => entry?.[1] ?? ''),
     ...(sentences ?? []).map(entry => entry?.[1] ?? '')
   ];
+  const explicitAnswers = (explicitWords ?? []).map(([, en]) => en);
   const words = [];
   const seenAnswers = new Set();
 
   for (const [vi, en] of explicitWords ?? []) {
-    const variants = surfaceVariantsForSeed(en, targetTexts, scaffold);
+    const variants = surfaceVariantsForSeed(en, targetTexts, scaffold, explicitAnswers);
     for (const variant of variants) addWord(words, seenAnswers, vi, variant);
   }
 
@@ -128,11 +129,26 @@ export function dependencyIdsForText(text, wordEntries, wordIds, scaffold) {
   });
 }
 
-function surfaceVariantsForSeed(answer, targetTexts, scaffold) {
+function surfaceVariantsForSeed(answer, targetTexts, scaffold, explicitAnswers) {
   const seedWords = normalizedWords(answer);
   if (!seedWords.length) return [];
   const aliases = scaffold.aliases ?? {};
+  const exactVariants = [];
+
+  for (const text of targetTexts) {
+    const targetWords = normalizedWords(text);
+    for (let start = 0; start <= targetWords.length - seedWords.length; start += 1) {
+      if (!matchesSequence(targetWords, seedWords, start)) continue;
+      exactVariants.push(surfaceFromRange(targetWords, start, seedWords.length, scaffold));
+    }
+  }
+
+  if (exactVariants.length) return uniqueByKey(exactVariants, surfaceKey);
+
   const seedCanonical = seedWords.map(word => canonicalWritingToken(word, aliases));
+  const protectedChunks = explicitAnswers
+    .map(normalizedWords)
+    .filter(words => words.length > seedWords.length);
   const variants = [];
 
   for (const text of targetTexts) {
@@ -141,14 +157,35 @@ function surfaceVariantsForSeed(answer, targetTexts, scaffold) {
     for (let start = 0; start <= targetCanonical.length - seedCanonical.length; start += 1) {
       const matches = seedCanonical.every((word, offset) => targetCanonical[start + offset] === word);
       if (!matches) continue;
-      const matchedSurface = targetWords.slice(start, start + seedCanonical.length)
-        .map(word => learnerSurfaceToken(word, canonicalWritingToken(word, aliases), scaffold))
-        .join(' ');
-      variants.push(matchedSurface);
+      if (insideProtectedChunk(targetWords, start, seedWords.length, protectedChunks)) continue;
+      variants.push(surfaceFromRange(targetWords, start, seedWords.length, scaffold));
     }
   }
 
   return uniqueByKey(variants, surfaceKey);
+}
+
+function surfaceFromRange(targetWords, start, length, scaffold) {
+  const aliases = scaffold.aliases ?? {};
+  return targetWords.slice(start, start + length)
+    .map(word => learnerSurfaceToken(word, canonicalWritingToken(word, aliases), scaffold))
+    .join(' ');
+}
+
+function insideProtectedChunk(targetWords, start, length, protectedChunks) {
+  const end = start + length;
+  for (const chunk of protectedChunks) {
+    for (let chunkStart = 0; chunkStart <= targetWords.length - chunk.length; chunkStart += 1) {
+      if (!matchesSequence(targetWords, chunk, chunkStart)) continue;
+      const chunkEnd = chunkStart + chunk.length;
+      if (start >= chunkStart && end <= chunkEnd) return true;
+    }
+  }
+  return false;
+}
+
+function matchesSequence(target, phrase, start) {
+  return phrase.every((word, offset) => target[start + offset] === word);
 }
 
 function learnerSurfaceToken(rawToken, canonical, scaffold) {
@@ -176,7 +213,7 @@ function normalizedWords(value) {
 function containsWordSequence(target, phrase) {
   if (!phrase.length || phrase.length > target.length) return false;
   for (let start = 0; start <= target.length - phrase.length; start += 1) {
-    if (phrase.every((word, offset) => target[start + offset] === word)) return true;
+    if (matchesSequence(target, phrase, start)) return true;
   }
   return false;
 }
