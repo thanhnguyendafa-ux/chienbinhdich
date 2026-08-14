@@ -7,6 +7,7 @@ import {
   rootFolderId,
   searchLessonDescriptors
 } from '../adminTreeModel.js';
+import { deriveLessonReviewState, lessonMatchesReviewFilter, REVIEW_VIEW } from '../../../repositories/lessonReviewModel.js';
 import { adminTopbar, copyText } from '../shared/adminUi.js';
 import { openMasteryEditor } from '../mastery/masteryEditor.js';
 import { createLessonPreviewController } from '../preview/lessonPreviewController.js';
@@ -21,19 +22,34 @@ export function renderAdminDashboard({
   folders,
   sets,
   sessions,
+  reviews = [],
+  currentContents = [],
   fixedUrlFor,
   loadLesson,
   onInspect,
   onOpenSession,
   onSaveMastery,
   onResetMastery,
+  onSaveReview,
+  onClearReview,
   onRefresh,
   onSignOut
 }) {
   const tree = buildAdminLessonTree(folders, sets);
   const state = createExplorerState({ tree, findNode: findAdminTreeNode, rootId: rootFolderId() });
   const setById = new Map(sets.map(set => [set.id, set]));
+  const reviewBySetId = new Map(reviews.map(review => [review.setId, review]));
+  const contentBySetId = new Map(currentContents.map(content => [content.setId, content]));
   let searchFocus = false;
+
+  const reviewStateFor = lesson => {
+    if (!lesson) return deriveLessonReviewState(null, null);
+    const contentRevision = Number(lesson.contentPolicy?.revision ?? contentBySetId.get(lesson.id)?.revision ?? 0);
+    return deriveLessonReviewState(
+      { ...lesson, contentRevision },
+      reviewBySetId.get(lesson.id) ?? null
+    );
+  };
 
   expandBreadcrumbAncestors(tree, state.selectedFolderId, state.expanded);
 
@@ -57,10 +73,10 @@ export function renderAdminDashboard({
             <section class="admin-explorer-content">
               ${state.view === 'results'
                 ? renderResultsView(sessions, setById)
-                : renderLessonBrowser({ tree, state, sets, preview, fixedUrlFor })}
+                : renderLessonBrowser({ tree, state, sets, preview, fixedUrlFor, reviewStateFor })}
             </section>
           </section>
-          ${renderStatus(tree, state, sets)}
+          ${renderStatus(tree, state, sets, reviewStateFor)}
         </section>
       </main>`;
 
@@ -81,6 +97,26 @@ export function renderAdminDashboard({
     expandBreadcrumbAncestors(tree, folderId, state.expanded);
     persist();
     previewController.clear();
+  };
+
+  const saveQuickReview = async (setId, status) => {
+    const lesson = setById.get(setId);
+    if (!lesson) return;
+    const current = reviewStateFor(lesson);
+    const alreadyActive = current.state === status && current.stale !== true;
+    if (alreadyActive) {
+      await onClearReview?.(setId);
+      reviewBySetId.delete(setId);
+    } else {
+      const saved = await onSaveReview?.(setId, {
+        status,
+        note: current.note ?? '',
+        contentRevision: current.contentRevision,
+        baseVersion: current.baseVersion
+      });
+      if (saved) reviewBySetId.set(setId, saved);
+    }
+    render();
   };
 
   const bindEvents = () => {
@@ -130,6 +166,13 @@ export function renderAdminDashboard({
       previewController.clear();
     }));
 
+    root.querySelectorAll('[data-review-filter]').forEach(button => button.addEventListener('click', () => {
+      state.reviewFilter = button.dataset.reviewFilter;
+      state.selectedSetId = null;
+      persist();
+      previewController.clear();
+    }));
+
     root.querySelectorAll('[data-copy-fixed-link]').forEach(button => button.addEventListener('click', async event => {
       event.stopPropagation();
       const original = button.textContent;
@@ -149,6 +192,28 @@ export function renderAdminDashboard({
         onReset: () => onResetMastery?.(lesson.id),
         onDone: onRefresh
       });
+    }));
+
+    root.querySelectorAll('[data-review-approved]').forEach(button => button.addEventListener('click', async event => {
+      event.stopPropagation();
+      button.disabled = true;
+      try {
+        await saveQuickReview(button.dataset.reviewApproved, REVIEW_VIEW.APPROVED);
+      } catch (error) {
+        button.disabled = false;
+        window.alert(error?.message ?? 'Không lưu được trạng thái kiểm duyệt.');
+      }
+    }));
+
+    root.querySelectorAll('[data-review-needs-edit]').forEach(button => button.addEventListener('click', async event => {
+      event.stopPropagation();
+      button.disabled = true;
+      try {
+        await saveQuickReview(button.dataset.reviewNeedsEdit, REVIEW_VIEW.NEEDS_EDIT);
+      } catch (error) {
+        button.disabled = false;
+        window.alert(error?.message ?? 'Không lưu được trạng thái kiểm duyệt.');
+      }
     }));
 
     root.querySelectorAll('[data-select-set]').forEach(row => {
@@ -195,12 +260,15 @@ export function renderAdminDashboard({
   render();
 }
 
-function renderStatus(tree, state, sets) {
-  let count = sets.length;
-  if (state.view === 'lessons' && !state.searchQuery.trim()) count = folderLessonCount(findAdminTreeNode(tree, state.selectedFolderId));
+function renderStatus(tree, state, sets, reviewStateFor) {
+  let visible = sets;
   if (state.view === 'lessons' && state.searchQuery.trim()) {
-    count = searchLessonDescriptors(sets, state.searchQuery).filter(set => lessonMatchesType(set, state.typeFilter)).length;
+    visible = searchLessonDescriptors(sets, state.searchQuery)
+      .filter(set => lessonMatchesType(set, state.typeFilter))
+      .filter(set => lessonMatchesReviewFilter(reviewStateFor(set), state.reviewFilter));
   }
+  let count = visible.length;
+  if (state.view === 'lessons' && !state.searchQuery.trim()) count = folderLessonCount(findAdminTreeNode(tree, state.selectedFolderId));
   return `<footer class="admin-statusbar"><span>${state.view === 'lessons' ? `${count} bài · Fixed links` : 'Learner sessions'}</span><span>Firebase ✓ · ${typeof navigator !== 'undefined' && navigator.onLine === false ? 'Offline' : 'Online ✓'}</span></footer>`;
 }
 

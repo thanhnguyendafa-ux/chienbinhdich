@@ -1,5 +1,6 @@
-const EXPLORER_STATE_KEY = 'cbd.adminExplorer.state.v2';
+const EXPLORER_STATE_KEY = 'cbd.adminExplorer.state.v3';
 const DEFAULT_PREVIEW_WIDTH = 42;
+const REVIEW_FILTERS = new Set(['all', 'unreviewed', 'approved', 'needs-edit', 'rereview']);
 
 export function createExplorerState({ tree, findNode, rootId }) {
   const persisted = readExplorerState();
@@ -11,6 +12,7 @@ export function createExplorerState({ tree, findNode, rootId }) {
     expanded: new Set((persisted.expanded ?? []).filter(id => findNode(tree, id))),
     searchQuery: '',
     typeFilter: 'all',
+    reviewFilter: REVIEW_FILTERS.has(persisted.reviewFilter) ? persisted.reviewFilter : 'all',
     previewWidth: normalizePreviewWidth(persisted.previewWidth)
   };
 }
@@ -21,6 +23,7 @@ export function persistExplorerState(state) {
       view: state.view,
       selectedFolderId: state.selectedFolderId,
       expanded: [...state.expanded],
+      reviewFilter: REVIEW_FILTERS.has(state.reviewFilter) ? state.reviewFilter : 'all',
       previewWidth: normalizePreviewWidth(state.previewWidth)
     }));
   } catch {
