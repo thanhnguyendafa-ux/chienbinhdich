@@ -2,6 +2,7 @@ import { renderPrintMcq } from './questions/renderPrintMcq.js';
 import { renderPrintTrueFalse } from './questions/renderPrintTrueFalse.js';
 import { renderPrintTyping } from './questions/renderPrintTyping.js';
 import { renderPrintSentenceOrder } from './questions/renderPrintSentenceOrder.js';
+import { renderPrintSequenceNumber } from './questions/renderPrintSequenceNumber.js';
 import { renderPrintClassification } from './questions/renderPrintClassification.js';
 
 const registry = Object.freeze({
@@ -9,6 +10,7 @@ const registry = Object.freeze({
   true_false: renderPrintTrueFalse,
   typing: renderPrintTyping,
   sentence_order: renderPrintSentenceOrder,
+  sequence_number: renderPrintSequenceNumber,
   classification: renderPrintClassification
 });
 
