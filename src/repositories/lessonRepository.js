@@ -4,7 +4,7 @@ import { normalizeLessonSlug } from '../core/lessonLinks.js';
 
 const cache = new Map();
 const registryById = new Map(lessonRegistry.map(entry => [entry.id, entry]));
-const registryBySlug = new Map(lessonRegistry.map(entry => [entry.lessonSlug, entry]));
+const registryBySlug = buildSlugRegistry(lessonRegistry);
 
 export function listFolders() {
   const byParent = new Map();
@@ -60,6 +60,16 @@ export async function loadLessonSet(setId) {
     })));
   }
   return cache.get(setId);
+}
+
+function buildSlugRegistry(registry) {
+  const map = new Map();
+  for (const entry of registry) {
+    for (const slug of [entry.lessonSlug, ...(entry.lessonSlugAliases ?? [])]) {
+      map.set(normalizeLessonSlug(slug), entry);
+    }
+  }
+  return map;
 }
 
 function publicDescriptor(entry) {
