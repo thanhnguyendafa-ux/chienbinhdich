@@ -48,7 +48,7 @@ test('G6 U1 Mai Lan Huong Reading Gap 1 is one published 36-question flow', asyn
   );
 });
 
-test('Q1-Q14 build exact WORD meaning + POS/morphology before reading', async () => {
+test('Q1-Q14 build exact WORD meaning + POS/morphology but hide theory until submit', async () => {
   const lesson = await loadLessonSet('g6-u1-mlh-reading-gap-01');
   const words = lesson.items.slice(0, 14);
   assert.deepEqual(words.map(item => item.en), WORD_TARGETS);
@@ -56,7 +56,7 @@ test('Q1-Q14 build exact WORD meaning + POS/morphology before reading', async ()
   for (const item of words) {
     assert.equal(item.type, 'typing');
     assert.equal(item.stage, 'word');
-    assert.equal(item.theorySupport?.access, 'anytime');
+    assert.equal(item.theorySupport?.access, 'after_submit');
     assert.equal(item.typingUi?.contextLabel, 'Tiếng Việt + từ loại');
     assert.match(item.vi, /Thầy:/);
     assert.match(item.vi, /(động từ|danh từ|tính từ|trạng từ|verb|noun|adj\.|adverb)/i);
@@ -69,7 +69,7 @@ test('Q1-Q14 build exact WORD meaning + POS/morphology before reading', async ()
   assert.equal(words[11].en, 'teachers');
 });
 
-test('Q15-Q28 build direct passage chunks using only Vietnamese meaning + chunk length', async () => {
+test('Q15-Q28 build direct passage chunks but hide answer-bearing theory until submit', async () => {
   const lesson = await loadLessonSet('g6-u1-mlh-reading-gap-01');
   const chunks = lesson.items.slice(14, 28);
   assert.deepEqual(chunks.map(item => item.en), CHUNK_TARGETS);
@@ -77,12 +77,13 @@ test('Q15-Q28 build direct passage chunks using only Vietnamese meaning + chunk 
   for (const item of chunks) {
     assert.equal(item.type, 'typing');
     assert.equal(item.stage, 'phrase');
-    assert.equal(item.theorySupport?.access, 'anytime');
+    assert.equal(item.theorySupport?.access, 'after_submit');
     assert.equal(item.typingUi?.contextLabel, 'Tiếng Việt + số từ');
     assert.doesNotMatch(item.vi, /(adj\.|noun|verb|adverb|plural noun|uncountable noun)/i);
     const match = item.vi.match(/cụm (\d+) từ/i);
     assert.ok(match, `${item.id} must state chunk length`);
     assert.equal(item.en.trim().split(/\s+/).length, Number(match[1]), `${item.id} chunk length must match label`);
+    assert.ok(item.teachingFeedback?.theory);
   }
 });
 
@@ -121,17 +122,20 @@ test('gap-fill stimulus uses its own learner instruction instead of the legacy M
   assert.match(html, /\(8\) ______/);
 });
 
-test('Student PDF preserves scaffold withdrawal for the 36-question reading-gap lesson', async () => {
+test('Student PDF never exposes answer-bearing theory before response while Teacher PDF keeps it', async () => {
   const lesson = await loadLessonSet('g6-u1-mlh-reading-gap-01');
   const scaffolded = printQuestions(buildLessonPrintModel(lesson, { version: 'student' }));
   const recall = printQuestions(buildLessonPrintModel(lesson, { version: 'student', showStudentTheory: false }));
+  const teacher = printQuestions(buildLessonPrintModel(lesson, { version: 'teacher', teacherDetail: 'full' }));
 
   assert.equal(scaffolded.length, 36);
-  for (const question of scaffolded.slice(0, 28)) assert.ok(question.studentTheory?.theory, `${question.id} should expose anytime theory`);
+  assert.equal(teacher.length, 36);
+  for (const question of scaffolded) assert.equal('studentTheory' in question, false, `${question.id} must not reveal after_submit theory before an answer`);
+  for (const question of recall) assert.equal('studentTheory' in question, false, `${question.id} must be theory-free in recall mode`);
+  for (const question of teacher) assert.ok(question.teacher?.theory, `${question.id} should retain theory in full Teacher print`);
+
   for (const question of scaffolded.slice(28)) {
-    assert.equal('studentTheory' in question, false, `${question.id} must hide after_submit theory`);
     assert.ok(question.stimulus?.text);
     assert.equal((question.stimulus.text.match(/______/g) ?? []).length, 8);
   }
-  for (const question of recall) assert.equal('studentTheory' in question, false, `${question.id} must be theory-free in recall mode`);
 });

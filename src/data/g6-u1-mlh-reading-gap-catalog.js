@@ -1,4 +1,14 @@
 const ids = (start, end) => Object.freeze(Array.from({ length: end - start + 1 }, (_, index) => `g6u1-mlh-rg-q${String(start + index).padStart(2, '0')}`));
+const afterSubmitTheory = Object.freeze({ access: 'after_submit' });
+
+function hideTypingTheoryUntilSubmit(content) {
+  return Object.freeze({
+    ...content,
+    items: Object.freeze((content.items ?? []).map(item => item?.type === 'typing'
+      ? Object.freeze({ ...item, theorySupport: afterSubmitTheory })
+      : item))
+  });
+}
 
 export const g6U1MlhReadingGapFolders = Object.freeze([
   Object.freeze({
@@ -24,7 +34,7 @@ export const g6U1MlhReadingGapRegistry = Object.freeze([
     passThreshold: 80,
     completionPolicy: 'all-items',
     teacher: 'Thầy Thành MRT',
-    description: 'Một flow 36 câu liên tục: 14 từ đơn Typing Việt + từ loại → Anh, 14 chunk Typing Việt + số từ → Anh, rồi 8 gap của bài Reading gốc. Ở mỗi gap, toàn passage vẫn giữ đủ 8 chỗ trống và word box luôn đủ 8 từ để học sinh phải tự đọc, tự dịch và suy luận thay vì loại trừ.',
+    description: 'Một flow 36 câu liên tục: 14 từ đơn Typing Việt + từ loại → Anh, 14 chunk Typing Việt + số từ → Anh, rồi 8 gap của bài Reading gốc. Theory của phần Typing chỉ mở sau khi con đã submit để không lộ đáp án; ở mỗi gap, toàn passage vẫn giữ đủ 8 chỗ trống và word box luôn đủ 8 từ để học sinh phải tự đọc, tự dịch và suy luận thay vì loại trừ.',
     printGroups: Object.freeze([
       Object.freeze({
         id: 'word-foundation',
@@ -44,6 +54,7 @@ export const g6U1MlhReadingGapRegistry = Object.freeze([
     ]),
     activityTypes: Object.freeze(['typing', 'mcq']),
     itemCount: 36,
-    loadContent: () => import('./g6-u1-mlh-reading-gap-01.js').then(module => module.global6Unit1MlhReadingGap01Content)
+    loadContent: () => import('./g6-u1-mlh-reading-gap-01.js')
+      .then(module => hideTypingTheoryUntilSubmit(module.global6Unit1MlhReadingGap01Content))
   })
 ]);
