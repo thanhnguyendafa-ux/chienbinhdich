@@ -16,6 +16,7 @@ const BLOCK_INSTRUCTIONS = Object.freeze({
   true_false: 'Write T (True) or F (False).',
   typing: 'Write your answer in English.',
   sentence_order: 'Put the words or blocks in the correct order.',
+  sequence_number: 'Write the correct number (1–N) in each box.',
   classification: 'Put each word or phrase in the correct group.'
 });
 
@@ -133,6 +134,7 @@ function buildQuestionModel({ lesson, item, number, config, targetCorrectIndex }
     answer: String(item.en ?? '')
   });
   if (type === 'sentence_order') return buildSentenceOrder(item, base, key, config);
+  if (type === 'sequence_number') return buildSequenceNumber(item, base, config);
   if (type === 'classification') return buildClassification(item, base, key, config);
   throw new Error(`Unsupported print question type: ${type}`);
 }
@@ -186,6 +188,29 @@ function buildSentenceOrder(item, base, key, config) {
     teacher: teacherPayload(item, config, {
       answer: canonical,
       alternatives: Object.freeze(alternatives)
+    })
+  });
+}
+
+function buildSequenceNumber(item, base, config) {
+  const canonicalPositions = new Map((item.correctOrder ?? []).map((lineId, index) => [String(lineId), index + 1]));
+  const sequenceLines = Object.freeze((item.lines ?? []).map(line => Object.freeze({
+    id: String(line.id),
+    text: String(line.text),
+    lockedPosition: Number.isInteger(Number(line.lockedPosition)) ? Number(line.lockedPosition) : null
+  })));
+  const student = { ...base, sequenceLines };
+  if (config.version !== 'teacher') return Object.freeze(student);
+
+  const positions = Object.freeze((item.lines ?? []).map(line => Object.freeze({
+    id: String(line.id),
+    position: canonicalPositions.get(String(line.id)) ?? null
+  })));
+  return Object.freeze({
+    ...student,
+    teacher: teacherPayload(item, config, {
+      answer: expectedResponseDisplay(item),
+      sequencePositions: positions
     })
   });
 }
