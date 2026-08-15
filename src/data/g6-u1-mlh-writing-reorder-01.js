@@ -18,6 +18,26 @@ const chunkTypingUi = freeze({
 });
 
 const teaching = (correctLabel, reason, theory, example) => freeze({ correctLabel, reason, theory, example });
+const appendBrain = (base, extra) => extra ? `${base} ${extra}` : base;
+
+function withBrain(spec, brain = null) {
+  if (!brain) return spec;
+  const next = {
+    ...spec,
+    reason: appendBrain(spec.reason, brain.reason),
+    theory: appendBrain(spec.theory, brain.theory)
+  };
+  if (Array.isArray(spec.choices) && brain.choices) {
+    next.choices = spec.choices.map(choice => {
+      if (Array.isArray(choice)) {
+        const [id, text, feedback] = choice;
+        return [id, text, appendBrain(feedback, brain.choices[id])];
+      }
+      return { ...choice, feedback: appendBrain(choice.feedback, brain.choices[choice.id]) };
+    });
+  }
+  return next;
+}
 
 function typingItem(spec, index, stage) {
   const id = `g6u1-mlh-wr-q${String(index + 1).padStart(2, '0')}`;
@@ -328,21 +348,142 @@ const ORDER_SPECS = [
   }
 ];
 
+const WORD_BRAIN = freeze({
+  4: freeze({ theory: 'BRAIN v1.2 · lessons mang nghĩa MANY; đếm meaning trước khi nhìn chữ -s.' }),
+  5: freeze({ theory: 'BRAIN v1.2 · ONE JOB: khi DO/DOES đã làm marker cho câu hỏi/phủ định, HAVE giữ base form.' }),
+  8: freeze({ theory: 'BRAIN v1.2 · students là subject core kiểu MANY khi nằm trong Whole Subject như [some creative students].' }),
+  18: freeze({ theory: 'BRAIN v1.2 · children = MANY dù không có -s: count the meaning, not the letter S.' }),
+  19: freeze({ theory: 'BRAIN v1.2 · excited là AURA word; khi predicate là be + adjective, Whole Subject sẽ match với BE.' })
+});
+
+const CHUNK_BRAIN = freeze({
+  5: freeze({ theory: 'BRAIN v1.2 · YOU = SPECIAL; câu hỏi HÀNH ĐỘNG Present Simple dùng DO. DO nhận ONE JOB nên HAVE giữ lõi.' }),
+  7: freeze({ theory: 'BRAIN v1.2 · [some creative students] là Whole Subject; subject core students = MANY.' }),
+  12: freeze({ theory: 'BRAIN v1.2 · go shopping là HÀNH ĐỘNG chunk; sau DOESN’T, GO không nhận thêm -s.' }),
+  14: freeze({ theory: 'BRAIN v1.2 · [most children] là Whole Subject; core children = MANY dù hình thức không có -s.' })
+});
+
+const SENSE_BRAIN = freeze({
+  1: freeze({
+    reason: 'BRAIN v1.2 · Whole Subject là [your first week], core week = ONE; AURA/BE question cần host IS sau How.',
+    theory: 'MINDSET → AURA/BE; WHOLE SUBJECT → [your first week]; COUNT → ONE; MATCH → IS. Vì thiếu host nên đây là THIẾU MẢNH.'
+  }),
+  4: freeze({
+    theory: 'BRAIN v1.2 · YOU = SPECIAL → DO; DO nhận ONE JOB nên main verb HAVE ở base form.'
+  }),
+  7: freeze({
+    reason: 'BRAIN v1.2 · [creative students] chưa được giữ thành noun chunk; DO chen vào giữa adjective và noun làm vỡ Whole Subject.',
+    theory: 'Đây là CHUNK/SUBJECT ERROR chứ không phải chỉ thiếu một từ: creative phải đi với students, còn do thuộc Predicate.'
+  }),
+  9: freeze({
+    theory: 'BRAIN v1.2 · Predicate hợp lệ: DOESN’T nhận marker cho subject ONE; ONE JOB giữ GO ở base form, often nằm giữa marker và action chunk.'
+  })
+});
+
+const SKELETON_BRAIN = freeze({
+  0: freeze({
+    theory: 'BRAIN v1.2 · MINDSET là AURA/BE question. Whole Subject [your first week], core week = ONE nên host Present BE là IS.'
+  }),
+  1: freeze({
+    reason: 'BRAIN v1.2 · Sau How, host IS đi trước Whole Subject [your first week].',
+    theory: 'MINDSET AURA/BE → Whole Subject [your first week] → core week = ONE → MATCH IS → place tail.'
+  }),
+  2: freeze({
+    theory: 'BRAIN v1.2 · How many lessons là một WH chunk; lessons mang nghĩa MANY nhưng chủ ngữ điều khiển auxiliary trong câu này là YOU.'
+  }),
+  3: freeze({
+    reason: 'BRAIN v1.2 · YOU = SPECIAL nên Present Simple HÀNH ĐỘNG dùng DO.',
+    theory: 'MINDSET HÀNH ĐỘNG → subject YOU = SPECIAL → marker DO → ONE JOB → HAVE giữ base form.',
+    choices: freeze({
+      a: 'BRAIN: subject YOU phải đứng sau marker DO.',
+      d: 'BRAIN: HAVE là main verb; DO mới là marker đứng trước subject.'
+    })
+  }),
+  4: freeze({
+    reason: 'BRAIN v1.2 · Whole Subject phải lấy trọn [Some creative students].',
+    theory: 'WHOLE SUBJECT → [Some creative students]; subject core → students; COUNT → MANY. Đừng chỉ khoanh một head noun rồi bỏ mất determiner/adjective.'
+  }),
+  5: freeze({
+    reason: 'BRAIN v1.2 · [Some creative students] = MANY nên HÀNH ĐỘNG statement dùng base verb DO.',
+    theory: 'MINDSET HÀNH ĐỘNG → Whole Subject [Some creative students] → core students = MANY → DO paintings. paintings là object, không điều khiển verb.'
+  }),
+  6: freeze({
+    reason: 'BRAIN v1.2 · WE là SPECIAL và chạy DO-family trong Present Simple.',
+    theory: 'Whole Subject WE → SPECIAL → HÀNH ĐỘNG negative dùng DO NOT/DON’T.'
+  }),
+  7: freeze({
+    reason: 'BRAIN v1.2 · DON’T nhận ONE JOB, vì vậy HAVE phải trở về lõi.',
+    theory: 'MINDSET HÀNH ĐỘNG → WE = SPECIAL → DON’T → ONE JOB → HAVE. Không đánh dấu Present Simple lần hai vào HAS.',
+    choices: freeze({
+      b: 'BRAIN v1.2 · DOUBLE MARKING: DON’T đã nhận nhiệm vụ rồi; HAS đánh dấu thêm lần hai nên sai. Dùng DON’T + HAVE.'
+    })
+  }),
+  8: freeze({
+    reason: 'BRAIN v1.2 · SHE là Whole Subject kiểu ONE.',
+    theory: 'Whole Subject SHE → COUNT ONE. Với HÀNH ĐỘNG Present Simple negative, ONE sẽ gọi DOESN’T.'
+  }),
+  9: freeze({
+    reason: 'BRAIN v1.2 · SHE = ONE → DOESN’T; ONE JOB → GO.',
+    theory: 'MINDSET HÀNH ĐỘNG → SHE = ONE → DOESN’T → often → GO shopping → time. DOES đã nhận marker nên GO không thêm -s.',
+    choices: freeze({
+      b: 'BRAIN v1.2 · DOUBLE MARKING: DOESN’T đã mang dấu ONE/Present; GOES đánh dấu lần hai. ONE JOB → DOESN’T + GO.'
+    })
+  }),
+  10: freeze({
+    reason: 'BRAIN v1.2 · Whole Subject là [Most children], core children = MANY.',
+    theory: 'COUNT THE MEANING, NOT THE LETTER S: children là plural bất quy tắc, nên [Most children] = MANY.'
+  }),
+  11: freeze({
+    reason: 'BRAIN v1.2 · [Most children] = MANY và predicate excited là AURA nên match ARE.',
+    theory: 'MINDSET AURA → Whole Subject [Most children] → core children = MANY → MATCH ARE → excited → time tail.',
+    choices: freeze({
+      a: 'BRAIN: AURA cần host BE trước adjective; MANY → ARE → excited.'
+    })
+  })
+});
+
+const ORDER_BRAIN = freeze({
+  0: freeze({
+    theory: 'BRAIN v1.2 · AURA/BE question: How → IS → Whole Subject [your first week] (core week = ONE) → place.'
+  }),
+  1: freeze({
+    theory: 'BRAIN v1.2 · HÀNH ĐỘNG question: WH chunk → YOU = SPECIAL → DO → ONE JOB → HAVE → time.'
+  }),
+  2: freeze({
+    theory: 'BRAIN v1.2 · Whole Subject [Some creative students] → core students = MANY → HÀNH ĐỘNG base DO → object → place.'
+  }),
+  3: freeze({
+    theory: 'BRAIN v1.2 · WE = SPECIAL → DON’T; ONE JOB giữ HAVE ở base form. CUT: [We] | don’t have | English classes | at school | today.'
+  }),
+  4: freeze({
+    theory: 'BRAIN v1.2 · SHE = ONE → DOESN’T; ONE JOB giữ GO ở base form. CUT: [She] | doesn’t often go shopping | in the afternoon.'
+  }),
+  5: freeze({
+    theory: 'BRAIN v1.2 · MINDSET AURA → Whole Subject [Most children] → core children = MANY → ARE → excited. children là MANY dù không có -s.'
+  })
+});
+
 const items = [];
-WORD_SPECS.forEach((spec, index) => items.push(typingItem(spec, index, 'word')));
-CHUNK_SPECS.forEach((spec, offset) => items.push(typingItem(spec, 20 + offset, 'phrase')));
-SENSE_SPECS.forEach((spec, offset) => items.push(mcqItem({
-  prompt: `MAKE SENSE? Đọc cụm: “${spec.candidate}”. Con chọn mức chính xác nhất.`,
-  choices: senseChoices(spec),
-  correctChoiceId: spec.correctChoiceId,
-  reason: spec.reason,
-  theory: spec.theory,
-  example: spec.example
-}, 36 + offset)));
-SKELETON_SPECS.forEach((spec, offset) => items.push(mcqItem({
-  ...spec,
-  choices: spec.choices.map(([id, text, feedback]) => ({ id, text, feedback }))
-}, 46 + offset)));
-ORDER_SPECS.forEach((spec, offset) => items.push(orderItem(spec, 58 + offset)));
+WORD_SPECS.forEach((spec, index) => items.push(typingItem(withBrain(spec, WORD_BRAIN[index]), index, 'word')));
+CHUNK_SPECS.forEach((spec, offset) => items.push(typingItem(withBrain(spec, CHUNK_BRAIN[offset]), 20 + offset, 'phrase')));
+SENSE_SPECS.forEach((spec, offset) => {
+  const enhanced = withBrain(spec, SENSE_BRAIN[offset]);
+  items.push(mcqItem({
+    prompt: `MAKE SENSE? Đọc cụm: “${enhanced.candidate}”. Con chọn mức chính xác nhất.`,
+    choices: senseChoices(enhanced),
+    correctChoiceId: enhanced.correctChoiceId,
+    reason: enhanced.reason,
+    theory: enhanced.theory,
+    example: enhanced.example
+  }, 36 + offset));
+});
+SKELETON_SPECS.forEach((spec, offset) => {
+  const enhanced = withBrain(spec, SKELETON_BRAIN[offset]);
+  items.push(mcqItem({
+    ...enhanced,
+    choices: enhanced.choices.map(([id, text, feedback]) => ({ id, text, feedback }))
+  }, 46 + offset));
+});
+ORDER_SPECS.forEach((spec, offset) => items.push(orderItem(withBrain(spec, ORDER_BRAIN[offset]), 58 + offset)));
 
 export const global6Unit1MlhWritingReorder01Content = freeze({ items: freeze(items) });
