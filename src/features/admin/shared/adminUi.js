@@ -13,6 +13,7 @@ export function typeLabel(type) {
     mcq: 'MCQ',
     true_false: 'True/False',
     sentence_order: 'Order',
+    sequence_number: 'Sequence / Đánh số',
     classification: 'Classification',
     matching: 'Match',
     fill_blank: 'Fill',
