@@ -163,7 +163,7 @@ test('Brain v1.2 diagnostics lock Whole Subject, ONE/MANY/SPECIAL and ONE JOB wi
 
   assert.match(q(50).teachingFeedback.theory, /YOU = SPECIAL.*DO.*ONE JOB.*HAVE/i);
   assert.match(q(51).teachingFeedback.theory, /Whole Subject.*Some creative students.*students.*MANY/i);
-  assert.match(q(54).choices.find(choice => choice.id === 'b')?.feedback ?? '', /DOUBLE MARKING.*ONE JOB|ONE JOB.*DOUBLE MARKING/i);
+  assert.match(q(54).choices.find(choice => choice.id === 'b')?.feedback ?? '', /DOUBLE MARKING.*DON’T.*HAS.*DON’T \+ HAVE/i);
   assert.match(q(56).choices.find(choice => choice.id === 'b')?.feedback ?? '', /DOUBLE MARKING.*DOESN.*GO/i);
   assert.match(q(57).teachingFeedback.theory, /Most children.*children.*MANY.*letter S/i);
   assert.match(q(58).teachingFeedback.theory, /AURA.*Most children.*MANY.*ARE/i);
