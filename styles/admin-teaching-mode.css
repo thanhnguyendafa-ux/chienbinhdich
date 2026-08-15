@@ -1,0 +1,123 @@
+.admin-teaching-mode .metrics-row,
+.admin-teaching-mode .exit-dialog {
+  display: none;
+}
+
+.admin-teaching-mode .feedback-kicker {
+  display: none;
+}
+
+.admin-teaching-mode .teaching-continue-btn {
+  display: none;
+}
+
+.admin-teaching-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: grid;
+  gap: 0.75rem;
+  margin: 0 auto 1rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--border, #d8dee6);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--surface, #ffffff) 94%, #eef6ff 6%);
+  box-shadow: 0 8px 24px rgba(33, 52, 72, 0.12);
+}
+
+.admin-teaching-toolbar-head,
+.admin-teaching-nav,
+.admin-teaching-sections,
+.admin-teaching-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+}
+
+.admin-teaching-toolbar-head {
+  justify-content: space-between;
+}
+
+.admin-teaching-title {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.admin-teaching-title strong {
+  font-size: 0.82rem;
+  letter-spacing: 0.08em;
+}
+
+.admin-teaching-title small {
+  color: var(--muted, #5e6b78);
+}
+
+.admin-teaching-nav {
+  justify-content: center;
+}
+
+.admin-teaching-counter {
+  min-width: 6rem;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.admin-teaching-sections {
+  justify-content: center;
+}
+
+.admin-teaching-section-btn.is-current {
+  font-weight: 800;
+  outline: 2px solid currentColor;
+  outline-offset: 1px;
+}
+
+.admin-teaching-actions {
+  justify-content: center;
+}
+
+.admin-teaching-jump {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.admin-teaching-jump input {
+  width: 5.25rem;
+  min-height: 2.4rem;
+  padding: 0.45rem 0.55rem;
+  border: 1px solid var(--border, #cfd7df);
+  border-radius: 10px;
+  background: var(--surface, #ffffff);
+  color: inherit;
+}
+
+.admin-teaching-mode .encouragement {
+  border-top-style: dashed;
+}
+
+@media (max-width: 720px) {
+  .admin-teaching-toolbar {
+    position: static;
+    border-radius: 12px;
+  }
+
+  .admin-teaching-toolbar-head,
+  .admin-teaching-nav,
+  .admin-teaching-sections,
+  .admin-teaching-actions {
+    justify-content: stretch;
+  }
+
+  .admin-teaching-nav > button,
+  .admin-teaching-section-btn,
+  .admin-teaching-actions > button,
+  .admin-teaching-jump {
+    flex: 1 1 auto;
+  }
+
+  .admin-teaching-jump input {
+    flex: 1 1 4rem;
+  }
+}

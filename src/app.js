@@ -15,6 +15,7 @@ import { abandonSession, continueQualifiedSession, createSession, qualifySession
 import { resolveAccessRoute } from './core/accessRouting.js';
 import { buildFixedLessonUrl, buildLegacyAssignmentUrl } from './core/lessonLinks.js';
 import { renderLoading } from './ui/renderLoading.js';
+import { alignTeachingSession, createTeachingPreviewController, resetTeachingSession } from './features/admin/preview/teachingPreviewController.js';
 
 const route = resolveAccessRoute(window.location);
 const root = document.querySelector('#app');
@@ -33,6 +34,7 @@ let set = null;
 let activeSetId = null;
 let accessContext = null;
 let previewMode = false;
+let teachingController = null;
 
 const screenLoaders = Object.freeze({
   access: () => import('./features/access/renderAccess.js'),
@@ -286,6 +288,10 @@ async function showEntry() {
       renderLoading(root, 'Đang xác nhận nội dung và cài đặt bài mới nhất...');
       const latestLesson = previewMode ? lesson : await ensureSet({ refreshSettings: true });
       session = createCurrentSession(name, latestLesson);
+      if (previewMode) {
+        teachingController = createTeachingPreviewController({ lesson: latestLesson });
+        session = alignTeachingSession(session, latestLesson, teachingController.getState().cursor);
+      }
       saveActiveSession();
       await showDrill();
     },
@@ -297,11 +303,16 @@ async function showDrill() {
   if (!session) return showEntry();
   if (!set) renderLoading(root, 'Đang tải bài luyện...');
   const lesson = await loadSessionHistoricalLesson();
-  const reconciled = qualifySessionIfEligible(session, lesson);
-  if (reconciled !== session) {
-    session = reconciled;
-    saveActiveSession();
-    feedback = null;
+
+  if (previewMode && teachingController) {
+    session = alignTeachingSession(session, lesson, teachingController.getState().cursor);
+  } else {
+    const reconciled = qualifySessionIfEligible(session, lesson);
+    if (reconciled !== session) {
+      session = reconciled;
+      saveActiveSession();
+      feedback = null;
+    }
   }
 
   const { renderDrill, renderPassed, showSuccess } = await getScreen('drill', 'Đang tải bài luyện...');
@@ -319,18 +330,42 @@ async function showDrill() {
       }
     });
   }
-  if (session.status === 'submitted' || session.status === 'abandoned') return showReport();
+  if (!previewMode && (session.status === 'submitted' || session.status === 'abandoned')) return showReport();
 
   renderDrill({
     root,
     session,
     set: lesson,
     feedback,
-    onExit: finishAbandoned,
-    onFinishQualified: session.status === 'extended' ? finishQualified : null,
+    onExit: previewMode ? exitTeachingMode : finishAbandoned,
+    onFinishQualified: !previewMode && session.status === 'extended' ? finishQualified : null,
     onSubmit: ({ response, attemptMeta }) => {
       const answeredItem = lesson.items.find(candidate => candidate.id === session.currentItemId) ?? null;
       const result = submitAnswer({ session, set: lesson, response, attemptMeta });
+
+      if (previewMode && teachingController) {
+        session = alignTeachingSession(result.session, lesson, teachingController.getState().cursor);
+        if (result.event.type === 'incorrect_retry' || result.event.type === 'incorrect_reveal') {
+          feedback = result.event;
+          return showDrill();
+        }
+        feedback = null;
+        showSuccess({
+          root,
+          type: result.event.type,
+          item: answeredItem,
+          entered: result.event.entered,
+          answer: result.event.answer,
+          teachingFeedback: answeredItem?.teachingFeedback ?? null,
+          mastery: result.event.mastery,
+          masteryBefore: result.event.masteryBefore,
+          masteryDeltaPercent: result.event.masteryDeltaPercent,
+          onContinue: () => {}
+        });
+        decorateTeachingSuccess();
+        return;
+      }
+
       session = result.session;
       saveActiveSession();
       if (result.event.type === 'incorrect_retry' || result.event.type === 'incorrect_reveal') {
@@ -352,6 +387,110 @@ async function showDrill() {
       });
     }
   });
+
+  if (previewMode && teachingController) attachTeachingToolbar(lesson);
+}
+
+function attachTeachingToolbar(lesson) {
+  const state = teachingController?.getState();
+  const page = root.querySelector('.drill-page');
+  const topbar = root.querySelector('.drill-topbar');
+  if (!state || !page || !topbar) return;
+
+  page.classList.add('admin-teaching-mode');
+  root.querySelector('.metrics-row')?.setAttribute('hidden', '');
+  const studentChip = root.querySelector('.student-chip');
+  if (studentChip) studentChip.textContent = 'ADMIN DEMO';
+  const encouragement = root.querySelector('.encouragement');
+  if (encouragement) encouragement.textContent = 'Teaching Mode: Thầy chủ động Prev / Next / Jump. Demo chỉ nằm trong phiên hiện tại và không ghi điểm.';
+
+  const oldExit = root.querySelector('#exit-btn');
+  if (oldExit) {
+    const adminExit = oldExit.cloneNode(true);
+    adminExit.textContent = '← Về Admin';
+    oldExit.replaceWith(adminExit);
+    adminExit.addEventListener('click', exitTeachingMode);
+  }
+
+  const sectionButtons = state.sections.map(section => `
+    <button type="button" class="ghost-btn admin-mini-btn admin-teaching-section-btn ${state.currentSection?.id === section.id ? 'is-current' : ''}" data-teaching-section="${escapeHtml(section.id)}">${escapeHtml(section.label)}</button>`).join('');
+
+  topbar.insertAdjacentHTML('afterend', `
+    <section class="shell admin-teaching-toolbar" aria-label="Admin Teaching Mode controls">
+      <div class="admin-teaching-toolbar-head">
+        <div class="admin-teaching-title">
+          <strong>ADMIN · TEACHING MODE</strong>
+          <small>Demo local · Không ghi điểm · Không thay đổi tiến độ học sinh</small>
+        </div>
+        <span>${state.currentSection ? escapeHtml(state.currentSection.label) : 'Tất cả câu'}</span>
+      </div>
+      <div class="admin-teaching-nav">
+        <button type="button" class="secondary-btn" data-teaching-previous ${state.canPrevious ? '' : 'disabled'}>← Câu trước</button>
+        <strong class="admin-teaching-counter">Q${state.questionNumber} / ${state.total}</strong>
+        <button type="button" class="secondary-btn" data-teaching-next ${state.canNext ? '' : 'disabled'}>Câu tiếp →</button>
+        <button type="button" class="ghost-btn" data-teaching-skip-section ${state.nextSection ? '' : 'disabled'}>${state.nextSection ? `Bỏ qua phần này → ${escapeHtml(state.nextSection.label)}` : 'Đang ở phần cuối'}</button>
+      </div>
+      ${sectionButtons ? `<div class="admin-teaching-sections" aria-label="Đi tới phần">${sectionButtons}</div>` : ''}
+      <div class="admin-teaching-actions">
+        <label class="admin-teaching-jump">Đi tới câu
+          <input type="number" min="1" max="${state.total}" value="${state.questionNumber}" inputmode="numeric" data-teaching-jump-input />
+          <button type="button" class="ghost-btn admin-mini-btn" data-teaching-jump>Đi tới</button>
+        </label>
+        <button type="button" class="ghost-btn" data-teaching-reset-current>↺ Reset câu</button>
+        <button type="button" class="ghost-btn" data-teaching-reset-all>Reset toàn bài</button>
+      </div>
+    </section>`);
+
+  const navigate = async action => {
+    action();
+    feedback = null;
+    session = alignTeachingSession(session, lesson, teachingController.getState().cursor);
+    await showDrill();
+  };
+
+  root.querySelector('[data-teaching-previous]')?.addEventListener('click', () => navigate(() => teachingController.previous()));
+  root.querySelector('[data-teaching-next]')?.addEventListener('click', () => navigate(() => teachingController.next()));
+  root.querySelector('[data-teaching-skip-section]')?.addEventListener('click', () => navigate(() => teachingController.skipSection()));
+  root.querySelectorAll('[data-teaching-section]').forEach(button => button.addEventListener('click', () => navigate(() => teachingController.jumpToSection(button.dataset.teachingSection))));
+
+  const jump = () => {
+    const value = root.querySelector('[data-teaching-jump-input]')?.value;
+    return navigate(() => teachingController.jumpToQuestion(value));
+  };
+  root.querySelector('[data-teaching-jump]')?.addEventListener('click', jump);
+  root.querySelector('[data-teaching-jump-input]')?.addEventListener('keydown', event => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      jump();
+    }
+  });
+
+  root.querySelector('[data-teaching-reset-current]')?.addEventListener('click', async () => {
+    feedback = null;
+    session = resetTeachingSession(session, lesson, { cursor: teachingController.getState().cursor });
+    await showDrill();
+  });
+
+  root.querySelector('[data-teaching-reset-all]')?.addEventListener('click', async () => {
+    const stateAfterReset = teachingController.resetNavigation();
+    feedback = null;
+    session = resetTeachingSession(session, lesson, { cursor: stateAfterReset.cursor, all: true });
+    await showDrill();
+  });
+}
+
+function decorateTeachingSuccess() {
+  root.querySelectorAll('.success-panel small').forEach(node => {
+    node.textContent = 'Demo local · Không ghi điểm';
+  });
+  root.querySelector('#teaching-continue-btn')?.remove();
+}
+
+function exitTeachingMode() {
+  session = null;
+  feedback = null;
+  teachingController = null;
+  navigateAdmin({ inspect: activeSetId });
 }
 
 async function finishQualified() {
@@ -538,6 +677,7 @@ async function showAdminStudentPreview(setId) {
   const descriptor = getSetDescriptor(setId);
   if (!descriptor) throw new Error(`Không tìm thấy set: ${setId}`);
   previewMode = true;
+  teachingController = null;
   accessContext = null;
   session = null;
   feedback = null;
