@@ -15,6 +15,11 @@ export function renderLessonPrint({ root, lesson, onBack, onPrint = () => window
         <div class="lesson-print-controls">
           <label><span>Phiên bản</span><select data-print-version><option value="student">Học sinh</option><option value="teacher">Giáo viên</option></select></label>
           <label><span>Mật độ</span><select data-print-density><option value="compact">${printDensityLabel('compact')}</option><option value="standard">${printDensityLabel('standard')}</option><option value="wide">${printDensityLabel('wide')}</option></select></label>
+          <label class="lesson-print-theory-control" data-student-theory-wrap>
+            <span>Lý thuyết học sinh</span>
+            <span class="lesson-print-theory-toggle-row"><input type="checkbox" data-print-student-theory checked /><strong>Hiện lý thuyết hỗ trợ</strong></span>
+            <small>Chỉ hiện ở các câu được thiết kế “Anytime”.</small>
+          </label>
           <label data-teacher-detail-wrap hidden><span>Đáp án giáo viên</span><select data-teacher-detail><option value="compact">Đáp án gọn</option><option value="full">Đáp án + giải thích đầy đủ</option></select></label>
           <div class="lesson-print-paper-fact"><span>Khổ giấy</span><strong>A4 · Dọc · 13 pt</strong></div>
         </div>
@@ -27,20 +32,26 @@ export function renderLessonPrint({ root, lesson, onBack, onPrint = () => window
   const density = root.querySelector('[data-print-density]');
   const detail = root.querySelector('[data-teacher-detail]');
   const detailWrap = root.querySelector('[data-teacher-detail-wrap]');
+  const theoryToggle = root.querySelector('[data-print-student-theory]');
+  const theoryWrap = root.querySelector('[data-student-theory-wrap]');
 
   const refresh = () => {
     const config = normalizePrintConfig({
       version: version?.value,
       density: density?.value,
-      teacherDetail: detail?.value
+      teacherDetail: detail?.value,
+      showStudentTheory: theoryToggle?.checked ?? true
     });
-    if (detailWrap) detailWrap.hidden = config.version !== 'teacher';
+    const teacher = config.version === 'teacher';
+    if (detailWrap) detailWrap.hidden = !teacher;
+    if (theoryWrap) theoryWrap.hidden = teacher;
     if (preview) preview.innerHTML = renderPaper(buildLessonPrintModel(lesson, config));
   };
 
   version?.addEventListener('change', refresh);
   density?.addEventListener('change', refresh);
   detail?.addEventListener('change', refresh);
+  theoryToggle?.addEventListener('change', refresh);
   root.querySelector('[data-print-back]')?.addEventListener('click', onBack);
   root.querySelector('[data-print-now]')?.addEventListener('click', onPrint);
   refresh();

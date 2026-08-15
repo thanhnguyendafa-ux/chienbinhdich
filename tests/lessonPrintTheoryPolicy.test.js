@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { buildLessonPrintModel } from '../src/features/admin/print/lessonPrintModel.js';
+import { normalizePrintConfig } from '../src/features/admin/print/printConfig.js';
 import { renderPrintMcq } from '../src/features/admin/print/questions/renderPrintMcq.js';
 import { renderPrintTrueFalse } from '../src/features/admin/print/questions/renderPrintTrueFalse.js';
 import { renderPrintTyping } from '../src/features/admin/print/questions/renderPrintTyping.js';
@@ -19,13 +20,21 @@ const sampleTheory = Object.freeze({
   workedExample: Object.freeze({ label: 'MODEL / MẪU', text: 'Apply the rule. / Áp dụng quy tắc.' })
 });
 
-test('student pronunciation print mirrors anytime vs after_submit theory access', async () => {
+const printScreenSource = readFileSync(new URL('../src/features/admin/print/renderLessonPrint.js', import.meta.url), 'utf8');
+
+test('student theory print toggle defaults on and accepts an explicit recall-mode off', () => {
+  assert.equal(normalizePrintConfig({ version: 'student' }).showStudentTheory, true);
+  assert.equal(normalizePrintConfig({ version: 'student', showStudentTheory: false }).showStudentTheory, false);
+  assert.equal(normalizePrintConfig({ version: 'student', showStudentTheory: true }).showStudentTheory, true);
+});
+
+test('student pronunciation print defaults to the authored anytime vs after_submit theory policy', async () => {
   const lesson = await loadLessonSet('g7-u1-pronunciation-01');
   const student = buildLessonPrintModel(lesson, { version: 'student' });
   const printed = questions(student);
 
   for (const question of printed.slice(0, 11)) {
-    assert.ok(question.studentTheory?.theory, `${question.id} should print anytime theory`);
+    assert.ok(question.studentTheory?.theory, `${question.id} should print anytime theory by default`);
     assert.equal('teacher' in question, false, `${question.id} must stay student-safe`);
   }
 
@@ -38,9 +47,21 @@ test('student pronunciation print mirrors anytime vs after_submit theory access'
   }
 });
 
-test('teacher pronunciation print keeps classification helpers and full theory', async () => {
+test('turning student theory off creates a no-scaffold recall worksheet without changing lesson content', async () => {
   const lesson = await loadLessonSet('g7-u1-pronunciation-01');
-  const teacher = buildLessonPrintModel(lesson, { version: 'teacher', teacherDetail: 'full' });
+  const student = buildLessonPrintModel(lesson, { version: 'student', showStudentTheory: false });
+  const printed = questions(student);
+
+  assert.ok(printed.every(question => !('studentTheory' in question)));
+  for (const question of printed.filter(candidate => candidate.type === 'classification')) {
+    assert.ok(question.groups.every(group => group.helper === ''), `${question.id} must hide helper clues when print theory is off`);
+  }
+  assert.deepEqual(lesson.items.slice(0, 11).map(item => item.theorySupport?.access), Array(11).fill('anytime'));
+});
+
+test('teacher pronunciation print ignores the student toggle and keeps helpers plus full theory', async () => {
+  const lesson = await loadLessonSet('g7-u1-pronunciation-01');
+  const teacher = buildLessonPrintModel(lesson, { version: 'teacher', teacherDetail: 'full', showStudentTheory: false });
   const q12 = questions(teacher).find(question => question.id === 'g7u1-pr-q12');
 
   assert.ok(q12);
@@ -51,7 +72,7 @@ test('teacher pronunciation print keeps classification helpers and full theory',
   assert.equal('studentTheory' in q12, false);
 });
 
-test('print follows effective item theory access without a separate PDF setting', async () => {
+test('authored theory access controls eligibility while the print toggle can suppress otherwise eligible support', async () => {
   const lesson = await loadLessonSet('g7-u1-pronunciation-01');
   const revised = {
     ...lesson,
@@ -63,13 +84,25 @@ test('print follows effective item theory access without a separate PDF setting'
     })
   };
 
-  const student = buildLessonPrintModel(revised, { version: 'student' });
-  const q1 = questions(student).find(question => question.id === 'g7u1-pr-q01');
-  const q12 = questions(student).find(question => question.id === 'g7u1-pr-q12');
+  const supported = buildLessonPrintModel(revised, { version: 'student', showStudentTheory: true });
+  const supportedQ1 = questions(supported).find(question => question.id === 'g7u1-pr-q01');
+  const supportedQ12 = questions(supported).find(question => question.id === 'g7u1-pr-q12');
+  assert.equal('studentTheory' in supportedQ1, false);
+  assert.ok(supportedQ12.studentTheory?.theory);
+  assert.ok(supportedQ12.groups.every(group => group.helper.length > 0));
 
-  assert.equal('studentTheory' in q1, false);
-  assert.ok(q12.studentTheory?.theory);
-  assert.ok(q12.groups.every(group => group.helper.length > 0));
+  const recall = buildLessonPrintModel(revised, { version: 'student', showStudentTheory: false });
+  const recallQ12 = questions(recall).find(question => question.id === 'g7u1-pr-q12');
+  assert.equal('studentTheory' in recallQ12, false);
+  assert.ok(recallQ12.groups.every(group => group.helper === ''));
+});
+
+test('print screen exposes an on-by-default Student-only theory toggle that refreshes preview without persistence', () => {
+  assert.match(printScreenSource, /data-print-student-theory checked/);
+  assert.match(printScreenSource, /showStudentTheory: theoryToggle\?\.checked \?\? true/);
+  assert.match(printScreenSource, /theoryToggle\?\.addEventListener\('change', refresh\)/);
+  assert.match(printScreenSource, /theoryWrap\.hidden = teacher/);
+  assert.doesNotMatch(printScreenSource, /localStorage|sessionStorage/);
 });
 
 test('all five print renderers place the shared student theory box before learner response content', () => {
@@ -102,9 +135,11 @@ test('all five print renderers place the shared student theory box before learne
   }
 });
 
-test('student theory print CSS is A4-friendly, monochrome-friendly, and kept with its question', () => {
+test('student theory print CSS is A4-friendly and the toolbar toggle is clearly interactive', () => {
   const css = readFileSync(new URL('../styles/lesson-print.css', import.meta.url), 'utf8');
   assert.match(css, /\.lesson-print-student-theory\{[^}]*border:1px solid #000[^}]*background:#fff[^}]*font-size:12pt[^}]*break-inside:avoid/s);
   assert.match(css, /\.lesson-print-question\{[^}]*break-inside:avoid/s);
   assert.match(css, /\.lesson-print-student-theory[^}]*break-inside:avoid/s);
+  assert.match(css, /\.lesson-print-theory-toggle-row\{[^}]*display:flex[^}]*min-height:38px/s);
+  assert.match(css, /\.lesson-print-theory-toggle-row input\{[^}]*width:16px[^}]*height:16px/s);
 });
