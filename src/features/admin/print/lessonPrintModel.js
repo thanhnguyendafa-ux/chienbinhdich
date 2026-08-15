@@ -191,7 +191,8 @@ function buildSentenceOrder(item, base, key, config) {
 }
 
 function buildClassification(item, base, key, config) {
-  const hideStudentHelpers = config.version === 'student' && theoryAccessForItem(item) === 'after_submit';
+  const hideStudentHelpers = config.version === 'student'
+    && (config.showStudentTheory === false || theoryAccessForItem(item) === 'after_submit');
   const student = {
     ...base,
     tokens: Object.freeze(orderForExposure(item.tokens ?? [], `${key}:classification`).map(token => String(token.text))),
@@ -226,7 +227,7 @@ function withTeacher(student, item, config, answerPayload) {
 }
 
 function studentTheoryPayload(item, config) {
-  if (config.version !== 'student' || theoryAccessForItem(item) !== 'anytime') return null;
+  if (config.version !== 'student' || config.showStudentTheory === false || theoryAccessForItem(item) !== 'anytime') return null;
   const feedback = item.teachingFeedback ?? null;
   if (!feedback?.theory) return null;
   return Object.freeze({
