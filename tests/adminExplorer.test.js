@@ -65,7 +65,7 @@ test('Explorer tree nests Global Success 2, 3, 5, 6 and 7 without changing Set i
   const global7 = findAdminTreeNode(tree, 'global7');
   assert.deepEqual(global7.children.filter(node => node.type === 'folder').map(node => node.id), ['global7-unit1', 'global7-unit-review']);
   assert.deepEqual(folderEntries(tree, 'global7-unit1').filter(node => node.type === 'lesson').map(node => node.setId), [
-    'g7-u1-translation-01', 'g7-u1-translation-02', 'g7-u1-pronunciation-01'
+    'g7-u1-translation-01', 'g7-u1-translation-02', 'g7-u1-pronunciation-01', 'g7-u1-mlh-vocab-context-01'
   ]);
   assert.equal(folderEntries(tree, 'global7-unit1-writing-s1').filter(node => node.type === 'lesson').length, 4);
   assert.equal(folderEntries(tree, 'global7-unit1-writing-s4').filter(node => node.type === 'lesson').length, 5);
@@ -89,7 +89,7 @@ test('Explorer breadcrumbs and recursive lesson counts match the hierarchy', () 
   assert.equal(folderLessonCount(findAdminTreeNode(tree, 'global5')), 16);
   assert.equal(folderLessonCount(findAdminTreeNode(tree, 'global6')), 65);
   assert.equal(folderLessonCount(findAdminTreeNode(tree, 'global6-unit-review')), 23);
-  assert.equal(folderLessonCount(findAdminTreeNode(tree, 'global7')), 67);
+  assert.equal(folderLessonCount(findAdminTreeNode(tree, 'global7')), 68);
   assert.equal(folderLessonCount(findAdminTreeNode(tree, 'global7-unit-review')), 20);
   assert.equal(folderLessonCount(tree), sets.length);
 });
