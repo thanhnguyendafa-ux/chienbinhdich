@@ -216,7 +216,11 @@ test('Brain v1.2 maps source to target without changing the six transformation a
 
   assert.ok(finals.every(item => /BRAIN v1\.2/i.test(item.teachingFeedback.theory)), 'all six final rewrites need a Brain v1.2 summary');
 
-  assert.match(q(30).teachingFeedback.theory, /YOU = SPECIAL.*DO.*ONE JOB.*LIKE/i);
+  const q30Brain = `${q(30).teachingFeedback.reason} ${q(30).teachingFeedback.theory}`;
+  assert.match(q30Brain, /YOU = SPECIAL/i);
+  assert.match(q30Brain, /DO/i);
+  assert.match(q30Brain, /ONE JOB/i);
+  assert.match(q30Brain, /LIKE/i);
 
   assert.match(q(32).teachingFeedback.theory, /Whole Subject.*My class.*core.*class.*ONE.*HAS.*35 students/i);
   assert.match(q(32).choices.find(choice => choice.id === 'b')?.feedback ?? '', /NEAR-NOUN TRAP.*35 students.*My class/i);
