@@ -83,6 +83,11 @@ function validateItemByType(item, type, errors) {
     return;
   }
 
+  if (type === 'sequence_number') {
+    validateSequenceNumber(item, errors);
+    return;
+  }
+
   if (type === 'classification') validateClassification(item, errors);
 }
 
@@ -160,6 +165,47 @@ function validateSentenceOrder(item, errors) {
   if (!isSubMultiset(item.correctOrder, tokens)) errors.push(`Sentence Order ${item.id} có correctOrder dùng token ngoài token pool`);
   if (item.displayOrder && !sameMultiset(item.displayOrder, tokens)) errors.push(`Sentence Order ${item.id} có displayOrder không khớp token pool`);
   validateOrderDiagnostics(item, tokens, accepted, errors);
+}
+
+function validateSequenceNumber(item, errors) {
+  if (!nonEmpty(item.prompt) || !Array.isArray(item.lines) || item.lines.length < 2 || !Array.isArray(item.correctOrder) || item.correctOrder.length < 2) {
+    errors.push(`Sequence Number không hợp lệ: ${item.id}`);
+    return;
+  }
+
+  const lineIds = new Set();
+  const lockedPositions = new Set();
+  for (const line of item.lines) {
+    const lineId = String(line?.id ?? '');
+    if (!nonEmpty(lineId) || !nonEmpty(line?.text) || lineIds.has(lineId)) {
+      errors.push(`Sequence Number ${item.id} có line không hợp lệ hoặc trùng id: ${lineId || '(trống)'}`);
+      continue;
+    }
+    lineIds.add(lineId);
+    if (line.lockedPosition === undefined) continue;
+    const position = Number(line.lockedPosition);
+    if (!Number.isInteger(position) || position < 1 || position > item.lines.length) {
+      errors.push(`Sequence Number ${item.id}/${lineId} có lockedPosition không hợp lệ`);
+      continue;
+    }
+    if (lockedPositions.has(position)) errors.push(`Sequence Number ${item.id} trùng lockedPosition: ${position}`);
+    lockedPositions.add(position);
+  }
+
+  const canonical = item.correctOrder.map(value => String(value));
+  if (canonical.length !== item.lines.length || new Set(canonical).size !== canonical.length) {
+    errors.push(`Sequence Number ${item.id} correctOrder phải chứa đúng mỗi line một lần`);
+  }
+  for (const lineId of canonical) if (!lineIds.has(lineId)) errors.push(`Sequence Number ${item.id} correctOrder dùng line không tồn tại: ${lineId}`);
+  for (const lineId of lineIds) if (!canonical.includes(lineId)) errors.push(`Sequence Number ${item.id} correctOrder thiếu line: ${lineId}`);
+
+  for (const line of item.lines) {
+    if (line.lockedPosition === undefined) continue;
+    const expected = canonical.indexOf(String(line.id)) + 1;
+    if (Number(line.lockedPosition) !== expected) {
+      errors.push(`Sequence Number ${item.id}/${line.id} lockedPosition phải khớp vị trí đúng ${expected}`);
+    }
+  }
 }
 
 function validateOrderDiagnostics(item, tokens, accepted, errors) {
