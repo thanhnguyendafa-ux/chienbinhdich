@@ -34,10 +34,18 @@ function printQuestions(model) {
   return model.sections.flatMap(section => section.blocks.flatMap(block => block.questions));
 }
 
-test('G7 U1 Mai Lan Huong vocabulary context lesson is published as one 30-question flow', async () => {
-  const descriptor = getSetDescriptorBySlug('g7u1-mlh-vocab-context');
+test('G6 U1 Mai Lan Huong vocabulary context lesson is published as one 30-question flow with legacy G7 link compatibility', async () => {
+  const descriptor = getSetDescriptorBySlug('g6u1-mlh-vocab-context');
+  const legacy = getSetDescriptorBySlug('g7u1-mlh-vocab-context');
   assert.ok(descriptor);
   assert.equal(descriptor.id, 'g7-u1-mlh-vocab-context-01');
+  assert.equal(descriptor.folderId, 'global6-unit1');
+  assert.equal(descriptor.course, 'Global Success 6');
+  assert.equal(descriptor.unit, 'Unit 1 · My New School');
+  assert.equal(descriptor.lessonSlug, 'g6u1-mlh-vocab-context');
+  assert.deepEqual(descriptor.lessonSlugAliases, ['g7u1-mlh-vocab-context']);
+  assert.equal(legacy?.id, descriptor.id);
+  assert.equal(legacy?.lessonSlug, descriptor.lessonSlug);
   assert.equal(descriptor.itemCount, 30);
   assert.equal(descriptor.completionPolicy, 'all-items');
   assert.deepEqual(descriptor.activityTypes, ['typing', 'mcq']);
@@ -119,7 +127,7 @@ test('Q23-Q30 preserve the eight source sentences and use all eight shuffled-cho
   assert.equal(application.reduce((sum, item) => sum + item.choices.length, 0), 64);
 });
 
-test('Student PDF mirrors scaffold withdrawal for the new 30-question lesson', async () => {
+test('Student PDF mirrors scaffold withdrawal for the corrected 30-question lesson', async () => {
   const lesson = await loadLessonSet('g7-u1-mlh-vocab-context-01');
   const scaffolded = printQuestions(buildLessonPrintModel(lesson, { version: 'student' }));
   const recall = printQuestions(buildLessonPrintModel(lesson, { version: 'student', showStudentTheory: false }));
