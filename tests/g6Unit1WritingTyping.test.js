@@ -6,8 +6,9 @@ import { g6U1SourceSentences, getG6U1WritingTypingContent } from '../src/data/g6
 
 test('Global 6 Unit 1 publishes 42 micro-lessons under 9 structures plus Final Writing', () => {
   assert.equal(g6U1WritingRegistry.length, 42);
-  assert.equal(g6U1WritingFolders.length, 12);
-  assert.deepEqual(g6U1WritingFolders.slice(0, 2).map(folder => folder.id), ['global6', 'global6-unit1-writing-typing']);
+  assert.equal(g6U1WritingFolders.length, 13);
+  assert.deepEqual(g6U1WritingFolders.slice(0, 3).map(folder => folder.id), ['global6', 'global6-unit1', 'global6-unit1-writing-typing']);
+  assert.equal(g6U1WritingFolders.find(folder => folder.id === 'global6-unit1-writing-typing')?.parentId, 'global6-unit1');
   assert.equal(g6U1WritingFolders.filter(folder => folder.parentId === 'global6-unit1-writing-typing').length, 10);
 
   const counts = new Map();
