@@ -66,7 +66,7 @@ function renderMcq(item, { exposureKey = item.id, passages = [] } = {}) {
   const promptLabel = passage
     ? 'Chọn phương án có cả True/False và lý do đúng'
     : stimulus
-      ? 'Đọc bài và chọn Main Idea phù hợp nhất'
+      ? (stimulus.promptLabel ?? 'Đọc bài và chọn Main Idea phù hợp nhất')
       : 'Chọn một đáp án';
   return `
     ${readingBlock ? renderReadingPassage(readingBlock) : ''}
