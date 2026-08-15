@@ -153,11 +153,11 @@ FOUNDATION.forEach(([correct, prompt, info, theory, example], index) => {
   const special = Object.fromEntries(WH.map(choice => [choice.id, choice.id === correct
     ? `Thầy: Đúng. ${choice.text.toUpperCase()} match ${info}.`
     : `Thầy: Chưa đúng. Con đang học nhóm ${info}; xem Theory đang mở.`]));
-  items.push(mcq({ number: index + 1, stage: 'foundation', prompt, choices: whChoices(correct, special), correctChoiceId: correct, reason: `Thầy: ${info} → ${WH.find(choice => choice.id === correct).text.toUpperCase()}.`, theory: `LÝ THUYẾT NỀN · ${theory}`, example, access: 'anytime' }));
+  items.push(mcq({ number: index + 1, prompt, choices: whChoices(correct, special), correctChoiceId: correct, reason: `Thầy: ${info} → ${WH.find(choice => choice.id === correct).text.toUpperCase()}.`, theory: `LÝ THUYẾT NỀN · ${theory}`, example, access: 'anytime' }));
 });
 
 INTENTS.forEach(([correct, prompt, reason, theory, example], index) => {
-  items.push(mcq({ number: 9 + index, stage: 'intent', prompt, choices: whChoices(correct), correctChoiceId: correct, reason: `Thầy: ${reason}`, theory, example }));
+  items.push(mcq({ number: 9 + index, prompt, choices: whChoices(correct), correctChoiceId: correct, reason: `Thầy: ${reason}`, theory, example }));
 });
 
 WORDS.forEach(([vi, en, reason, theory, example], index) => {
@@ -170,14 +170,14 @@ CHUNKS.forEach(([vi, en, reason, theory, example], index) => {
 
 INFORMATION.forEach(([answer, correct, rawChoices, theory], index) => {
   const choices = rawChoices.map(([id, text]) => ({ id, text, feedback: id === correct ? `Thầy: Đúng. “${answer}” match ${text}.` : `Thầy: Chưa đúng. Đọc lại ý nghĩa “${answer}”.` }));
-  items.push(mcq({ number: 49 + index, stage: 'information', prompt: `ANSWER → INFORMATION TYPE · “${answer}” thuộc loại thông tin nào?`, choices, correctChoiceId: correct, reason: `Thầy: ${choices.find(choice => choice.id === correct).text}.`, theory: `WH BRAIN · ${theory}`, example: answer }));
+  items.push(mcq({ number: 49 + index, stage: 'sentence', prompt: `ANSWER → INFORMATION TYPE · “${answer}” thuộc loại thông tin nào?`, choices, correctChoiceId: correct, reason: `Thầy: ${choices.find(choice => choice.id === correct).text}.`, theory: `WH BRAIN · ${theory}`, example: answer }));
 });
 
 SOURCE.forEach(([correct, prompt, reason, theory, example, traps], index) => {
   const special = Object.fromEntries(WH.map(choice => [choice.id, choice.id === correct
     ? `Thầy: Đúng. ${reason}`
     : `Thầy: ${traps[choice.id] ?? `${choice.text.toUpperCase()} không match loại thông tin trong câu trả lời. Hãy dùng ANSWER MEANING → INFORMATION TYPE → WH.`}`]));
-  items.push(mcq({ number: 57 + index, stage: 'source', prompt, choices: whChoices(correct, special), correctChoiceId: correct, reason: `Thầy: ${reason}`, theory, example }));
+  items.push(mcq({ number: 57 + index, stage: 'sentence', prompt, choices: whChoices(correct, special), correctChoiceId: correct, reason: `Thầy: ${reason}`, theory, example }));
 });
 
 export const global6Unit1MlhWritingQuestionWords01Content = freeze({ items: freeze(items) });
