@@ -72,11 +72,16 @@ test('Session V7 stores sequence_number object responses without a schema change
   assert.equal(attempt.inputMethod, 'tap');
 });
 
-test('learner renderer keeps lines fixed and exposes number bank, slots, tap and drag/drop hooks', async () => {
+test('learner renderer keeps every number visible and makes the full dialogue row a tap/drop target', async () => {
   const html = renderQuestionInteraction(makeItem());
+  assert.match(html, /sequence-number-workspace/);
   assert.match(html, /data-sequence-bank/);
+  assert.match(html, /data-sequence-number="1"/);
+  assert.match(html, /data-sequence-locked-number="1"/);
   assert.match(html, /data-sequence-number="2"/);
-  assert.doesNotMatch(html, /data-sequence-number="1"/);
+  assert.match(html, /data-sequence-selection/);
+  assert.match(html, /data-sequence-count/);
+  assert.match(html, /data-sequence-line-target="1"/);
   assert.match(html, /data-sequence-slot="line-a"/);
   assert.match(html, /data-sequence-locked="1"/);
   assert.ok(html.indexOf('Second line.') < html.indexOf('First line.'));
@@ -86,11 +91,22 @@ test('learner renderer keeps lines fixed and exposes number bank, slots, tap and
   assert.match(source, /dragover/);
   assert.match(source, /drop/);
   assert.match(source, /activeNumber/);
+  assert.match(source, /querySelectorAll\('\[data-sequence-line-target\]'\)/);
+  assert.match(source, /button\.hidden = false/);
+  assert.match(source, /classList\.toggle\('is-used'/);
+  assert.doesNotMatch(source, /button\.hidden = unavailable/);
+  assert.match(source, /Đang chọn số \$\{activeNumber\}/);
   assert.match(source, /meta\(attemptStartedAt, 'tap', false\)/);
 
   const css = await readFile(new URL('../styles/question-types.css', import.meta.url), 'utf8');
-  assert.match(css, /\.sequence-number-line/);
-  assert.match(css, /grid-template-columns:52px minmax\(0,1fr\)/);
+  assert.match(css, /\.question-card\.type-sequence_number\{width:min\(1080px,100%\)\}/);
+  assert.match(css, /\.type-sequence_number \.question-interaction\{container-type:inline-size\}/);
+  assert.match(css, /\.sequence-number-workspace\{display:grid/);
+  assert.match(css, /\.sequence-number-bank-wrap\{order:-1;position:sticky/);
+  assert.match(css, /@container \(min-width:760px\)/);
+  assert.match(css, /grid-template-columns:minmax\(0,1fr\) minmax\(180px,220px\)/);
+  assert.match(css, /\.sequence-number-line\{width:100%;min-height:62px/);
+  assert.match(css, /\.sequence-number-token\.is-used:not\(\.is-locked\)::after/);
 });
 
 test('sequence_number print keeps student answers hidden while Teacher Full gets canonical numbers', () => {
