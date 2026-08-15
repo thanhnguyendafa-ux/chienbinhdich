@@ -111,12 +111,26 @@ test('teaching mode reuses learner renderDrill and never writes preview sessions
 
 test('responsive panel enhancer is loaded without changing learner rendering architecture', () => {
   assert.match(htmlSource, /teachingPanelEnhancer\.js/);
-  assert.match(panelEnhancerSource, /new MutationObserver\(enhanceTeachingMode\)/);
+  assert.match(panelEnhancerSource, /new MutationObserver\(handleTeachingMutation\)/);
   assert.match(panelEnhancerSource, /admin-teaching-workspace/);
   assert.match(panelEnhancerSource, /workspace\.append\(drillShell\)/);
   assert.match(panelEnhancerSource, /workspace\.append\(panel\)/);
   assert.match(panelEnhancerSource, /let panelOpen = false/);
   assert.match(panelEnhancerSource, /if \(hadTeachingMode\) panelOpen = false/);
+});
+
+test('Teaching Mode enhancer settles its own DOM mutations instead of feeding the observer loop', () => {
+  assert.match(panelEnhancerSource, /function setTextIfChanged\(node, nextText\)/);
+  assert.match(panelEnhancerSource, /node\.textContent === nextText/);
+  assert.match(panelEnhancerSource, /setTextIfChanged\(topLabel, nextLabel\)/);
+  assert.match(panelEnhancerSource, /setTextIfChanged\(bottomLabel, nextLabel\)/);
+  assert.doesNotMatch(panelEnhancerSource, /if \(topLabel\) topLabel\.textContent\s*=/);
+  assert.doesNotMatch(panelEnhancerSource, /if \(bottomLabel\) bottomLabel\.textContent\s*=/);
+
+  const disconnectIndex = panelEnhancerSource.indexOf('observer?.disconnect()');
+  const enhanceIndex = panelEnhancerSource.indexOf('enhanceTeachingMode();', disconnectIndex);
+  const observeAgainIndex = panelEnhancerSource.indexOf('observer?.observe(appRoot, observerOptions)', enhanceIndex);
+  assert.ok(disconnectIndex >= 0 && enhanceIndex > disconnectIndex && observeAgainIndex > enhanceIndex);
 });
 
 test('Teaching Mode is collapsed by default and exposes accessible top and bottom toggles', () => {
