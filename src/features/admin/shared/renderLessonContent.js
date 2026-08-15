@@ -21,6 +21,7 @@ function renderQuestion(item, index, compact, passage) {
     ? `<ul>${item.choices.map(choice => `<li>${esc(choice.text ?? choice.label ?? choice.id)}${choice.diagnostic && !compact ? ` <small>(${diagnosticLabel(choice.diagnostic)})</small>` : ''}</li>`).join('')}</ul>`
     : '';
   const orderDetails = type === 'sentence_order' ? renderSentenceOrderDetails(item, compact) : '';
+  const sequenceDetails = type === 'sequence_number' ? renderSequenceNumberDetails(item) : '';
   const classificationDetails = type === 'classification' ? renderClassificationDetails(item) : '';
   const feedback = item.teachingFeedback ?? {};
   const stimulus = item.stimulus ?? null;
@@ -32,6 +33,7 @@ function renderQuestion(item, index, compact, passage) {
       <p class="admin-question-prompt">${esc(questionPromptDisplay(item) || item.id)}</p>
       ${choices}
       ${orderDetails}
+      ${sequenceDetails}
       ${classificationDetails}
       <div class="admin-answer-box"><span>Đáp án chuẩn</span><strong>${esc(displayValue(answer))}</strong></div>
       ${feedback.reason ? `<p><strong>Giải thích:</strong> ${esc(feedback.reason)}</p>` : ''}
@@ -51,6 +53,14 @@ function renderSentenceOrderDetails(item, compact) {
       ${distractors.length && !compact
         ? `<ul>${distractors.map(value => `<li><strong>Nhiễu:</strong> <code>${esc(value.token)}</code> · ${esc(value.code)} — ${esc(value.hint)}</li>`).join('')}</ul>`
         : ''}
+    </div>`;
+}
+
+function renderSequenceNumberDetails(item) {
+  const positions = new Map((item.correctOrder ?? []).map((lineId, index) => [String(lineId), index + 1]));
+  return `
+    <div class="admin-order-details admin-sequence-details">
+      ${(item.lines ?? []).map(line => `<p><strong>${positions.get(String(line.id)) ?? '?'}.</strong> ${esc(line.text)}${Number.isInteger(Number(line.lockedPosition)) ? ' <small>— cho sẵn / locked</small>' : ''}</p>`).join('')}
     </div>`;
 }
 
