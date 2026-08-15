@@ -208,3 +208,38 @@ test('all 51 questions keep theory after submit; Student print stays answer-free
     assert.match(question.prompt, /FINAL REWRITE/);
   }
 });
+
+test('Brain v1.2 maps source to target without changing the six transformation answers', async () => {
+  const lesson = await loadLessonSet('g6-u1-mlh-writing-rewrite-01');
+  const q = number => lesson.items[number - 1];
+  const reasoning = lesson.items.slice(27, 45);
+  const finals = lesson.items.slice(45);
+
+  assert.ok(reasoning.every(item => /BRAIN v1\.2/i.test(item.teachingFeedback.theory)), 'all 18 reasoning items need Brain v1.2 theory after submit');
+  assert.ok(finals.every(item => /BRAIN v1\.2/i.test(item.teachingFeedback.theory)), 'all six final rewrites need a Brain v1.2 summary');
+
+  assert.match(q(30).teachingFeedback.theory, /YOU = SPECIAL.*DO.*ONE JOB.*LIKE/i);
+
+  assert.match(q(32).teachingFeedback.theory, /Whole Subject.*My class.*core.*class.*ONE.*HAS.*35 students/i);
+  assert.match(q(32).choices.find(choice => choice.id === 'b')?.feedback ?? '', /NEAR-NOUN TRAP.*35 students.*My class/i);
+  assert.match(q(33).choices.find(choice => choice.id === 'b')?.feedback ?? '', /AGREEMENT ERROR.*My class.*ONE.*HAS/i);
+
+  assert.match(q(34).teachingFeedback.theory, /SOURCE BRAIN.*Mai.*ONE.*HÀNH ĐỘNG.*TARGET BRAIN.*Mai.*house.*ONE.*AURA/i);
+  assert.match(q(36).choices.find(choice => choice.id === 'c')?.feedback ?? '', /HOST ERROR.*AURA.*BE.*DOESN/i);
+
+  assert.match(q(39).teachingFeedback.theory, /playing.*gerund|gerund.*playing/i);
+  assert.match(q(39).teachingFeedback.theory, /KHÔNG phải Continuous marker/i);
+
+  assert.match(q(40).teachingFeedback.theory, /SOURCE.*DO.*YOU.*LIKE.*TARGET.*ARE.*YOU.*INTERESTED/i);
+  assert.match(q(41).teachingFeedback.theory, /HÀNH ĐỘNG.*YOU = SPECIAL.*DO.*TARGET AURA.*YOU = SPECIAL.*ARE/i);
+
+  assert.match(q(43).teachingFeedback.theory, /STANDARD GRAMMAR|standard grammar/i);
+  assert.match(q(43).teachingFeedback.theory, /không tạo thêm.*mindset THERE|Không tạo thêm.*mindset THERE/i);
+  assert.match(q(45).teachingFeedback.theory, /STANDARD GRAMMAR BOUNDARY/i);
+
+  assert.match(q(47).teachingFeedback.theory, /Whole Subject.*My class.*ONE.*HAS.*35 students/i);
+  assert.match(q(49).teachingFeedback.theory, /HÀNH ĐỘNG.*AURA.*playing.*KHÔNG phải Continuous marker/i);
+  assert.match(q(51).teachingFeedback.theory, /STANDARD GRAMMAR BOUNDARY.*mindset THERE/i);
+
+  assert.deepEqual(finals.map(item => item.en), FINAL_SENTENCES);
+});
