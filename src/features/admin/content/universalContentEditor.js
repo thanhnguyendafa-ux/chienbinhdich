@@ -345,7 +345,7 @@ function renderDiagnostic(choice) {
 
 function renderTrueFalse(item) {
   return `<div class="admin-editor-grid"><label>Statement / Mệnh đề<textarea rows="4" data-item-field="statement">${esc(item.statement)}</textarea></label>
-    <label>Correct answer / Đáp án<select data-item-select="answer" data-value-type="boolean"><option value="true" ${item.answer === true ? 'selected' : ''}>TRUE</option><option value="false" ${item.answer === false ? '' : 'selected'}>FALSE</option></select></label></div>`;
+    <label>Correct answer / Đáp án<select data-item-select="answer" data-value-type="boolean"><option value="true" ${item.answer === true ? 'selected' : ''}>TRUE</option><option value="false" ${item.answer === false ? 'selected' : ''}>FALSE</option></select></label></div>`;
 }
 
 function renderSentenceOrder(item) {
