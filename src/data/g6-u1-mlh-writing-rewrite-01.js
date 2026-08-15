@@ -26,8 +26,25 @@ const rewriteTypingUi = freeze({
 });
 
 const teaching = (correctLabel, reason, theory, example) => freeze({ correctLabel, reason, theory, example });
+const appendBrain = (base, extra) => extra ? `${base} ${extra}` : base;
 const contextPrompt = ({ sourceSentence, rewriteStarter, currentTask }) =>
   `CÂU GỐC: ${sourceSentence} | CÂU VIẾT LẠI: ${rewriteStarter} | NHIỆM VỤ: ${currentTask}`;
+
+function withBrain(spec, brain = null) {
+  if (!brain) return spec;
+  const next = {
+    ...spec,
+    reason: appendBrain(spec.reason, brain.reason),
+    theory: appendBrain(spec.theory, brain.theory)
+  };
+  if (Array.isArray(spec.choices) && brain.choices) {
+    next.choices = spec.choices.map(choice => {
+      const [id, text, feedback] = choice;
+      return [id, text, appendBrain(feedback, brain.choices[id])];
+    });
+  }
+  return next;
+}
 
 function typingItem(spec, index, stage) {
   const item = {
@@ -459,10 +476,170 @@ const FINAL_SPECS = [
   }
 ].map(spec => ({ ...spec, vi: contextPrompt(spec) }));
 
+const WORD_BRAIN = freeze({
+  2: freeze({ theory: 'BRAIN v1.2 · students mang nghĩa MANY. Nhưng trong câu My class has 35 students, 35 students nằm trong Predicate nên không điều khiển HAS.' }),
+  3: freeze({ theory: 'BRAIN v1.2 · khi Whole Subject là [My class], subject core class = ONE.' }),
+  8: freeze({ theory: 'BRAIN v1.2 · play là lõi HÀNH ĐỘNG; nếu marker DO/DOES đã nhận ONE JOB thì play giữ base form.' }),
+  10: freeze({ theory: 'BRAIN v1.2 · good là AURA word trong target Mary is good... nên cần host BE.' }),
+  11: freeze({ theory: 'BRAIN v1.2 · well thuộc SOURCE HÀNH ĐỘNG plays ... well; target có thể đổi sang AURA be good at...' }),
+  13: freeze({ theory: 'BRAIN v1.2 · interested là AURA word; target Are you interested...? dùng BE host, không dùng DO.' })
+});
+
+const CHUNK_BRAIN = freeze({
+  2: freeze({ theory: 'BRAIN v1.2 · [my class] là Whole Subject mới; core class = ONE → HAVE family phải match thành HAS.' }),
+  4: freeze({ theory: 'BRAIN v1.2 · trong target AURA, isn’t far from là một predicate chunk; không kéo DOESN’T vào vì far không phải main action verb.' }),
+  7: freeze({ theory: 'BRAIN v1.2 · good at thuộc AURA predicate, vì vậy câu cần BE host trước good.' }),
+  8: freeze({ theory: 'BRAIN v1.2 · playing ở đây là gerund/V-ing sau preposition at; KHÔNG phải Continuous marker.' }),
+  9: freeze({ theory: 'BRAIN v1.2 · interested in là AURA chunk; YOU = SPECIAL → BE host ARE trong câu hỏi.' })
+});
+
+const TRANSFORM_BRAIN = freeze({
+  'favourite-like-best': freeze([
+    freeze({
+      reason: 'BRAIN v1.2 · Giữ meaning trước: source dùng BE/GÁN frame với favourite subject, target sẽ chuyển sang HÀNH ĐỘNG like best.',
+      theory: 'SOURCE BRAIN: What + IS + [your favourite subject]? TARGET BRAIN: What subject + DO + YOU + LIKE best? Meaning core phải đứng yên dù machinery đổi.'
+    }),
+    freeze({
+      reason: 'BRAIN v1.2 · Khi chuyển favourite → like best, target đã đổi sang HÀNH ĐỘNG.',
+      theory: 'TARGET MINDSET HÀNH ĐỘNG → subject YOU = SPECIAL → marker DO. Không giữ BE machinery của source khi main verb mới là LIKE.'
+    }),
+    freeze({
+      reason: 'BRAIN v1.2 · YOU = SPECIAL → DO; ONE JOB → LIKE giữ base form.',
+      theory: 'SKELETON: What subject | DO | YOU | LIKE best? DO nhận nhiệm vụ Present Simple question nên LIKE không thêm -s.',
+      choices: freeze({
+        a: 'BRAIN: thiếu marker DO cho target HÀNH ĐỘNG.',
+        c: 'BRAIN: ARE là host của AURA/BE, nhưng target đang dùng main verb LIKE.',
+        d: 'BRAIN: YOU = SPECIAL nên dùng DO, không dùng DOES.'
+      })
+    })
+  ]),
+  'there-are-has': freeze([
+    freeze({
+      reason: 'BRAIN v1.2 · Transformation đổi góc nhìn, nhưng meaning core vẫn là “lớp của tôi có 35 học sinh”.',
+      theory: 'SOURCE là existential There are; TARGET Whole Subject sẽ là [My class]. Đừng để cụm số lượng 35 students chi phối verb của target.'
+    }),
+    freeze({
+      reason: 'BRAIN v1.2 · Whole Subject [My class] → subject core class → ONE → HAVE family = HAS.',
+      theory: 'WHOLE SUBJECT: [My class]. CORE: class. COUNT: ONE. MATCH: HAS. 35 students nằm trong Predicate/Object nên không điều khiển HAS.',
+      choices: freeze({
+        b: 'BRAIN v1.2 · NEAR-NOUN TRAP: con thấy 35 students là MANY nhưng verb phải match Whole Subject [My class], không match noun phía sau.'
+      })
+    }),
+    freeze({
+      reason: 'BRAIN v1.2 · [My class] = ONE nên skeleton đúng phải dùng HAS.',
+      theory: 'CUT: [My class] | has | 35 students. Whole Subject điều khiển verb; 35 students là phần thông tin được gán/chứa, không phải controller.',
+      choices: freeze({
+        b: 'BRAIN v1.2 · AGREEMENT ERROR: [My class] → core class = ONE → HAS, không HAVE.'
+      })
+    })
+  ]),
+  'near-not-far-from': freeze([
+    freeze({
+      reason: 'BRAIN v1.2 · Source và target giữ cùng meaning khoảng cách nhưng đổi machinery.',
+      theory: 'SOURCE BRAIN: [Mai] = ONE, HÀNH ĐỘNG → LIVES near... TARGET BRAIN: [Mai’s house] → core house = ONE, AURA → ISN’T far from...'
+    }),
+    freeze({
+      reason: 'BRAIN v1.2 · Target starter đã là AURA với BE host ISN’T; chỉ cần chọn aura chunk far from để giữ nghĩa near.',
+      theory: 'MINDSET TARGET = AURA. [Mai’s house] = ONE → ISN’T. near ↔ not far from; nếu dùng isn’t near thì meaning bị đảo.'
+    }),
+    freeze({
+      reason: 'BRAIN v1.2 · Whole Subject [Mai’s house] → core house = ONE → AURA host ISN’T.',
+      theory: 'CUT: [Mai’s house] | isn’t far from | her school. Far là AURA/complement, không phải main HÀNH ĐỘNG verb để gọi DOESN’T.',
+      choices: freeze({
+        a: 'BRAIN: grammar có thể đứng được nhưng MEANING CORE bị đảo — isn’t near = không gần.',
+        c: 'BRAIN: HOST ERROR — target là AURA nên dùng BE; DOESN’T chỉ phục vụ HÀNH ĐỘNG main verb.'
+      })
+    })
+  ]),
+  'well-good-at-ving': freeze([
+    freeze({
+      reason: 'BRAIN v1.2 · Meaning là năng lực tốt; source và target diễn đạt bằng hai mindset khác nhau.',
+      theory: 'SOURCE BRAIN: [Mary] = ONE, HÀNH ĐỘNG → PLAY + S → plays ... well. TARGET BRAIN: [Mary] = ONE, AURA → IS good at...'
+    }),
+    freeze({
+      reason: 'BRAIN v1.2 · Transformation HÀNH ĐỘNG → AURA: plays ... well ↔ is good at ...',
+      theory: 'Khi target dùng adjective good, BE trở thành host: Mary IS good at + activity.'
+    }),
+    freeze({
+      reason: 'BRAIN v1.2 · playing là morphology do preposition at yêu cầu, không phải dấu Continuous.',
+      theory: 'STANDARD GRAMMAR SUPPLEMENT: preposition AT + V-ing → playing. BRAIN boundary: IS là AURA host; PLAYING ở đây là gerund/activity form, KHÔNG phải Continuous marker.',
+      choices: freeze({
+        a: 'BRAIN: base PLAY không đứng trực tiếp sau preposition AT trong cấu trúc này.',
+        b: 'BRAIN: PLAYS là finite verb của source HÀNH ĐỘNG; target sau AT cần activity V-ing.'
+      })
+    })
+  ]),
+  'like-interested-in': freeze([
+    freeze({
+      reason: 'BRAIN v1.2 · Giữ meaning sở thích, nhưng source HÀNH ĐỘNG sẽ đổi sang target AURA.',
+      theory: 'SOURCE: DO + YOU + LIKE physics? YOU = SPECIAL. TARGET: ARE + YOU + INTERESTED in physics? Cùng meaning, khác host/marker.'
+    }),
+    freeze({
+      reason: 'BRAIN v1.2 · like → interested in làm target đổi từ HÀNH ĐỘNG sang AURA.',
+      theory: 'SOURCE HÀNH ĐỘNG: YOU = SPECIAL → DO + LIKE. TARGET AURA: YOU = SPECIAL → ARE + interested. Không mang DO sang target.',
+      choices: freeze({
+        c: 'BRAIN: đúng transformation meaning và đúng target AURA chunk interested in.'
+      })
+    }),
+    freeze({
+      reason: 'BRAIN v1.2 · Target đã có AURA host ARE; phần còn lại phải là interested in + noun.',
+      theory: 'CUT: ARE | YOU | interested in | physics? Nếu dùng Do you interested..., con đã giữ nhầm machinery HÀNH ĐỘNG của source.',
+      choices: freeze({
+        a: 'BRAIN: thiếu preposition IN nên AURA chunk chưa hoàn chỉnh.'
+      })
+    })
+  ]),
+  'has-there-is': freeze([
+    freeze({
+      reason: 'BRAIN v1.2 · Source Whole Subject [The school] → core school = ONE → HAS; target chuyển sang existential There is/are.',
+      theory: 'Đây là boundary quan trọng: source có Whole Subject rõ; target existential THERE dùng standard grammar supplement. Không tạo thêm một “mindset THERE” mới.'
+    }),
+    freeze({
+      reason: 'BRAIN v1.2 · Target existential là STANDARD GRAMMAR BOUNDARY, nên theo pattern There is/are + thing(s) + place.',
+      theory: 'Bài khóa đáp án There IS vì noun phrase được mở bằng singular a computer room. Đây là standard existential agreement, không ép vào ONE/MANY controller kiểu subject thông thường.',
+      choices: freeze({
+        c: 'BRAIN boundary: There has không phải existential skeleton.',
+        d: 'BRAIN boundary: There have không phải existential skeleton.'
+      })
+    }),
+    freeze({
+      reason: 'BRAIN v1.2 · Giữ đủ things rồi đưa place xuống tail: There is + things + in the school.',
+      theory: 'STANDARD GRAMMAR BOUNDARY: existential There is/are. CUT: There is | a computer room and a library | in the school. Không gọi THERE là Whole Subject controller mới.',
+      choices: freeze({
+        b: 'BRAIN boundary: source HAS machinery không được bê nguyên sang existential target.'
+      })
+    })
+  ])
+});
+
+const FINAL_BRAIN = freeze({
+  'favourite-like-best': freeze({
+    theory: 'BRAIN v1.2 · SOURCE BE/GÁN → TARGET HÀNH ĐỘNG. YOU = SPECIAL → DO; ONE JOB → LIKE base. CUT: What subject | do | you | like best?'
+  }),
+  'there-are-has': freeze({
+    theory: 'BRAIN v1.2 · Whole Subject [My class] → core class = ONE → HAS. 35 students thuộc Predicate, không điều khiển verb.'
+  }),
+  'near-not-far-from': freeze({
+    theory: 'BRAIN v1.2 · SOURCE [Mai] HÀNH ĐỘNG lives → TARGET [Mai’s house] core house = ONE, AURA → ISN’T far from. Meaning near được giữ nguyên.'
+  }),
+  'well-good-at-ving': freeze({
+    theory: 'BRAIN v1.2 · SOURCE HÀNH ĐỘNG plays ... well → TARGET AURA is good at.... playing là V-ing sau AT, KHÔNG phải Continuous marker.'
+  }),
+  'like-interested-in': freeze({
+    theory: 'BRAIN v1.2 · SOURCE HÀNH ĐỘNG: YOU = SPECIAL → DO + LIKE. TARGET AURA: YOU = SPECIAL → ARE + interested in.'
+  }),
+  'has-there-is': freeze({
+    theory: 'BRAIN v1.2 · SOURCE [The school] core school = ONE → HAS. TARGET existential There is/are là STANDARD GRAMMAR BOUNDARY, không tạo mindset THERE mới.'
+  })
+});
+
 const items = [];
-WORD_SPECS.forEach((spec, index) => items.push(typingItem(spec, index, 'word')));
-CHUNK_SPECS.forEach((spec, offset) => items.push(typingItem(spec, 15 + offset, 'phrase')));
-TRANSFORM_SPECS.forEach((spec, offset) => items.push(mcqItem(spec, 27 + offset)));
-FINAL_SPECS.forEach((spec, offset) => items.push(typingItem(spec, 45 + offset, 'sentence')));
+WORD_SPECS.forEach((spec, index) => items.push(typingItem(withBrain(spec, WORD_BRAIN[index]), index, 'word')));
+CHUNK_SPECS.forEach((spec, offset) => items.push(typingItem(withBrain(spec, CHUNK_BRAIN[offset]), 15 + offset, 'phrase')));
+TRANSFORM_SPECS.forEach((spec, offset) => {
+  const brain = TRANSFORM_BRAIN[spec.transformationId]?.[offset % 3];
+  items.push(mcqItem(withBrain(spec, brain), 27 + offset));
+});
+FINAL_SPECS.forEach((spec, offset) => items.push(typingItem(withBrain(spec, FINAL_BRAIN[spec.transformationId]), 45 + offset, 'sentence')));
 
 export const global6Unit1MlhWritingRewrite01Content = freeze({ items: freeze(items) });

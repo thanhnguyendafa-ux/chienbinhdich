@@ -152,3 +152,25 @@ test('all 64 items hide theory before response in Student print while Teacher Fu
   for (const question of recall) assert.equal('studentTheory' in question, false, `${question.id} recall must remain theory-free`);
   for (const question of teacher) assert.ok(question.teacher?.theory, `${question.id} should retain Teacher theory`);
 });
+
+test('Brain v1.2 diagnostics lock Whole Subject, ONE/MANY/SPECIAL and ONE JOB without changing answers', async () => {
+  const lesson = await loadLessonSet('g6-u1-mlh-writing-reorder-01');
+  const q = number => lesson.items[number - 1];
+
+  assert.match(q(9).teachingFeedback.theory, /students.*MANY|MANY.*students/i);
+  assert.match(q(19).teachingFeedback.theory, /children.*MANY/i);
+  assert.match(q(38).teachingFeedback.theory, /Whole Subject.*your first week.*ONE.*IS/i);
+
+  assert.match(q(50).teachingFeedback.theory, /YOU = SPECIAL.*DO.*ONE JOB.*HAVE/i);
+  assert.match(q(51).teachingFeedback.theory, /Whole Subject.*Some creative students.*students.*MANY/i);
+  assert.match(q(54).choices.find(choice => choice.id === 'b')?.feedback ?? '', /DOUBLE MARKING.*DON’T.*HAS.*DON’T \+ HAVE/i);
+  assert.match(q(56).choices.find(choice => choice.id === 'b')?.feedback ?? '', /DOUBLE MARKING.*DOESN.*GO/i);
+  const q57Theory = q(57).teachingFeedback.theory;
+  assert.match(q57Theory, /Most children/i);
+  assert.match(q57Theory, /children.*MANY/i);
+  assert.match(q57Theory, /LETTER S/i);
+  assert.match(q(58).teachingFeedback.theory, /AURA.*Most children.*MANY.*ARE/i);
+
+  assert.match(q(64).teachingFeedback.theory, /AURA.*Most children.*children.*MANY.*ARE/i);
+  assert.deepEqual(q(64).correctOrder, ['most', 'children', 'are', 'excited', 'on', 'the', 'first', 'day', 'of', 'school']);
+});
