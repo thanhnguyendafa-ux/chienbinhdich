@@ -1,4 +1,5 @@
 const ids = (start, end) => Object.freeze(Array.from({ length: end - start + 1 }, (_, index) => `g6u1-mlh-rg-q${String(start + index).padStart(2, '0')}`));
+const tfIds = (start, end) => Object.freeze(Array.from({ length: end - start + 1 }, (_, index) => `g6u1-mlh-tf-q${String(start + index).padStart(2, '0')}`));
 const afterSubmitTheory = Object.freeze({ access: 'after_submit' });
 
 function hideTypingTheoryUntilSubmit(content) {
@@ -14,7 +15,7 @@ export const g6U1MlhReadingGapFolders = Object.freeze([
   Object.freeze({
     id: 'global6-unit1-mlh-reading',
     name: 'Reading · Mai Lan Hương',
-    description: 'Bài Reading Mai Lan Hương Unit 1 theo flow dựng từ → dựng cụm → tự dịch passage → xử lý gap.',
+    description: 'Bài Reading Mai Lan Hương Unit 1 theo flow dựng từ → dựng cụm → tự đọc evidence → xử lý gap và True/False.',
     parentId: 'global6-unit1',
     order: 3
   })
@@ -56,5 +57,41 @@ export const g6U1MlhReadingGapRegistry = Object.freeze([
     itemCount: 36,
     loadContent: () => import('./g6-u1-mlh-reading-gap-01.js')
       .then(module => hideTypingTheoryUntilSubmit(module.global6Unit1MlhReadingGap01Content))
+  }),
+  Object.freeze({
+    id: 'g6-u1-mlh-reading-tf-evidence-01',
+    folderId: 'global6-unit1-mlh-reading',
+    order: 2,
+    version: 1,
+    course: 'Global Success 6',
+    unit: 'Unit 1 · My New School',
+    title: 'True/False Evidence 1 · Mai Lan Hương',
+    subtitle: '31 câu · WORD → CHUNK → T/F + EVIDENCE · Thầy–con',
+    lessonSlug: 'g6u1-mlh-reading-tf-evidence-01',
+    passThreshold: 80,
+    completionPolicy: 'all-items',
+    teacher: 'Thầy Thành MRT',
+    description: 'Một flow 31 câu liên tục: 16 từ trọng tâm/Tier 2 Typing Việt + từ loại → Anh, 10 chunk Typing Việt + số từ → Anh, rồi 5 statement True/False dạng MCQ kết hợp verdict + reason. Mỗi câu cuối buộc học sinh tìm evidence trong chart, kiểm exact/paraphrase/synonym/contradiction và tránh keyword, negation, invented-information traps.',
+    printGroups: Object.freeze([
+      Object.freeze({
+        id: 'word-foundation',
+        title: 'A. WORD FOUNDATION / TỪ TRỌNG TÂM + TIER 2',
+        itemIds: tfIds(1, 16)
+      }),
+      Object.freeze({
+        id: 'chunk-foundation',
+        title: 'B. CHUNK FOUNDATION / DỰNG MẢNH NGHĨA',
+        itemIds: tfIds(17, 26)
+      }),
+      Object.freeze({
+        id: 'tf-evidence-application',
+        title: 'C. TRUE/FALSE + EVIDENCE / KẾT LUẬN + LÝ DO',
+        itemIds: tfIds(27, 31)
+      })
+    ]),
+    activityTypes: Object.freeze(['typing', 'mcq']),
+    itemCount: 31,
+    loadContent: () => import('./g6-u1-mlh-reading-tf-evidence-01.js')
+      .then(module => module.global6Unit1MlhReadingTfEvidence01Content)
   })
 ]);
