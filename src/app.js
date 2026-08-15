@@ -316,7 +316,7 @@ async function showDrill() {
   }
 
   const { renderDrill, renderPassed, showSuccess } = await getScreen('drill', 'Đang tải bài luyện...');
-  if (!previewMode && session.status === 'passed') {
+  if (session.status === 'passed') {
     return renderPassed({
       root,
       session,
