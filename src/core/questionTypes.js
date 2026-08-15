@@ -5,6 +5,7 @@ const evaluators = Object.freeze({
   mcq: evaluateMcq,
   true_false: evaluateTrueFalse,
   sentence_order: evaluateSentenceOrder,
+  sequence_number: evaluateSequenceNumber,
   classification: evaluateClassification
 });
 
@@ -35,6 +36,7 @@ export function expectedResponseDisplay(item) {
   if (type === 'mcq') return String(item.choices?.find(choice => choice.id === item.correctChoiceId)?.text ?? '');
   if (type === 'true_false') return item.answer === true ? 'TRUE' : 'FALSE';
   if (type === 'sentence_order') return (item.correctOrder ?? []).join(' ');
+  if (type === 'sequence_number') return sequenceNumberResponseDisplay(item, sequenceNumberAnswerMap(item));
   if (type === 'classification') return classificationResponseDisplay(item, classificationAnswerMap(item));
   return '';
 }
@@ -76,6 +78,21 @@ export function sentenceOrderHasUnusedTokens(item) {
   const tokens = normalizeOrder(item?.tokens ?? item?.correctOrder);
   if (!tokens.length) return false;
   return acceptedSentenceOrders(item).every(order => !sameMultiset(tokens, order));
+}
+
+export function sequenceNumberAnswerMap(item) {
+  const answer = {};
+  for (const [index, lineId] of (item?.correctOrder ?? []).entries()) answer[String(lineId)] = index + 1;
+  return answer;
+}
+
+export function sequenceNumberResponseDisplay(item, response) {
+  const normalized = normalizeSequenceNumberResponse(item, response);
+  const lineById = new Map((item?.lines ?? []).map(line => [String(line.id), line]));
+  return Object.entries(normalized)
+    .sort((left, right) => left[1] - right[1])
+    .map(([lineId, position]) => `${position}. ${String(lineById.get(lineId)?.text ?? lineId)}`)
+    .join(' → ');
 }
 
 export function classificationAnswerMap(item) {
@@ -122,6 +139,7 @@ export function questionTypeLabel(itemOrType) {
     mcq: 'MCQ',
     true_false: 'TRUE / FALSE',
     sentence_order: 'SẮP XẾP CÂU',
+    sequence_number: 'SẮP XẾP THỨ TỰ',
     classification: 'PHÂN LOẠI'
   })[type] ?? type.toUpperCase();
 }
@@ -173,6 +191,21 @@ function evaluateSentenceOrder(item, response) {
   };
 }
 
+function evaluateSequenceNumber(item, response) {
+  const normalized = normalizeSequenceNumberResponse(item, response);
+  const expected = sequenceNumberAnswerMap(item);
+  const lineIds = (item?.lines ?? []).map(line => String(line.id));
+  const values = Object.values(normalized);
+  const correct = Object.keys(normalized).length === lineIds.length
+    && new Set(values).size === lineIds.length
+    && lineIds.every(lineId => normalized[lineId] === expected[lineId]);
+  return {
+    correct,
+    normalizedResponse: normalized,
+    displayResponse: sequenceNumberResponseDisplay(item, normalized)
+  };
+}
+
 function evaluateClassification(item, response) {
   const normalized = normalizeClassificationResponse(item, response);
   const expected = classificationAnswerMap(item);
@@ -188,6 +221,20 @@ function evaluateClassification(item, response) {
 
 function normalizeOrder(value) {
   return Array.isArray(value) ? value.map(token => String(token)) : [];
+}
+
+function normalizeSequenceNumberResponse(item, value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+  const lineIds = new Set((item?.lines ?? []).map(line => String(line.id)));
+  const max = lineIds.size;
+  const normalized = {};
+  for (const [lineId, rawPosition] of Object.entries(value)) {
+    const key = String(lineId);
+    const position = Number(rawPosition);
+    if (!lineIds.has(key) || !Number.isInteger(position) || position < 1 || position > max) continue;
+    normalized[key] = position;
+  }
+  return normalized;
 }
 
 function normalizeClassificationResponse(item, value) {
