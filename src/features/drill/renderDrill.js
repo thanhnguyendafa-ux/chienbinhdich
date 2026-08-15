@@ -1,6 +1,7 @@
 import { getCurrentItem, getSessionMetrics } from '../../core/sessionMachine.js';
 import { acceptedSentenceOrderDisplays, questionTypeForItem, questionTypeLabel } from '../../core/questionTypes.js';
 import { classificationFeedbackHint } from '../../core/classificationDiagnostics.js';
+import { mcqChoiceFeedback } from '../../core/mcqChoiceFeedback.js';
 import { readingFeedbackHint } from '../../core/readingDiagnostics.js';
 import { sentenceOrderFeedbackHint } from '../../core/sentenceOrderDiagnostics.js';
 import { stageLabel } from '../../core/formatters.js';
@@ -175,6 +176,7 @@ function renderFeedback(feedback, item) {
     : hitFloor
       ? 'Mastery đang ở sàn 0%'
       : 'Mastery không đổi';
+  const choiceHint = mcqChoiceFeedback(item, feedback.entered);
   const readingHint = readingFeedbackHint(item, feedback.entered);
   const writingHint = sentenceOrderFeedbackHint(item, feedback.entered);
   const classificationHint = classificationFeedbackHint(item, feedback.entered);
@@ -195,6 +197,7 @@ function renderFeedback(feedback, item) {
       <div><span class="feedback-kicker">Sai · ${masteryMessage}</span><strong>Thử lại</strong></div>
       ${item?.teachingFeedback ? renderQuestionContext(item) : ''}
       <p>${item?.teachingFeedback ? learnerResponseLabel(item) : 'Câu trả lời vừa chọn/làm'}: <q>${esc(feedback.entered || '(trống)')}</q></p>
+      ${choiceHint ? `<p class="mcq-choice-feedback">${esc(choiceHint)}</p>` : ''}
       ${readingHint ? `<p class="reading-diagnostic-hint"><strong>Gợi ý đọc:</strong> ${esc(readingHint)}</p>` : ''}
       ${writingHint ? `<p class="writing-diagnostic-hint"><strong>Gợi ý viết:</strong> ${esc(writingHint)}</p>` : ''}
       ${classificationHint ? `<p class="classification-diagnostic-hint"><strong>Gợi ý phân loại:</strong> ${esc(classificationHint)}</p>` : ''}
