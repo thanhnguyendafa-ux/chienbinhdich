@@ -12,6 +12,7 @@ const registry = Object.freeze({
   mcq: { render: renderMcq, bind: bindMcq },
   true_false: { render: renderTrueFalse, bind: bindTrueFalse },
   sentence_order: { render: renderSentenceOrder, bind: bindSentenceOrder },
+  sequence_number: { render: renderSequenceNumber, bind: bindSequenceNumber },
   classification: { render: renderClassification, bind: bindClassification }
 });
 
@@ -183,6 +184,144 @@ function bindSentenceOrder({ root, item, onSubmit, attemptStartedAt }) {
   return () => bank?.querySelector('button')?.focus({ preventScroll: true });
 }
 
+function renderSequenceNumber(item) {
+  const lines = item.lines ?? [];
+  const locked = new Set(lines.map(line => Number(line.lockedPosition)).filter(Number.isInteger));
+  const numbers = Array.from({ length: lines.length }, (_, index) => index + 1).filter(number => !locked.has(number));
+  return `
+    <div class="prompt-block mixed-prompt-block sequence-number-prompt">
+      <p class="prompt-label">Sắp xếp thứ tự / Đánh số</p>
+      <h1>${esc(questionPromptDisplay(item) || 'Đánh số các dòng theo đúng thứ tự')}</h1>
+      <p class="sequence-number-helper">Chọn hoặc kéo một số, rồi đặt vào ô trước dòng phù hợp. Dòng có khóa đã được cho sẵn.</p>
+    </div>
+    <div class="sequence-number" data-sequence-root>
+      <div class="sequence-number-bank-wrap">
+        <span>Số chưa dùng</span>
+        <div class="sequence-number-bank" data-sequence-bank aria-label="Các số thứ tự chưa dùng">
+          ${numbers.map(sequenceNumberButton).join('')}
+        </div>
+      </div>
+      <div class="sequence-number-lines" data-sequence-lines>
+        ${lines.map(line => sequenceLineRow(line)).join('')}
+      </div>
+      <div class="sequence-number-footer">
+        <span data-sequence-count>${locked.size}/${lines.length} đã xếp</span>
+        <button class="primary-btn sequence-number-submit" data-sequence-submit type="button" disabled>Kiểm tra</button>
+      </div>
+    </div>`;
+}
+
+function bindSequenceNumber({ root, item, onSubmit, attemptStartedAt }) {
+  const bank = root.querySelector('[data-sequence-bank]');
+  const submit = root.querySelector('[data-sequence-submit]');
+  const count = root.querySelector('[data-sequence-count]');
+  const assignments = new Map();
+  const lockedLineIds = new Set();
+  let activeNumber = null;
+  const total = (item.lines ?? []).length;
+
+  for (const line of item.lines ?? []) {
+    if (!Number.isInteger(Number(line.lockedPosition))) continue;
+    assignments.set(String(line.id), Number(line.lockedPosition));
+    lockedLineIds.add(String(line.id));
+  }
+
+  const usedNumberOwner = number => {
+    for (const [lineId, assigned] of assignments) if (assigned === number) return lineId;
+    return null;
+  };
+
+  const assign = (lineId, number) => {
+    const key = String(lineId);
+    const position = Number(number);
+    if (lockedLineIds.has(key) || !Number.isInteger(position) || position < 1 || position > total) return;
+    const owner = usedNumberOwner(position);
+    if (owner && owner !== key && !lockedLineIds.has(owner)) assignments.delete(owner);
+    assignments.set(key, position);
+    activeNumber = null;
+    update();
+  };
+
+  const unassign = lineId => {
+    const key = String(lineId);
+    if (lockedLineIds.has(key)) return;
+    assignments.delete(key);
+    activeNumber = null;
+    update();
+  };
+
+  const update = () => {
+    const used = new Set(assignments.values());
+    bank?.querySelectorAll('[data-sequence-number]').forEach(button => {
+      const number = Number(button.dataset.sequenceNumber);
+      const unavailable = used.has(number);
+      button.hidden = unavailable;
+      button.classList.toggle('is-active', !unavailable && number === activeNumber);
+      button.setAttribute('aria-pressed', !unavailable && number === activeNumber ? 'true' : 'false');
+    });
+    root.querySelectorAll('[data-sequence-slot]').forEach(slot => {
+      const lineId = String(slot.dataset.sequenceSlot);
+      const assigned = assignments.get(lineId);
+      slot.textContent = assigned ?? '—';
+      slot.classList.toggle('has-number', assigned !== undefined);
+      slot.classList.toggle('is-active-target', activeNumber !== null && !lockedLineIds.has(lineId));
+      slot.setAttribute('aria-label', assigned === undefined ? 'Chưa có số thứ tự' : `Số thứ tự ${assigned}`);
+    });
+    if (count) count.textContent = `${assignments.size}/${total} đã xếp`;
+    if (submit) submit.disabled = assignments.size !== total || new Set(assignments.values()).size !== total;
+  };
+
+  bank?.addEventListener('click', event => {
+    const button = event.target.closest('[data-sequence-number]');
+    if (!button || button.hidden) return;
+    const number = Number(button.dataset.sequenceNumber);
+    activeNumber = activeNumber === number ? null : number;
+    update();
+  });
+
+  bank?.querySelectorAll('[data-sequence-number]').forEach(button => {
+    button.addEventListener('dragstart', event => {
+      const number = button.dataset.sequenceNumber;
+      activeNumber = Number(number);
+      event.dataTransfer?.setData('text/plain', number);
+      if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
+      update();
+    });
+  });
+
+  root.querySelectorAll('[data-sequence-slot]').forEach(slot => {
+    if (slot.dataset.sequenceLocked === '1') return;
+    slot.addEventListener('click', () => {
+      const lineId = slot.dataset.sequenceSlot;
+      if (activeNumber !== null) assign(lineId, activeNumber);
+      else if (assignments.has(String(lineId))) unassign(lineId);
+    });
+    slot.addEventListener('dragover', event => {
+      event.preventDefault();
+      if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
+    });
+    slot.addEventListener('drop', event => {
+      event.preventDefault();
+      const number = Number(event.dataTransfer?.getData('text/plain') || activeNumber);
+      assign(slot.dataset.sequenceSlot, number);
+    });
+  });
+
+  submit?.addEventListener('click', () => {
+    if (assignments.size !== total || new Set(assignments.values()).size !== total) return;
+    submit.disabled = true;
+    submit.textContent = 'Đang kiểm tra...';
+    const response = {};
+    for (const line of item.lines ?? []) response[String(line.id)] = assignments.get(String(line.id));
+    onSubmit({ response, attemptMeta: meta(attemptStartedAt, 'tap', false) });
+  });
+
+  update();
+  const firstInteractive = bank?.querySelector('[data-sequence-number]:not([hidden])') ?? root.querySelector('[data-sequence-slot]:not([data-sequence-locked="1"])');
+  firstInteractive?.focus({ preventScroll: true });
+  return () => firstInteractive?.focus({ preventScroll: true });
+}
+
 function renderClassification(item, { exposureKey = item.id } = {}) {
   const tokens = orderForExposure(item.tokens ?? [], `${exposureKey}:classification`);
   return `
@@ -279,6 +418,19 @@ function shuffledTokens(item, exposureKey) {
 
 function tokenButton(token, location) {
   return `<button class="token-btn ${location === 'answer' ? 'selected-token' : ''}" type="button" data-token-key="${escAttr(token.key)}" data-token-text="${escAttr(token.text)}">${esc(token.text)}</button>`;
+}
+
+function sequenceNumberButton(number) {
+  return `<button class="sequence-number-token" type="button" draggable="true" aria-pressed="false" data-sequence-number="${number}">${number}</button>`;
+}
+
+function sequenceLineRow(line) {
+  const locked = Number.isInteger(Number(line.lockedPosition));
+  return `
+    <div class="sequence-number-line ${locked ? 'is-locked' : ''}" data-sequence-line-id="${escAttr(line.id)}">
+      <button class="sequence-number-slot ${locked ? 'is-locked has-number' : ''}" type="button" data-sequence-slot="${escAttr(line.id)}" ${locked ? `data-sequence-locked="1" disabled aria-label="Số thứ tự ${Number(line.lockedPosition)} đã cho sẵn"` : 'aria-label="Chưa có số thứ tự"'}>${locked ? Number(line.lockedPosition) : '—'}</button>
+      <p>${esc(line.text)}</p>
+    </div>`;
 }
 
 function classificationTokenButton(token) {
