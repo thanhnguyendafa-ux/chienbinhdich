@@ -54,11 +54,14 @@ test('Explorer tree nests Global Success 2, 3, 5, 6 and 7 without changing Set i
   const global6 = findAdminTreeNode(tree, 'global6');
   assert.deepEqual(global6.children.filter(node => node.type === 'folder').map(node => node.id), ['global6-unit1', 'global6-unit-review']);
   assert.deepEqual(findAdminTreeNode(tree, 'global6-unit1').children.filter(node => node.type === 'folder').map(node => node.id), [
-    'global6-unit1-writing-typing', 'global6-unit1-mlh-reading'
+    'global6-unit1-writing-typing', 'global6-unit1-mlh-reading', 'global6-unit1-mlh-writing'
   ]);
   assert.deepEqual(folderEntries(tree, 'global6-unit1').filter(node => node.type === 'lesson').map(node => node.setId), ['g7-u1-mlh-vocab-context-01']);
   assert.deepEqual(folderEntries(tree, 'global6-unit1-mlh-reading').filter(node => node.type === 'lesson').map(node => node.setId), [
     'g6-u1-mlh-reading-gap-01', 'g6-u1-mlh-reading-tf-evidence-01'
+  ]);
+  assert.deepEqual(folderEntries(tree, 'global6-unit1-mlh-writing').filter(node => node.type === 'lesson').map(node => node.setId), [
+    'g6-u1-mlh-writing-reorder-01'
   ]);
   const g6 = findAdminTreeNode(tree, 'global6-unit1-writing-typing');
   assert.equal(g6.children.filter(node => node.type === 'folder').length, 10);
@@ -89,14 +92,15 @@ test('Explorer breadcrumbs and recursive lesson counts match the hierarchy', () 
   assert.deepEqual(folderBreadcrumbs(tree, 'global5-unit1').map(item => item.label), ['Bài tập', 'Global Success 5', 'Unit 1 · All about me!']);
   assert.deepEqual(folderBreadcrumbs(tree, 'global6-unit1-writing-s1').map(item => item.label), ['Bài tập', 'Global Success 6', 'Unit 1 · My New School', 'G6Unit1 Writing Typing', 'Cấu trúc 1 · School Identity']);
   assert.deepEqual(folderBreadcrumbs(tree, 'global6-unit1-mlh-reading').map(item => item.label), ['Bài tập', 'Global Success 6', 'Unit 1 · My New School', 'Reading · Mai Lan Hương']);
+  assert.deepEqual(folderBreadcrumbs(tree, 'global6-unit1-mlh-writing').map(item => item.label), ['Bài tập', 'Global Success 6', 'Unit 1 · My New School', 'Writing · Mai Lan Hương']);
   assert.deepEqual(folderBreadcrumbs(tree, 'global7-unit1-writing-final').map(item => item.label), ['Bài tập', 'Global Success 7', 'Unit 1 · Hobbies', 'G7Unit1 Writing Typing', 'Final Writing Integration']);
 
   assert.equal(folderLessonCount(findAdminTreeNode(tree, 'global2')), 57);
   assert.equal(folderLessonCount(findAdminTreeNode(tree, 'global2-writing-typing')), 48);
   assert.equal(folderLessonCount(findAdminTreeNode(tree, 'global3')), 88);
   assert.equal(folderLessonCount(findAdminTreeNode(tree, 'global5')), 16);
-  assert.equal(folderLessonCount(findAdminTreeNode(tree, 'global6')), 68);
-  assert.equal(folderLessonCount(findAdminTreeNode(tree, 'global6-unit1')), 45);
+  assert.equal(folderLessonCount(findAdminTreeNode(tree, 'global6')), 69);
+  assert.equal(folderLessonCount(findAdminTreeNode(tree, 'global6-unit1')), 46);
   assert.equal(folderLessonCount(findAdminTreeNode(tree, 'global6-unit-review')), 23);
   assert.equal(folderLessonCount(findAdminTreeNode(tree, 'global7')), 67);
   assert.equal(folderLessonCount(findAdminTreeNode(tree, 'global7-unit-review')), 20);
@@ -113,6 +117,7 @@ test('Explorer search finds lessons by title, slug, Set id, Unit and activity ty
   assert.deepEqual(searchLessonDescriptors(sets, 'g6u1-mlh-vocab-context').map(set => set.id), ['g7-u1-mlh-vocab-context-01']);
   assert.deepEqual(searchLessonDescriptors(sets, 'g6u1-mlh-reading-gap-01').map(set => set.id), ['g6-u1-mlh-reading-gap-01']);
   assert.deepEqual(searchLessonDescriptors(sets, 'g6u1-mlh-reading-tf-evidence-01').map(set => set.id), ['g6-u1-mlh-reading-tf-evidence-01']);
+  assert.deepEqual(searchLessonDescriptors(sets, 'g6u1-mlh-writing-reorder-01').map(set => set.id), ['g6-u1-mlh-writing-reorder-01']);
   assert.ok(searchLessonDescriptors(sets, 'typing').some(set => set.id === 'g2u01-writing-01'));
   assert.ok(searchLessonDescriptors(sets, 'typing').some(set => set.id === 'g3u01-writing-01'));
   assert.ok(searchLessonDescriptors(sets, 'typing').some(set => set.id === 'g6-u1-writing-s1-01'));
