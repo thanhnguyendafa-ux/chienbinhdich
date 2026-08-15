@@ -10,6 +10,17 @@ export function renderWritingLines(count = 1) {
   return `<div class="lesson-print-writing-lines" aria-hidden="true">${Array.from({ length: lineCount }, () => '<span></span>').join('')}</div>`;
 }
 
+export function renderStudentTheory(studentTheory) {
+  if (!studentTheory?.theory) return '';
+  const example = studentTheory.example
+    ? `<p><strong>Example / Ví dụ:</strong> ${esc(studentTheory.example)}</p>`
+    : '';
+  const worked = studentTheory.workedExample?.text
+    ? `<p><strong>${esc(studentTheory.workedExample.label ?? 'Worked example / Ví dụ mẫu')}:</strong> ${esc(studentTheory.workedExample.text)}</p>`
+    : '';
+  return `<aside class="lesson-print-student-theory" data-print-student-theory><p class="lesson-print-student-theory-title"><strong>THEORY / LÝ THUYẾT</strong></p><p>${esc(studentTheory.theory)}</p>${example}${worked}</aside>`;
+}
+
 export function renderTeacherAnswer(teacher) {
   if (!teacher) return '';
   const alternatives = teacher.alternatives?.length

@@ -1,7 +1,8 @@
-import { esc, renderTeacherAnswer } from '../printMarkup.js';
+import { esc, renderStudentTheory, renderTeacherAnswer } from '../printMarkup.js';
 
 export function renderPrintClassification(question) {
   return `<article class="lesson-print-question lesson-print-classification" data-print-question="${question.number}">
+    ${renderStudentTheory(question.studentTheory)}
     <p class="lesson-print-prompt"><strong>${question.number}.</strong> ${esc(question.prompt)}</p>
     <p class="lesson-print-token-bank">${question.tokens.map(esc).join(' · ')}</p>
     <div class="lesson-print-classification-groups">

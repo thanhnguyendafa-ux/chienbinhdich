@@ -6,6 +6,7 @@ import {
   questionPromptDisplay,
   questionTypeForItem
 } from '../../../core/questionTypes.js';
+import { theoryAccessForItem } from '../../drill/theorySupport.js';
 import { buildAnswerPositionPlan } from './answerPositionPlanner.js';
 import { mcqPrintLayout } from './mcqPrintLayout.js';
 import { normalizePrintConfig } from './printConfig.js';
@@ -114,11 +115,13 @@ function groupQuestionBlocks(questions) {
 
 function buildQuestionModel({ lesson, item, number, config, targetCorrectIndex }) {
   const type = questionTypeForItem(item);
+  const studentTheory = studentTheoryPayload(item, config);
   const base = {
     id: String(item.id),
     number,
     type,
-    prompt: questionPromptDisplay(item)
+    prompt: questionPromptDisplay(item),
+    ...(studentTheory ? { studentTheory } : {})
   };
   const key = `print:${lesson.id}:${item.id}:v${lesson.version ?? 1}`;
 
@@ -188,12 +191,13 @@ function buildSentenceOrder(item, base, key, config) {
 }
 
 function buildClassification(item, base, key, config) {
+  const hideStudentHelpers = config.version === 'student' && theoryAccessForItem(item) === 'after_submit';
   const student = {
     ...base,
     tokens: Object.freeze(orderForExposure(item.tokens ?? [], `${key}:classification`).map(token => String(token.text))),
     groups: Object.freeze((item.groups ?? []).map(group => Object.freeze({
       label: String(group.label ?? group.id),
-      helper: group.helper ? String(group.helper) : ''
+      helper: hideStudentHelpers ? '' : (group.helper ? String(group.helper) : '')
     })))
   };
   if (config.version !== 'teacher') return Object.freeze(student);
@@ -218,6 +222,22 @@ function withTeacher(student, item, config, answerPayload) {
   return Object.freeze({
     ...student,
     teacher: teacherPayload(item, config, answerPayload)
+  });
+}
+
+function studentTheoryPayload(item, config) {
+  if (config.version !== 'student' || theoryAccessForItem(item) !== 'anytime') return null;
+  const feedback = item.teachingFeedback ?? null;
+  if (!feedback?.theory) return null;
+  return Object.freeze({
+    theory: String(feedback.theory),
+    example: feedback.example ? String(feedback.example) : '',
+    workedExample: feedback.workedExample
+      ? Object.freeze({
+          label: String(feedback.workedExample.label ?? ''),
+          text: String(feedback.workedExample.text ?? '')
+        })
+      : null
   });
 }
 
