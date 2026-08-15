@@ -47,7 +47,7 @@ test('catalog exposes hierarchical Global 2, 3, 5, 6, 7 and MRT folders with the
   assert.equal(listSetsByFolder('global6-review-u1-3-mixed').length, 8);
 
   assert.deepEqual(listSetsByFolder('global7-unit1').map(set => set.id), [
-    'g7-u1-translation-01', 'g7-u1-translation-02', 'g7-u1-pronunciation-01'
+    'g7-u1-translation-01', 'g7-u1-translation-02', 'g7-u1-pronunciation-01', 'g7-u1-mlh-vocab-context-01'
   ]);
   assert.equal(listSetsByFolder('global7-unit1-writing-s1').length, 4);
   assert.equal(listSetsByFolder('global7-unit1-writing-s4').length, 5);
