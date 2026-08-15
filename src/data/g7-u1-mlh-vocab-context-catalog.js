@@ -3,18 +3,19 @@ export const g7U1MlhVocabContextFolders = Object.freeze([]);
 export const g7U1MlhVocabContextRegistry = Object.freeze([
   Object.freeze({
     id: 'g7-u1-mlh-vocab-context-01',
-    folderId: 'global7-unit1',
-    order: 4,
+    folderId: 'global6-unit1',
+    order: 1,
     version: 1,
-    course: 'Global Success 7',
-    unit: 'Unit 1 · Hobbies',
+    course: 'Global Success 6',
+    unit: 'Unit 1 · My New School',
     title: 'Từ vựng theo ngữ cảnh 1 · Mai Lan Hương',
     subtitle: '30 câu · WORD → CHUNK → CONTEXT · Thầy–con',
-    lessonSlug: 'g7u1-mlh-vocab-context',
+    lessonSlug: 'g6u1-mlh-vocab-context',
+    lessonSlugAliases: Object.freeze(['g7u1-mlh-vocab-context']),
     passThreshold: 80,
     completionPolicy: 'all-items',
     teacher: 'Thầy Thành MRT',
-    description: 'Một flow 30 câu liên tục từ đúng 8 từ của bài Mai Lan Hương: 8 câu Typing Việt + từ loại → Anh, 14 câu Typing Việt + số từ → chunk Anh, rồi 8 câu điền từ gốc với đủ 8 lựa chọn và feedback riêng cho từng lựa chọn. Theory mở ở phần foundation và chỉ mở sau submit ở phần application.',
+    description: 'Một flow 30 câu liên tục từ đúng 8 từ của bài Mai Lan Hương Global Success 6 Unit 1: 8 câu Typing Việt + từ loại → Anh, 14 câu Typing Việt + số từ → chunk Anh, rồi 8 câu điền từ gốc với đủ 8 lựa chọn và feedback riêng cho từng lựa chọn. Theory mở ở phần foundation và chỉ mở sau submit ở phần application.',
     printGroups: Object.freeze([
       Object.freeze({
         id: 'word-foundation',
