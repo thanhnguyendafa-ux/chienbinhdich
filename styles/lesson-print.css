@@ -16,6 +16,7 @@
 .lesson-print-inline-response{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:5mm;align-items:end}.lesson-print-inline-response .lesson-print-prompt{margin:0}.lesson-print-blank{font-size:13pt;white-space:nowrap}
 .lesson-print-token-bank{margin:0 0 2.5mm 7mm;font-size:13pt;line-height:1.55}.lesson-print-writing-lines{display:grid;gap:var(--print-line-gap);margin:3mm 0 0 7mm}.lesson-print-writing-lines span{display:block;height:1px;border-bottom:1px solid #000}
 .lesson-print-classification-groups{display:grid;gap:3mm;margin:3mm 0 0 7mm}.lesson-print-classification-groups>div{display:grid;grid-template-columns:auto minmax(30mm,1fr);gap:2mm;align-items:end}.lesson-print-classification-groups>div>span{height:1px;border-bottom:1px solid #000}.lesson-print-classification-groups small{grid-column:1/-1;font-size:10.5pt}
+.lesson-print-sequence-list{display:grid;gap:1.8mm;margin:2.5mm 0 0 7mm}.lesson-print-sequence-row{display:grid;grid-template-columns:14mm minmax(0,1fr);gap:3mm;align-items:start;break-inside:avoid}.lesson-print-sequence-position{display:block;min-height:7mm;padding:1mm 1.5mm;border:1px solid #000;text-align:center;font-size:12.5pt;line-height:1.2}.lesson-print-sequence-row>span{font-size:13pt;line-height:1.42}
 .lesson-print-teacher-answer{margin:2.5mm 0 0 7mm;padding:2mm 0 0;border-top:1px solid #000;font-size:11.5pt;line-height:1.38}.lesson-print-teacher-answer p{margin:0 0 1.2mm}.lesson-print-answer-key{font-size:12pt}
 .lesson-print-footer{display:flex;justify-content:space-between;gap:8mm;margin-top:7mm;padding-top:2mm;border-top:1px solid #000;font-size:9.5pt}
 
@@ -29,5 +30,5 @@
   .lesson-print-paper *{color:#000!important;box-shadow:none!important;text-shadow:none!important}
   .lesson-print-header,.lesson-print-section>h2,.lesson-print-instruction,.lesson-print-question,.lesson-print-student-theory,.lesson-print-footer{break-inside:avoid}
   .lesson-print-passage{break-inside:auto}
-  .lesson-print-passage p,.lesson-print-prompt,.lesson-print-choice,.lesson-print-token-bank,.lesson-print-student-line{font-size:13pt!important}
+  .lesson-print-passage p,.lesson-print-prompt,.lesson-print-choice,.lesson-print-token-bank,.lesson-print-student-line,.lesson-print-sequence-row>span{font-size:13pt!important}
 }
