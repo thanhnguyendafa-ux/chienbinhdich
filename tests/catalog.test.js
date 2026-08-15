@@ -13,7 +13,7 @@ test('catalog exposes hierarchical Global 2, 3, 5, 6, 7 and MRT folders with the
     'global2-writing-typing', 'global2-writing-u01', 'global2-writing-u16',
     'global3', 'global3-writing-typing', 'global3-writing-u01', 'global3-writing-u20',
     'global5', 'global5-unit1', 'global5-unit2', 'global5-review-u1-5', 'global5-review',
-    'global6', 'global6-unit1-writing-typing', 'global6-unit1-writing-final', 'global6-review-u1-3-mixed',
+    'global6', 'global6-unit1', 'global6-unit1-writing-typing', 'global6-unit1-writing-final', 'global6-review-u1-3-mixed',
     'global7', 'global7-unit1', 'global7-unit1-writing-typing', 'global7-unit1-writing-final', 'global7-review-u1-3-mixed',
     'mrt-lessons'
   ]) assert.ok(folderIds.includes(id), id);
@@ -38,6 +38,7 @@ test('catalog exposes hierarchical Global 2, 3, 5, 6, 7 and MRT folders with the
   assert.equal(listSetsByFolder('global5-review-u1-5').length, 10);
   assert.deepEqual(listSetsByFolder('global5-review').map(set => set.id), ['g5-review-main-idea-01']);
 
+  assert.deepEqual(listSetsByFolder('global6-unit1').map(set => set.id), ['g7-u1-mlh-vocab-context-01']);
   assert.equal(listSetsByFolder('global6-unit1-writing-s1').length, 4);
   assert.equal(listSetsByFolder('global6-unit1-writing-s6').length, 5);
   assert.equal(listSetsByFolder('global6-unit1-writing-final').length, 3);
@@ -47,7 +48,7 @@ test('catalog exposes hierarchical Global 2, 3, 5, 6, 7 and MRT folders with the
   assert.equal(listSetsByFolder('global6-review-u1-3-mixed').length, 8);
 
   assert.deepEqual(listSetsByFolder('global7-unit1').map(set => set.id), [
-    'g7-u1-translation-01', 'g7-u1-translation-02', 'g7-u1-pronunciation-01', 'g7-u1-mlh-vocab-context-01'
+    'g7-u1-translation-01', 'g7-u1-translation-02', 'g7-u1-pronunciation-01'
   ]);
   assert.equal(listSetsByFolder('global7-unit1-writing-s1').length, 4);
   assert.equal(listSetsByFolder('global7-unit1-writing-s4').length, 5);
@@ -59,13 +60,14 @@ test('catalog exposes hierarchical Global 2, 3, 5, 6, 7 and MRT folders with the
   assert.deepEqual(listSetsByFolder('mrt-lessons').map(set => set.id), ['mrt-g6-gan-aura-action-01', 'mrt-left-cut-right-01']);
 });
 
-test('published Set ids and fixed lesson slugs are unique and repository-resolvable', async () => {
+test('published Set ids, canonical slugs and legacy aliases are unique and repository-resolvable', async () => {
   const descriptors = listSetDescriptors();
   assert.equal(new Set(descriptors.map(set => set.id)).size, descriptors.length);
   assert.equal(new Set(descriptors.map(set => set.lessonSlug)).size, descriptors.length);
   for (const descriptor of descriptors) {
     assert.deepEqual(getSetDescriptor(descriptor.id), descriptor);
     assert.deepEqual(getSetDescriptorBySlug(descriptor.lessonSlug), descriptor);
+    for (const alias of descriptor.lessonSlugAliases ?? []) assert.deepEqual(getSetDescriptorBySlug(alias), descriptor);
     assert.equal('loadContent' in descriptor, false);
     const set = await loadLessonSet(descriptor.id);
     assert.equal(set.id, descriptor.id);
@@ -73,6 +75,16 @@ test('published Set ids and fixed lesson slugs are unique and repository-resolva
     assert.equal(set.items.length, descriptor.itemCount);
     assert.deepEqual(validateSet(set), []);
   }
+
+  const corrected = getSetDescriptorBySlug('g6u1-mlh-vocab-context');
+  const legacy = getSetDescriptorBySlug('g7u1-mlh-vocab-context');
+  assert.ok(corrected);
+  assert.equal(corrected.id, 'g7-u1-mlh-vocab-context-01');
+  assert.equal(corrected.course, 'Global Success 6');
+  assert.equal(corrected.unit, 'Unit 1 · My New School');
+  assert.equal(corrected.folderId, 'global6-unit1');
+  assert.equal(legacy?.id, corrected.id);
+  assert.equal(legacy?.lessonSlug, 'g6u1-mlh-vocab-context');
 });
 
 test('catalog validator rejects duplicate ids, dangling folders, duplicate fixed slugs and invalid metadata', () => {
@@ -91,4 +103,18 @@ test('catalog validator rejects duplicate ids, dangling folders, duplicate fixed
   assert.ok(errors.some(error => error.includes('typingTolerance không hợp lệ')));
   assert.ok(errors.some(error => error.includes('difficulty không hợp lệ')));
   assert.ok(errors.some(error => error.includes('expectedTimeMinutes không hợp lệ')));
+});
+
+test('catalog validator rejects invalid or colliding legacy lesson slug aliases', () => {
+  const folder = { id: 'sample', name: 'Sample', order: 1 };
+  const base = {
+    folderId: 'sample', title: 'One', course: 'Course', unit: 'Unit', itemCount: 1,
+    activityTypes: ['mcq'], order: 1, loadContent: async () => ({ items: [] })
+  };
+  const errors = validateCatalog([folder], [
+    { ...base, id: 'one', lessonSlug: 'one-mcq', lessonSlugAliases: ['legacy-one'] },
+    { ...base, id: 'two', lessonSlug: 'two-mcq', lessonSlugAliases: ['legacy-one', 'bad-P9M3X8'] }
+  ]);
+  assert.ok(errors.some(error => error.includes('lessonSlug bị trùng: legacy-one')));
+  assert.ok(errors.some(error => error.includes('lessonSlug alias không hợp lệ')));
 });
