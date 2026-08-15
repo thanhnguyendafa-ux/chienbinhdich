@@ -11,113 +11,315 @@
   display: none;
 }
 
-.admin-teaching-toolbar {
-  position: sticky;
-  top: 0;
-  z-index: 20;
-  display: grid;
-  gap: 0.75rem;
-  margin: 0 auto 1rem;
-  padding: 0.9rem 1rem;
-  border: 1px solid var(--border, #d8dee6);
-  border-radius: 16px;
-  background: color-mix(in srgb, var(--surface, #ffffff) 94%, #eef6ff 6%);
-  box-shadow: 0 8px 24px rgba(33, 52, 72, 0.12);
+.admin-teaching-mode .admin-teaching-toolbar:not([data-teaching-panel-enhanced="1"]) {
+  display: none;
 }
 
-.admin-teaching-toolbar-head,
-.admin-teaching-nav,
-.admin-teaching-sections,
-.admin-teaching-actions {
-  display: flex;
+.admin-teaching-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
+  padding-top: var(--s3, 12px);
+}
+
+.admin-teaching-workspace > .drill-shell {
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding-top: 0;
+}
+
+.admin-teaching-trigger {
+  display: inline-flex;
   align-items: center;
-  gap: 0.55rem;
-  flex-wrap: wrap;
+  gap: 0.4rem;
+  min-height: 38px;
+  padding: 0.45rem 0.7rem;
+  border: 1px solid var(--color-border, #d7d3c8);
+  border-radius: 999px;
+  background: var(--color-paper, #fffdf8);
+  box-shadow: 0 4px 12px rgba(33, 52, 72, 0.08);
+  white-space: nowrap;
+}
+
+.admin-teaching-trigger[aria-expanded="true"] {
+  border-color: var(--color-brand, #2f433c);
+  background: var(--color-brand-soft, #e9eee9);
+}
+
+.admin-teaching-panel {
+  display: none;
+  gap: 0.8rem;
+  padding: 0.9rem;
+  border: 1px solid var(--color-border, #d7d3c8);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--color-paper, #fffdf8) 95%, #eef6ff 5%);
+  box-shadow: 0 10px 28px rgba(33, 52, 72, 0.12);
+}
+
+.admin-teaching-panel-open .admin-teaching-workspace {
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 300px);
+}
+
+.admin-teaching-panel-open .admin-teaching-panel {
+  position: sticky;
+  top: 12px;
+  display: grid;
+  max-height: calc(100dvh - 24px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .admin-teaching-toolbar-head {
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.45rem 0.6rem;
+  align-items: center;
 }
 
 .admin-teaching-title {
   display: grid;
-  gap: 0.15rem;
+  gap: 0.1rem;
+  min-width: 0;
 }
 
 .admin-teaching-title strong {
-  font-size: 0.82rem;
+  font-size: 0.78rem;
   letter-spacing: 0.08em;
 }
 
 .admin-teaching-title small {
-  color: var(--muted, #5e6b78);
+  display: none;
+}
+
+.admin-teaching-toolbar-head > span {
+  grid-column: 1;
+  width: max-content;
+  max-width: 100%;
+  padding: 0.25rem 0.45rem;
+  border-radius: 999px;
+  background: var(--color-brand-soft, #e9eee9);
+  color: var(--color-brand, #2f433c);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.admin-teaching-panel-close {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-self: start;
+  min-width: 36px;
+  min-height: 36px;
+  padding: 0.25rem;
+  border: 1px solid var(--color-border, #d7d3c8);
+  border-radius: 10px;
+  font-size: 1.4rem;
+  line-height: 1;
 }
 
 .admin-teaching-nav {
-  justify-content: center;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.admin-teaching-nav [data-teaching-previous] {
+  grid-column: 1;
 }
 
 .admin-teaching-counter {
-  min-width: 6rem;
+  grid-column: 2;
+  min-width: 5.4rem;
   text-align: center;
+  font-size: 0.9rem;
   font-variant-numeric: tabular-nums;
 }
 
+.admin-teaching-nav [data-teaching-next] {
+  grid-column: 3;
+}
+
+.admin-teaching-nav [data-teaching-skip-section] {
+  grid-column: 1 / -1;
+  min-height: 34px;
+  padding-block: 0.35rem;
+  font-size: 0.78rem;
+}
+
+.admin-teaching-nav .secondary-btn {
+  min-width: 0;
+  padding: 0.65rem 0.55rem;
+  font-size: 0.82rem;
+}
+
 .admin-teaching-sections {
-  justify-content: center;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.45rem;
+}
+
+.admin-teaching-section-btn {
+  min-width: 0;
+  padding: 0.55rem 0.45rem;
+  border: 1px solid var(--color-border, #d7d3c8);
+  border-radius: 9px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.72rem;
 }
 
 .admin-teaching-section-btn.is-current {
-  font-weight: 800;
-  outline: 2px solid currentColor;
+  font-weight: 850;
+  outline: 2px solid var(--color-brand, currentColor);
   outline-offset: 1px;
+  background: var(--color-brand-soft, #e9eee9);
 }
 
 .admin-teaching-actions {
-  justify-content: center;
+  display: grid;
+  gap: 0.45rem;
 }
 
 .admin-teaching-jump {
-  display: inline-flex;
-  align-items: center;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 4.6rem auto;
   gap: 0.4rem;
+  align-items: center;
+  font-size: 0.8rem;
 }
 
 .admin-teaching-jump input {
-  width: 5.25rem;
-  min-height: 2.4rem;
-  padding: 0.45rem 0.55rem;
-  border: 1px solid var(--border, #cfd7df);
-  border-radius: 10px;
-  background: var(--surface, #ffffff);
+  width: 100%;
+  min-height: 2.25rem;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid var(--color-border, #cfd7df);
+  border-radius: 9px;
+  background: var(--color-paper, #ffffff);
   color: inherit;
+}
+
+.admin-teaching-actions > button {
+  width: 100%;
+  min-height: 36px;
+  border: 1px solid var(--color-border, #d7d3c8);
+  border-radius: 9px;
+}
+
+.admin-teaching-bottom-trigger {
+  display: none;
 }
 
 .admin-teaching-mode .encouragement {
   border-top-style: dashed;
 }
 
-@media (max-width: 720px) {
-  .admin-teaching-toolbar {
-    position: static;
-    border-radius: 12px;
+@media (max-width: 900px) {
+  .admin-teaching-mode {
+    padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px));
   }
 
-  .admin-teaching-toolbar-head,
-  .admin-teaching-nav,
-  .admin-teaching-sections,
-  .admin-teaching-actions {
-    justify-content: stretch;
+  .admin-teaching-trigger {
+    display: none;
   }
 
-  .admin-teaching-nav > button,
-  .admin-teaching-section-btn,
-  .admin-teaching-actions > button,
+  .admin-teaching-workspace,
+  .admin-teaching-panel-open .admin-teaching-workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .admin-teaching-bottom-trigger {
+    position: fixed;
+    left: 50%;
+    bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+    z-index: 45;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.55rem;
+    width: min(520px, calc(100% - 24px));
+    min-height: 52px;
+    padding: 0.7rem 0.9rem;
+    border: 1px solid var(--color-border, #d7d3c8);
+    border-radius: 999px;
+    background: var(--color-paper, #fffdf8);
+    color: var(--color-brand, #2f433c);
+    box-shadow: 0 10px 30px rgba(33, 52, 72, 0.2);
+    transform: translateX(-50%);
+  }
+
+  .admin-teaching-panel-open .admin-teaching-bottom-trigger {
+    display: none;
+  }
+
+  .admin-teaching-panel-open .admin-teaching-panel {
+    position: fixed;
+    left: 12px;
+    right: 12px;
+    bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+    top: auto;
+    z-index: 50;
+    width: auto;
+    max-height: min(68dvh, 560px);
+    padding: 0.85rem;
+    border-radius: 18px;
+    overflow-y: auto;
+    box-shadow: 0 18px 48px rgba(23, 37, 51, 0.28);
+  }
+
+  .admin-teaching-panel-open .admin-teaching-panel::before {
+    content: '';
+    width: 44px;
+    height: 4px;
+    margin: -0.2rem auto 0.1rem;
+    border-radius: 999px;
+    background: var(--color-border-strong, #bbb6aa);
+  }
+
+  .admin-teaching-sections {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 520px) {
+  .admin-teaching-nav {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .admin-teaching-nav [data-teaching-previous] {
+    grid-column: 1;
+  }
+
+  .admin-teaching-nav [data-teaching-next] {
+    grid-column: 2;
+  }
+
+  .admin-teaching-counter {
+    grid-column: 1 / -1;
+    grid-row: 1;
+    margin-bottom: 0.1rem;
+  }
+
+  .admin-teaching-nav [data-teaching-previous],
+  .admin-teaching-nav [data-teaching-next] {
+    grid-row: 2;
+  }
+
+  .admin-teaching-nav [data-teaching-skip-section] {
+    grid-column: 1 / -1;
+    grid-row: 3;
+  }
+
   .admin-teaching-jump {
-    flex: 1 1 auto;
+    grid-template-columns: 1fr 4.2rem;
   }
 
-  .admin-teaching-jump input {
-    flex: 1 1 4rem;
+  .admin-teaching-jump .admin-mini-btn {
+    grid-column: 1 / -1;
   }
 }

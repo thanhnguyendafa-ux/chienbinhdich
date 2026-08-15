@@ -11,6 +11,7 @@ import {
 const appSource = readFileSync(new URL('../src/app.js', import.meta.url), 'utf8');
 const htmlSource = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const teachingCss = readFileSync(new URL('../styles/admin-teaching-mode.css', import.meta.url), 'utf8');
+const panelEnhancerSource = readFileSync(new URL('../src/features/admin/preview/teachingPanelEnhancer.js', import.meta.url), 'utf8');
 
 const lesson = Object.freeze({
   items: Object.freeze([
@@ -108,9 +109,42 @@ test('teaching mode reuses learner renderDrill and never writes preview sessions
   assert.doesNotMatch(appSource, /createTeachingQuestion|renderTeachingQuestion/);
 });
 
-test('teaching controls are loaded and visually scoped away from normal student mode', () => {
+test('responsive panel enhancer is loaded without changing learner rendering architecture', () => {
+  assert.match(htmlSource, /teachingPanelEnhancer\.js/);
+  assert.match(panelEnhancerSource, /new MutationObserver\(enhanceTeachingMode\)/);
+  assert.match(panelEnhancerSource, /admin-teaching-workspace/);
+  assert.match(panelEnhancerSource, /workspace\.append\(drillShell\)/);
+  assert.match(panelEnhancerSource, /workspace\.append\(panel\)/);
+  assert.match(panelEnhancerSource, /let panelOpen = false/);
+  assert.match(panelEnhancerSource, /if \(hadTeachingMode\) panelOpen = false/);
+});
+
+test('Teaching Mode is collapsed by default and exposes accessible top and bottom toggles', () => {
+  assert.match(panelEnhancerSource, /aria-controls/);
+  assert.match(panelEnhancerSource, /aria-expanded/);
+  assert.match(panelEnhancerSource, /dataTeachingPanelTopToggle|teachingPanelTopToggle/);
+  assert.match(panelEnhancerSource, /dataTeachingPanelBottomToggle|teachingPanelBottomToggle/);
+  assert.match(panelEnhancerSource, /panel\.inert = !panelOpen/);
+  assert.match(panelEnhancerSource, /event\.key !== 'Escape'/);
+});
+
+test('desktop Teaching Mode uses a separate non-overlay sidebar column', () => {
+  assert.match(teachingCss, /\.admin-teaching-workspace\s*\{[\s\S]*grid-template-columns:\s*minmax\(0, 1fr\)/);
+  assert.match(teachingCss, /\.admin-teaching-panel-open \.admin-teaching-workspace\s*\{[\s\S]*minmax\(260px, 300px\)/);
+  assert.match(teachingCss, /\.admin-teaching-panel-open \.admin-teaching-panel\s*\{[\s\S]*position:\s*sticky/);
+  assert.match(teachingCss, /\.admin-teaching-trigger/);
+});
+
+test('mobile Teaching Mode switches to a bottom trigger and fixed bottom sheet without covering closed content', () => {
+  assert.match(teachingCss, /@media \(max-width: 900px\)/);
+  assert.match(teachingCss, /\.admin-teaching-bottom-trigger\s*\{[\s\S]*position:\s*fixed/);
+  assert.match(teachingCss, /\.admin-teaching-panel-open \.admin-teaching-panel\s*\{[\s\S]*position:\s*fixed[\s\S]*bottom:/);
+  assert.match(teachingCss, /padding-bottom:\s*calc\(76px \+ env\(safe-area-inset-bottom/);
+});
+
+test('teaching controls remain visually scoped away from normal student mode', () => {
   assert.match(htmlSource, /admin-teaching-mode\.css/);
   assert.match(teachingCss, /\.admin-teaching-mode/);
-  assert.match(teachingCss, /\.admin-teaching-toolbar/);
+  assert.match(teachingCss, /\.admin-teaching-panel/);
   assert.match(teachingCss, /\.teaching-continue-btn/);
 });
