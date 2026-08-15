@@ -66,7 +66,7 @@ test('Q1-Q8 teach all eight WH words with anytime theory and examples', async ()
   assert.deepEqual(foundation.map(item => item.correctChoiceId), WH_IDS);
   for (const item of foundation) {
     assert.equal(item.type, 'mcq');
-    assert.equal(item.stage, 'foundation');
+    assert.equal(item.stage, undefined);
     assert.equal(item.theorySupport?.access, 'anytime');
     assert.equal(item.choices.length, 8);
     assert.ok(item.teachingFeedback?.theory?.startsWith('LÝ THUYẾT NỀN'));
@@ -79,6 +79,7 @@ test('Q9-Q16 train Vietnamese intent to WH without pre-answer theory', async () 
   const intent = lesson.items.slice(8, 16);
   assert.deepEqual(intent.map(item => item.correctChoiceId), ['when', 'where', 'what', 'how', 'who', 'how-often', 'how-many', 'how-much']);
   assert.ok(intent.every(item => item.type === 'mcq' && item.choices.length === 8));
+  assert.ok(intent.every(item => item.stage === undefined));
   assert.ok(intent.every(item => item.theorySupport?.access === 'after_submit'));
   assert.match(intent[4].teachingFeedback.theory, /PERSON.*WHO/i);
 });
@@ -115,7 +116,7 @@ test('Q49-Q56 force answer meaning to information type before WH selection', asy
   const lesson = await loadLessonSet('g6-u1-mlh-writing-question-words-01');
   const info = lesson.items.slice(48, 56);
   assert.equal(info.length, 8);
-  assert.ok(info.every(item => item.type === 'mcq' && item.stage === 'information'));
+  assert.ok(info.every(item => item.type === 'mcq' && item.stage === 'sentence'));
   assert.ok(info.every(item => item.theorySupport?.access === 'after_submit'));
   assert.deepEqual(info.map(item => item.correctChoiceId), ['time', 'place', 'thing', 'manner', 'person', 'frequency', 'count', 'money']);
   assert.match(info[0].teachingFeedback.theory, /TIME.*WHEN/i);
@@ -131,7 +132,7 @@ test('Q57-Q66 preserve the ten Mai Lan Huong source questions with the full eigh
   assert.deepEqual(source.map(item => item.correctChoiceId), SOURCE_ANSWERS);
   for (const item of source) {
     assert.equal(item.type, 'mcq');
-    assert.equal(item.stage, 'source');
+    assert.equal(item.stage, 'sentence');
     assert.equal(item.theorySupport?.access, 'after_submit');
     assert.equal(item.choices.length, 8);
     assert.deepEqual(new Set(item.choices.map(choice => choice.id)), new Set(WH_IDS));
