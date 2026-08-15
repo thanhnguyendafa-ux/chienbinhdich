@@ -18,6 +18,7 @@ const ADD_TYPES = Object.freeze([
   ['true_false', 'True / False'],
   ['classification', 'Phân loại'],
   ['sentence_order', 'Sắp xếp câu'],
+  ['sequence_number', 'Sắp xếp thứ tự / Đánh số'],
   ['typing', 'Typing']
 ]);
 
@@ -228,6 +229,7 @@ export function openUniversalContentEditor({
       bindMcq(card, item);
       bindTrueFalse(card, item);
       bindSentenceOrder(card, item);
+      bindSequenceNumber(card, item);
       bindClassification(card, item);
       bindFeedback(card, item);
     });
@@ -300,6 +302,7 @@ function renderTypeEditor(item, draft) {
   if (type === 'mcq') return renderMcq(item, draft);
   if (type === 'true_false') return renderTrueFalse(item);
   if (type === 'sentence_order') return renderSentenceOrder(item);
+  if (type === 'sequence_number') return renderSequenceNumber(item);
   if (type === 'classification') return renderClassification(item);
   return `<p>Unsupported type: ${esc(type)}</p>`;
 }
@@ -342,7 +345,7 @@ function renderDiagnostic(choice) {
 
 function renderTrueFalse(item) {
   return `<div class="admin-editor-grid"><label>Statement / Mệnh đề<textarea rows="4" data-item-field="statement">${esc(item.statement)}</textarea></label>
-    <label>Correct answer / Đáp án<select data-item-select="answer" data-value-type="boolean"><option value="true" ${item.answer === true ? 'selected' : ''}>TRUE</option><option value="false" ${item.answer === false ? 'selected' : ''}>FALSE</option></select></label></div>`;
+    <label>Correct answer / Đáp án<select data-item-select="answer" data-value-type="boolean"><option value="true" ${item.answer === true ? 'selected' : ''}>TRUE</option><option value="false" ${item.answer === false ? '' : 'selected'}>FALSE</option></select></label></div>`;
 }
 
 function renderSentenceOrder(item) {
@@ -354,6 +357,27 @@ function renderSentenceOrder(item) {
     <label>Correct order (mỗi dòng một token)<textarea rows="6" data-order-correct>${esc((item.correctOrder ?? []).join('\n'))}</textarea></label>
     <label>Accepted orders (mỗi đáp án một dòng; token cách nhau bằng ||)<textarea rows="4" data-order-accepted>${esc(accepted.map(order => order.join(' || ')).join('\n'))}</textarea></label>
     ${item.orderDiagnostics ? `<details><summary>Advanced: Order diagnostics JSON</summary><textarea rows="8" data-order-diagnostics>${esc(JSON.stringify(item.orderDiagnostics, null, 2))}</textarea><small>JSON không hợp lệ sẽ không được áp dụng; validator vẫn chặn Publish nếu diagnostics không khớp token.</small></details>` : ''}
+  </div>`;
+}
+
+function renderSequenceNumber(item) {
+  const sequenceLines = item.lines ?? [];
+  const order = item.correctOrder ?? sequenceLines.map(line => line.id);
+  const positions = new Map(order.map((lineId, index) => [String(lineId), index + 1]));
+  return `<div class="admin-editor-grid">
+    <label>Prompt / Câu hỏi<textarea rows="3" data-item-field="prompt">${esc(item.prompt)}</textarea></label>
+    <div class="admin-choice-editor admin-sequence-editor">
+      <div class="admin-content-stage-head"><div><strong>Lines / Các dòng</strong><small> · ↑/↓ đổi vị trí hiển thị; Correct position là thứ tự đáp án.</small></div><button type="button" class="secondary-btn" data-sequence-line-add>+ Dòng</button></div>
+      ${sequenceLines.map((line, lineIndex) => `<div class="admin-choice-row admin-sequence-row" data-sequence-line-index="${lineIndex}">
+        <code>${esc(line.id)}</code>
+        <label class="admin-choice-main">Text<textarea rows="2" data-sequence-line-text>${esc(line.text)}</textarea></label>
+        <label>Correct position<select data-sequence-correct-position>${Array.from({ length: sequenceLines.length }, (_, index) => `<option value="${index + 1}" ${positions.get(String(line.id)) === index + 1 ? 'selected' : ''}>${index + 1}</option>`).join('')}</select></label>
+        <label><input type="checkbox" data-sequence-locked ${Number.isInteger(Number(line.lockedPosition)) ? 'checked' : ''}> Cho sẵn</label>
+        <button type="button" class="ghost-btn admin-mini-btn" data-sequence-line-up="${lineIndex}" ${lineIndex === 0 ? 'disabled' : ''}>↑</button>
+        <button type="button" class="ghost-btn admin-mini-btn" data-sequence-line-down="${lineIndex}" ${lineIndex === sequenceLines.length - 1 ? 'disabled' : ''}>↓</button>
+        <button type="button" class="danger-btn" data-sequence-line-delete="${lineIndex}" ${sequenceLines.length <= 2 ? 'disabled' : ''}>Xóa</button>
+      </div>`).join('')}
+    </div>
   </div>`;
 }
 
@@ -474,6 +498,71 @@ function bindSentenceOrder(card, item) {
       event.currentTarget.reportValidity();
     }
   });
+}
+
+function bindSequenceNumber(card, item) {
+  if (questionTypeForItem(item) !== 'sequence_number') return;
+  item.lines ??= [];
+  item.correctOrder ??= item.lines.map(line => String(line.id));
+
+  card.querySelectorAll('[data-sequence-line-index]').forEach(row => {
+    const index = Number(row.dataset.sequenceLineIndex);
+    const line = item.lines?.[index];
+    if (!line) return;
+    row.querySelector('[data-sequence-line-text]')?.addEventListener('input', event => { line.text = event.currentTarget.value; });
+    row.querySelector('[data-sequence-correct-position]')?.addEventListener('change', event => {
+      const currentIndex = item.correctOrder.indexOf(String(line.id));
+      const targetIndex = Number(event.currentTarget.value) - 1;
+      if (currentIndex < 0 || targetIndex < 0 || targetIndex >= item.correctOrder.length || currentIndex === targetIndex) return;
+      [item.correctOrder[currentIndex], item.correctOrder[targetIndex]] = [item.correctOrder[targetIndex], item.correctOrder[currentIndex]];
+      syncSequenceLocks(item);
+      rerender();
+    });
+    row.querySelector('[data-sequence-locked]')?.addEventListener('change', event => {
+      const position = item.correctOrder.indexOf(String(line.id)) + 1;
+      if (event.currentTarget.checked && position > 0) line.lockedPosition = position;
+      else delete line.lockedPosition;
+      rerender();
+    });
+  });
+
+  card.querySelector('[data-sequence-line-add]')?.addEventListener('click', () => {
+    const id = uniqueLocalId(`${item.id}-line`, item.lines.map(line => line.id));
+    item.lines.push({ id, text: `New line ${item.lines.length + 1} / Dòng mới ${item.lines.length + 1}` });
+    item.correctOrder.push(id);
+    syncSequenceLocks(item);
+    rerender();
+  });
+
+  card.querySelectorAll('[data-sequence-line-delete]').forEach(button => button.addEventListener('click', () => {
+    if (item.lines.length <= 2) return;
+    const index = Number(button.dataset.sequenceLineDelete);
+    const [removed] = item.lines.splice(index, 1);
+    item.correctOrder = item.correctOrder.filter(lineId => String(lineId) !== String(removed?.id));
+    syncSequenceLocks(item);
+    rerender();
+  }));
+
+  card.querySelectorAll('[data-sequence-line-up]').forEach(button => button.addEventListener('click', () => {
+    const index = Number(button.dataset.sequenceLineUp);
+    if (index <= 0 || index >= item.lines.length) return;
+    [item.lines[index - 1], item.lines[index]] = [item.lines[index], item.lines[index - 1]];
+    rerender();
+  }));
+
+  card.querySelectorAll('[data-sequence-line-down]').forEach(button => button.addEventListener('click', () => {
+    const index = Number(button.dataset.sequenceLineDown);
+    if (index < 0 || index >= item.lines.length - 1) return;
+    [item.lines[index], item.lines[index + 1]] = [item.lines[index + 1], item.lines[index]];
+    rerender();
+  }));
+}
+
+function syncSequenceLocks(item) {
+  const positions = new Map((item.correctOrder ?? []).map((lineId, index) => [String(lineId), index + 1]));
+  for (const line of item.lines ?? []) {
+    if (line.lockedPosition !== undefined) line.lockedPosition = positions.get(String(line.id));
+  }
 }
 
 function bindClassification(card, item) {
