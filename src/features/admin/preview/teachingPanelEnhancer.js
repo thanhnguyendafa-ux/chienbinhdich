@@ -95,12 +95,19 @@ function ensureCloseButton(panel) {
   head.append(close);
 }
 
+function setTextIfChanged(node, nextText) {
+  if (!node || node.textContent === nextText) return false;
+  node.textContent = nextText;
+  return true;
+}
+
 function updateTriggerCounters(page, panel) {
   const counter = currentCounter(panel);
+  const nextLabel = `Teaching · ${counter}`;
   const topLabel = page.querySelector('[data-teaching-panel-top-toggle] span:last-child');
-  if (topLabel) topLabel.textContent = `Teaching · ${counter}`;
+  setTextIfChanged(topLabel, nextLabel);
   const bottomLabel = page.querySelector('[data-teaching-panel-bottom-toggle] strong');
-  if (bottomLabel) bottomLabel.textContent = `Teaching · ${counter}`;
+  setTextIfChanged(bottomLabel, nextLabel);
 }
 
 function enhanceTeachingMode() {
@@ -131,8 +138,20 @@ function enhanceTeachingMode() {
 }
 
 if (appRoot) {
-  const observer = new MutationObserver(enhanceTeachingMode);
-  observer.observe(appRoot, { childList: true, subtree: true });
+  const observerOptions = { childList: true, subtree: true };
+  let observer = null;
+
+  const handleTeachingMutation = () => {
+    observer?.disconnect();
+    try {
+      enhanceTeachingMode();
+    } finally {
+      observer?.observe(appRoot, observerOptions);
+    }
+  };
+
+  observer = new MutationObserver(handleTeachingMutation);
+  observer.observe(appRoot, observerOptions);
   enhanceTeachingMode();
 
   document.addEventListener('keydown', event => {
