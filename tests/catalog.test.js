@@ -42,7 +42,9 @@ test('catalog exposes hierarchical Global 2, 3, 5, 6, 7 and MRT folders with the
   assert.deepEqual(listSetsByFolder('global6-unit1-mlh-reading').map(set => set.id), [
     'g6-u1-mlh-reading-gap-01', 'g6-u1-mlh-reading-tf-evidence-01'
   ]);
-  assert.deepEqual(listSetsByFolder('global6-unit1-mlh-writing').map(set => set.id), ['g6-u1-mlh-writing-reorder-01']);
+  assert.deepEqual(listSetsByFolder('global6-unit1-mlh-writing').map(set => set.id), [
+    'g6-u1-mlh-writing-reorder-01', 'g6-u1-mlh-writing-rewrite-01'
+  ]);
   assert.equal(listSetsByFolder('global6-unit1-writing-s1').length, 4);
   assert.equal(listSetsByFolder('global6-unit1-writing-s6').length, 5);
   assert.equal(listSetsByFolder('global6-unit1-writing-final').length, 3);
@@ -111,6 +113,15 @@ test('published Set ids, canonical slugs and legacy aliases are unique and repos
   assert.equal(writingReorder.itemCount, 64);
   assert.equal(writingReorder.course, 'Global Success 6');
   assert.equal(writingReorder.unit, 'Unit 1 · My New School');
+
+  const writingRewrite = getSetDescriptorBySlug('g6u1-mlh-writing-rewrite-01');
+  assert.ok(writingRewrite);
+  assert.equal(writingRewrite.id, 'g6-u1-mlh-writing-rewrite-01');
+  assert.equal(writingRewrite.folderId, 'global6-unit1-mlh-writing');
+  assert.equal(writingRewrite.itemCount, 51);
+  assert.equal(writingRewrite.course, 'Global Success 6');
+  assert.equal(writingRewrite.unit, 'Unit 1 · My New School');
+  assert.deepEqual(writingRewrite.activityTypes, ['typing', 'mcq']);
 });
 
 test('catalog validator rejects duplicate ids, dangling folders, duplicate fixed slugs and invalid metadata', () => {
