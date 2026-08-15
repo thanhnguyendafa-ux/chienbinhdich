@@ -1,6 +1,7 @@
 const ids = (start, end) => Object.freeze(Array.from({ length: end - start + 1 }, (_, index) => `g6u1-mlh-wr-q${String(start + index).padStart(2, '0')}`));
 const rewriteIds = (start, end) => Object.freeze(Array.from({ length: end - start + 1 }, (_, index) => `g6u1-mlh-rw-q${String(start + index).padStart(2, '0')}`));
 const whIds = (start, end) => Object.freeze(Array.from({ length: end - start + 1 }, (_, index) => `g6u1-mlh-wh-q${String(start + index).padStart(2, '0')}`));
+const dialogueIds = (start, end) => Object.freeze(Array.from({ length: end - start + 1 }, (_, index) => `g6u1-mlh-do-q${String(start + index).padStart(2, '0')}`));
 
 export const g6U1MlhWritingFolders = Object.freeze([
   Object.freeze({
@@ -90,5 +91,30 @@ export const g6U1MlhWritingRegistry = Object.freeze([
     itemCount: 66,
     loadContent: () => import('./g6-u1-mlh-writing-question-words-01.js')
       .then(module => module.global6Unit1MlhWritingQuestionWords01Content)
+  }),
+  Object.freeze({
+    id: 'g6-u1-mlh-writing-dialogue-order-01',
+    folderId: 'global6-unit1-mlh-writing',
+    order: 4,
+    version: 1,
+    course: 'Global Success 6',
+    unit: 'Unit 1 · My New School',
+    title: 'Dialogue Order 1 · Mai Lan Hương',
+    subtitle: '36 câu · WORD → CHUNK → LOGIC HỘI THOẠI VIỆT → ĐÁNH SỐ 1–10',
+    lessonSlug: 'g6u1-mlh-writing-dialogue-order-01',
+    passThreshold: 80,
+    completionPolicy: 'all-items',
+    teacher: 'Thầy Thành MRT',
+    description: 'Flow 36 câu cho học sinh yếu: 15 WORD Typing Việt → Anh, 12 CHUNK Typing Việt → Anh, 8 MCQ logic hội thoại hoàn toàn bằng tiếng Việt để luyện RESPONSE → HOOK/TOPIC/REFERENCE/CLOSING, rồi làm đúng bài nguồn bằng native Sequence Number: 10 dòng tiếng Anh đứng yên, học sinh gắn số 2–10; số 1 đã cho sẵn. Toàn bộ Theory chỉ mở sau submit.',
+    printGroups: Object.freeze([
+      Object.freeze({ id: 'word-foundation', title: 'A. WORD FOUNDATION / VIỆT → ANH', itemIds: dialogueIds(1, 15) }),
+      Object.freeze({ id: 'chunk-foundation', title: 'B. CHUNK FOUNDATION / VIỆT → ANH', itemIds: dialogueIds(16, 27) }),
+      Object.freeze({ id: 'vietnamese-dialogue-logic', title: 'C. LOGIC HỘI THOẠI / 100% TIẾNG VIỆT', itemIds: dialogueIds(28, 35) }),
+      Object.freeze({ id: 'final-sequence', title: 'D. FINAL SEQUENCE / ĐÁNH SỐ 1–10 CHO HỘI THOẠI GỐC', itemIds: dialogueIds(36, 36) })
+    ]),
+    activityTypes: Object.freeze(['typing', 'mcq', 'sequence_number']),
+    itemCount: 36,
+    loadContent: () => import('./g6-u1-mlh-writing-dialogue-order-01.js')
+      .then(module => module.global6Unit1MlhWritingDialogueOrder01Content)
   })
 ]);
