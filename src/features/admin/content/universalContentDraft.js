@@ -72,6 +72,20 @@ export function createUniversalDraftItem(lessonId, type, index = 0) {
   if (safeType === 'sentence_order') {
     return { id, type: 'sentence_order', prompt: '', tokens: ['A', 'B'], correctOrder: ['A', 'B'] };
   }
+  if (safeType === 'sequence_number') {
+    const firstId = `${id}-line-1`;
+    const secondId = `${id}-line-2`;
+    return {
+      id,
+      type: 'sequence_number',
+      prompt: 'Đánh số các dòng theo đúng thứ tự.',
+      lines: [
+        { id: firstId, text: 'Dòng thứ nhất / First line' },
+        { id: secondId, text: 'Dòng thứ hai / Second line' }
+      ],
+      correctOrder: [firstId, secondId]
+    };
+  }
   if (safeType === 'classification') {
     return {
       id,

@@ -88,6 +88,27 @@ test('Universal Content CMS can add a valid MCQ while keeping print-group covera
   );
 });
 
+test('Universal Content CMS can add and validate native sequence_number content', async () => {
+  const lesson = await loadLessonSet('g7-u1-pronunciation-01');
+  let draft = createUniversalDraft(lesson);
+  draft = appendDraftItem(lesson, draft, 'sequence_number', draft.printGroups.at(-1).id);
+  const added = draft.items.at(-1);
+  assert.equal(added.type, 'sequence_number');
+  assert.equal(added.lines.length, 2);
+  assert.deepEqual(added.correctOrder, added.lines.map(line => line.id));
+
+  added.prompt = 'Number the dialogue lines. / Đánh số các dòng hội thoại.';
+  added.lines[0].lockedPosition = 1;
+  const result = validateUniversalDraft(lesson, draft);
+  assert.deepEqual(result.errors, []);
+  assert.equal(result.content.items.at(-1).type, 'sequence_number');
+  assert.equal(result.content.items.at(-1).lines[0].lockedPosition, 1);
+  assert.deepEqual(
+    result.content.printGroups.flatMap(group => group.itemIds),
+    result.content.items.map(item => item.id)
+  );
+});
+
 test('lesson content revisions round-trip passages and printGroups without breaking legacy item-only records', async () => {
   const reading = await loadLessonSet('g5-u1-reading-01');
   assert.ok(reading.passages?.length > 0);
