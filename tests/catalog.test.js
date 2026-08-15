@@ -13,7 +13,7 @@ test('catalog exposes hierarchical Global 2, 3, 5, 6, 7 and MRT folders with the
     'global2-writing-typing', 'global2-writing-u01', 'global2-writing-u16',
     'global3', 'global3-writing-typing', 'global3-writing-u01', 'global3-writing-u20',
     'global5', 'global5-unit1', 'global5-unit2', 'global5-review-u1-5', 'global5-review',
-    'global6', 'global6-unit1', 'global6-unit1-mlh-reading', 'global6-unit1-writing-typing', 'global6-unit1-writing-final', 'global6-review-u1-3-mixed',
+    'global6', 'global6-unit1', 'global6-unit1-mlh-reading', 'global6-unit1-mlh-writing', 'global6-unit1-writing-typing', 'global6-unit1-writing-final', 'global6-review-u1-3-mixed',
     'global7', 'global7-unit1', 'global7-unit1-writing-typing', 'global7-unit1-writing-final', 'global7-review-u1-3-mixed',
     'mrt-lessons'
   ]) assert.ok(folderIds.includes(id), id);
@@ -42,6 +42,7 @@ test('catalog exposes hierarchical Global 2, 3, 5, 6, 7 and MRT folders with the
   assert.deepEqual(listSetsByFolder('global6-unit1-mlh-reading').map(set => set.id), [
     'g6-u1-mlh-reading-gap-01', 'g6-u1-mlh-reading-tf-evidence-01'
   ]);
+  assert.deepEqual(listSetsByFolder('global6-unit1-mlh-writing').map(set => set.id), ['g6-u1-mlh-writing-reorder-01']);
   assert.equal(listSetsByFolder('global6-unit1-writing-s1').length, 4);
   assert.equal(listSetsByFolder('global6-unit1-writing-s6').length, 5);
   assert.equal(listSetsByFolder('global6-unit1-writing-final').length, 3);
@@ -102,6 +103,14 @@ test('published Set ids, canonical slugs and legacy aliases are unique and repos
   assert.equal(tfEvidence.itemCount, 31);
   assert.equal(tfEvidence.course, 'Global Success 6');
   assert.equal(tfEvidence.unit, 'Unit 1 · My New School');
+
+  const writingReorder = getSetDescriptorBySlug('g6u1-mlh-writing-reorder-01');
+  assert.ok(writingReorder);
+  assert.equal(writingReorder.id, 'g6-u1-mlh-writing-reorder-01');
+  assert.equal(writingReorder.folderId, 'global6-unit1-mlh-writing');
+  assert.equal(writingReorder.itemCount, 64);
+  assert.equal(writingReorder.course, 'Global Success 6');
+  assert.equal(writingReorder.unit, 'Unit 1 · My New School');
 });
 
 test('catalog validator rejects duplicate ids, dangling folders, duplicate fixed slugs and invalid metadata', () => {
