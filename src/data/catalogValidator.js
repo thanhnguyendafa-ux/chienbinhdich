@@ -63,17 +63,29 @@ export function validateCatalog(folders, registry) {
     if (!Array.isArray(entry?.activityTypes) || entry.activityTypes.length === 0) errors.push(`Set ${entry?.id ?? '(unknown)'} thiếu activityTypes.`);
     if (typeof entry?.loadContent !== 'function') errors.push(`Set ${entry?.id ?? '(unknown)'} thiếu content loader.`);
 
-    const slug = String(entry?.lessonSlug ?? '');
-    if (!validateLessonSlug(slug)) {
-      errors.push(`Set ${entry?.id ?? '(unknown)'} có lessonSlug không hợp lệ hoặc xung đột legacy route.`);
-    } else if (lessonSlugs.has(slug)) {
-      errors.push(`lessonSlug bị trùng: ${slug}`);
+    registerLessonSlug(entry?.lessonSlug, `Set ${entry?.id ?? '(unknown)'} lessonSlug`, lessonSlugs, errors);
+
+    if (entry?.lessonSlugAliases !== undefined && !Array.isArray(entry.lessonSlugAliases)) {
+      errors.push(`Set ${entry?.id ?? '(unknown)'} có lessonSlugAliases không hợp lệ.`);
     } else {
-      lessonSlugs.add(slug);
+      for (const alias of entry?.lessonSlugAliases ?? []) {
+        registerLessonSlug(alias, `Set ${entry?.id ?? '(unknown)'} lessonSlug alias`, lessonSlugs, errors);
+      }
     }
   }
 
   return errors;
+}
+
+function registerLessonSlug(value, label, lessonSlugs, errors) {
+  const slug = String(value ?? '');
+  if (!validateLessonSlug(slug)) {
+    errors.push(`${label} không hợp lệ hoặc xung đột legacy route.`);
+  } else if (lessonSlugs.has(slug)) {
+    errors.push(`lessonSlug bị trùng: ${slug}`);
+  } else {
+    lessonSlugs.add(slug);
+  }
 }
 
 function isValidExpectedTime(value) {
