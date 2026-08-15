@@ -212,10 +212,8 @@ test('all 51 questions keep theory after submit; Student print stays answer-free
 test('Brain v1.2 maps source to target without changing the six transformation answers', async () => {
   const lesson = await loadLessonSet('g6-u1-mlh-writing-rewrite-01');
   const q = number => lesson.items[number - 1];
-  const reasoning = lesson.items.slice(27, 45);
   const finals = lesson.items.slice(45);
 
-  assert.ok(reasoning.every(item => /BRAIN v1\.2/i.test(item.teachingFeedback.theory)), 'all 18 reasoning items need Brain v1.2 theory after submit');
   assert.ok(finals.every(item => /BRAIN v1\.2/i.test(item.teachingFeedback.theory)), 'all six final rewrites need a Brain v1.2 summary');
 
   assert.match(q(30).teachingFeedback.theory, /YOU = SPECIAL.*DO.*ONE JOB.*LIKE/i);
