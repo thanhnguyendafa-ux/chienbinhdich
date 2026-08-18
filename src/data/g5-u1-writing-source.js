@@ -1,0 +1,22 @@
+const source = ({ id, order, targetSentence, targetVi, family, expectedTimeMinutes, difficulty = 'easy', feedbackReason }) => Object.freeze({
+  id, order, targetSentence, targetVi, family, expectedTimeMinutes, difficulty, feedbackReason
+});
+
+export const g5U1WritingSource = Object.freeze([
+  source({ id: 'g5u1-wr-t01', order: 1, targetSentence: 'Can you tell me about yourself?', targetVi: 'Bạn có thể nói cho tôi về bản thân bạn không?', family: 'About yourself', expectedTimeMinutes: 7, difficulty: 'medium', feedbackReason: 'Can you + động từ nguyên mẫu; tell me about yourself là cụm hỏi người đối diện giới thiệu về bản thân.' }),
+  source({ id: 'g5u1-wr-t02', order: 2, targetSentence: 'I live in the countryside.', targetVi: 'Tôi sống ở vùng nông thôn.', family: 'About yourself', expectedTimeMinutes: 6, feedbackReason: 'I + live + in + place; học nguyên cụm the countryside để không phải đoán article.' }),
+  source({ id: 'g5u1-wr-t03', order: 3, targetSentence: "What's your favourite colour?", targetVi: 'Màu sắc yêu thích của bạn là gì?', family: 'Favourite questions', expectedTimeMinutes: 7, difficulty: 'medium', feedbackReason: "What's = What is; mẫu hỏi What's your favourite + noun?" }),
+  source({ id: 'g5u1-wr-t04', order: 4, targetSentence: 'I love playing table tennis.', targetVi: 'Tôi rất thích chơi bóng bàn.', family: 'Like / Love + V-ing', expectedTimeMinutes: 6, difficulty: 'medium', feedbackReason: 'Sau love, hoạt động được dùng ở dạng V-ing: playing table tennis.' }),
+  source({ id: 'g5u1-wr-t05', order: 5, targetSentence: "I'm in Class 5A.", targetVi: 'Tôi học lớp 5A.', family: 'About yourself', expectedTimeMinutes: 6, feedbackReason: "I'm = I am; in Class 5A là chunk chỉ lớp học." }),
+  source({ id: 'g5u1-wr-t06', order: 6, targetSentence: 'I live in the city.', targetVi: 'Tôi sống ở thành phố.', family: 'About yourself', expectedTimeMinutes: 6, feedbackReason: 'I + live + in + place; học nguyên cụm the city.' }),
+  source({ id: 'g5u1-wr-t07', order: 7, targetSentence: "What's your favourite sport?", targetVi: 'Môn thể thao yêu thích của bạn là gì?', family: 'Favourite questions', expectedTimeMinutes: 7, difficulty: 'medium', feedbackReason: "What's = What is; favourite sport là một noun chunk." }),
+  source({ id: 'g5u1-wr-t08', order: 8, targetSentence: 'My favourite sport is football.', targetVi: 'Môn thể thao yêu thích của tôi là bóng đá.', family: 'Favourite answers', expectedTimeMinutes: 6, feedbackReason: 'My favourite sport là chủ thể; is football gán thông tin yêu thích.' }),
+  source({ id: 'g5u1-wr-t09', order: 9, targetSentence: "What's your favourite food?", targetVi: 'Món ăn yêu thích của bạn là gì?', family: 'Favourite questions', expectedTimeMinutes: 7, difficulty: 'medium', feedbackReason: "What's = What is; favourite food là một noun chunk." }),
+  source({ id: 'g5u1-wr-t10', order: 10, targetSentence: 'My favourite food is a sandwich.', targetVi: 'Món ăn yêu thích của tôi là một chiếc bánh sandwich.', family: 'Favourite answers', expectedTimeMinutes: 6, feedbackReason: 'a sandwich được học như một chunk hoàn chỉnh để không phải tự đoán article.' }),
+  source({ id: 'g5u1-wr-t11', order: 11, targetSentence: "What's your favourite animal?", targetVi: 'Con vật yêu thích của bạn là gì?', family: 'Favourite questions', expectedTimeMinutes: 7, difficulty: 'medium', feedbackReason: "What's = What is; favourite animal là một noun chunk." }),
+  source({ id: 'g5u1-wr-t12', order: 12, targetSentence: 'My favourite animal is a dolphin.', targetVi: 'Con vật yêu thích của tôi là một con cá heo.', family: 'Favourite answers', expectedTimeMinutes: 6, feedbackReason: 'a dolphin được học như một chunk hoàn chỉnh để không phải tự đoán article.' }),
+  source({ id: 'g5u1-wr-t13', order: 13, targetSentence: 'I like playing basketball.', targetVi: 'Tôi thích chơi bóng rổ.', family: 'Like / Love + V-ing', expectedTimeMinutes: 6, difficulty: 'medium', feedbackReason: 'Sau like, hoạt động được dùng ở dạng V-ing: playing basketball.' }),
+  source({ id: 'g5u1-wr-t14', order: 14, targetSentence: 'My favourite colour is green.', targetVi: 'Màu sắc yêu thích của tôi là màu xanh lá.', family: 'Favourite answers', expectedTimeMinutes: 6, feedbackReason: 'My favourite colour là chủ thể; is green gán màu yêu thích.' })
+]);
+
+export const g5U1WritingSourceById = Object.freeze(Object.fromEntries(g5U1WritingSource.map(record => [record.id, record])));
