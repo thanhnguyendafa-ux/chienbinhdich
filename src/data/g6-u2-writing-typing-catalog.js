@@ -21,9 +21,30 @@ const folderByOrder = Object.freeze({
   15: 'global6-unit2-writing-s6', 16: 'global6-unit2-writing-s6'
 });
 
+const safeTitleKeywordsByOrder = Object.freeze({
+  1: 'Elena · sở hữu',
+  2: 'TV · phía sau',
+  3: 'phòng khách · nhà bếp',
+  4: 'nhiều phòng · căn hộ mới',
+  5: 'các phòng trong nhà',
+  6: 'sáu phòng · ngôi nhà',
+  7: 'đồ vật · phòng ngủ',
+  8: 'phòng ngủ riêng',
+  9: 'cửa sổ · đồng hồ',
+  10: 'hỏi nơi ở',
+  11: 'nhà phố · Hà Nội',
+  12: 'hỏi người sống cùng',
+  13: 'bố mẹ · sống cùng',
+  14: 'đọc sách · phòng ngủ',
+  15: 'phòng ngủ · miêu tả',
+  16: 'phòng khách · lý do'
+});
+
 export const g6U2WritingRegistry = Object.freeze(g6U2WritingSource.map(source => {
   const key = String(source.order).padStart(2, '0');
   const itemCount = getG6U2WritingTypingContent(key).items.length;
+  const safeTitleKeywords = safeTitleKeywordsByOrder[source.order];
+  if (!safeTitleKeywords) throw new Error(`Missing learner-safe G6 U2 title keywords for lesson ${key}`);
   return Object.freeze({
     id: `g6-u2-writing-${key}`,
     folderId: folderByOrder[source.order],
@@ -31,7 +52,7 @@ export const g6U2WritingRegistry = Object.freeze(g6U2WritingSource.map(source =>
     version: 1,
     course: 'Global Success 6',
     unit: 'Unit 2 · My House',
-    title: `${key} · ${source.targetSentence}`,
+    title: `${key} · ${safeTitleKeywords}`,
     subtitle: 'Typing · Việt → Anh · CHUNK → SENTENCE',
     expectedTimeMinutes: source.expectedTimeMinutes,
     difficulty: source.difficulty,

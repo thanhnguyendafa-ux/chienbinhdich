@@ -23,6 +23,41 @@ test('G6 U2 publishes exactly 16 one-target writing lessons under 6 structures',
   assert.equal(new Set(g6U2WritingRegistry.map(lesson => lesson.targetSentenceId)).size, 16);
 });
 
+test('G6 U2 learner-visible titles use short admin keywords and never reveal the full target', () => {
+  const expectedTitles = [
+    '01 · Elena · sở hữu',
+    '02 · TV · phía sau',
+    '03 · phòng khách · nhà bếp',
+    '04 · nhiều phòng · căn hộ mới',
+    '05 · các phòng trong nhà',
+    '06 · sáu phòng · ngôi nhà',
+    '07 · đồ vật · phòng ngủ',
+    '08 · phòng ngủ riêng',
+    '09 · cửa sổ · đồng hồ',
+    '10 · hỏi nơi ở',
+    '11 · nhà phố · Hà Nội',
+    '12 · hỏi người sống cùng',
+    '13 · bố mẹ · sống cùng',
+    '14 · đọc sách · phòng ngủ',
+    '15 · phòng ngủ · miêu tả',
+    '16 · phòng khách · lý do'
+  ];
+  assert.deepEqual(g6U2WritingRegistry.map(lesson => lesson.title), expectedTitles);
+
+  const sourceById = new Map(g6U2WritingSource.map(record => [record.id, record]));
+  for (const descriptor of g6U2WritingRegistry) {
+    const source = sourceById.get(descriptor.targetSentenceId);
+    const final = contentFor(descriptor).items.find(item => item.scaffoldRole === 'final');
+    const keywordPart = descriptor.title.replace(/^\d{2}\s*·\s*/, '');
+    const keywordTokens = keywordPart.split(/\s+/).filter(token => token !== '·');
+    assert.ok(keywordPart.length <= 32, `${descriptor.id} title should stay compact for Admin`);
+    assert.ok(keywordTokens.length <= 5, `${descriptor.id} title should be only a few keywords`);
+    assert.equal(normalized(descriptor.title).includes(normalized(source.targetSentence)), false, `${descriptor.id} leaked source target in title`);
+    assert.equal(normalized(descriptor.title).includes(normalized(final.en)), false, `${descriptor.id} leaked FINAL answer in title`);
+    assert.doesNotMatch(descriptor.title, /[.?!]$/, `${descriptor.id} title must not look like the target sentence`);
+  }
+});
+
 test('all 16 locked targets are exact FINAL answers and every lesson has one FINAL', () => {
   const sourceById = new Map(g6U2WritingSource.map(record => [record.id, record]));
   for (const descriptor of g6U2WritingRegistry) {
