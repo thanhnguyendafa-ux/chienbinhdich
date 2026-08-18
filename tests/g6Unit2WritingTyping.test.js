@@ -49,8 +49,9 @@ test('G6 U2 learner-visible titles use short admin keywords and never reveal the
     const source = sourceById.get(descriptor.targetSentenceId);
     const final = contentFor(descriptor).items.find(item => item.scaffoldRole === 'final');
     const keywordPart = descriptor.title.replace(/^\d{2}\s*·\s*/, '');
+    const keywordTokens = keywordPart.split(/\s+/).filter(token => token !== '·');
     assert.ok(keywordPart.length <= 32, `${descriptor.id} title should stay compact for Admin`);
-    assert.ok(keywordPart.split(/\s+/).length <= 5, `${descriptor.id} title should be only a few keywords`);
+    assert.ok(keywordTokens.length <= 5, `${descriptor.id} title should be only a few keywords`);
     assert.equal(normalized(descriptor.title).includes(normalized(source.targetSentence)), false, `${descriptor.id} leaked source target in title`);
     assert.equal(normalized(descriptor.title).includes(normalized(final.en)), false, `${descriptor.id} leaked FINAL answer in title`);
     assert.doesNotMatch(descriptor.title, /[.?!]$/, `${descriptor.id} title must not look like the target sentence`);
