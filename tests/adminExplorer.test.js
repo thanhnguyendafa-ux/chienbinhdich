@@ -104,7 +104,7 @@ test('Explorer breadcrumbs and recursive lesson counts match the hierarchy', () 
   assert.equal(folderLessonCount(findAdminTreeNode(tree, 'global2')), 57);
   assert.equal(folderLessonCount(findAdminTreeNode(tree, 'global2-writing-typing')), 48);
   assert.equal(folderLessonCount(findAdminTreeNode(tree, 'global3')), 88);
-  assert.equal(folderLessonCount(findAdminTreeNode(tree, 'global5')), 16);
+  assert.equal(folderLessonCount(findAdminTreeNode(tree, 'global5')), 30);
   assert.equal(folderLessonCount(findAdminTreeNode(tree, 'global6')), 88);
   assert.equal(folderLessonCount(findAdminTreeNode(tree, 'global6-unit1')), 49);
   assert.equal(folderLessonCount(findAdminTreeNode(tree, 'global6-unit2')), 16);
