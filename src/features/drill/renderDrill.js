@@ -11,6 +11,8 @@ import { getQuestionContext } from './questionContext.js';
 import { bindTheorySupport, renderTheorySupport } from './theorySupportRenderer.js';
 import { renderAnswerAnalysis } from './answerAnalysisRenderer.js';
 
+const EXPLAIN_ACCEPT_POLICY = 'explain-and-accept';
+
 export function renderDrill({ root, session, set, feedback = null, onSubmit, onExit, onFinishQualified }) {
   const item = getCurrentItem(session, set);
   if (!item) return;
@@ -24,6 +26,7 @@ export function renderDrill({ root, session, set, feedback = null, onSubmit, onE
   const revealAnswer = feedback?.type === 'incorrect_reveal';
   const reviewMode = session.currentPromptKind !== 'main';
   const extendedMode = session.status === 'extended';
+  const explainAndAccept = set?.completionPolicy === EXPLAIN_ACCEPT_POLICY;
   const mainPosition = Math.max(1, set.items.findIndex(candidate => candidate.id === item.id) + 1);
   const badge = item.stage ? stageLabel(item.stage) : questionTypeLabel(item);
   const exposureKey = `${session.id}:${item.id}:${session.promptIndex}`;
@@ -53,26 +56,30 @@ export function renderDrill({ root, session, set, feedback = null, onSubmit, onE
             ${renderQuestionInteraction(item, { reviewMode, exposureKey, passages: set.passages ?? [] })}
           </div>
 
-          ${renderTheorySupport({ item, session, esc, escAttr })}
+          ${explainAndAccept ? '' : renderTheorySupport({ item, session, esc, escAttr })}
 
           <p class="encouragement">${extendedMode
             ? `Con đã vượt ${formatMasteryPercent(set.passThreshold)}%. Làm tiếp để củng cố; khi muốn dừng, bấm Nộp bài.`
-            : revealAnswer
-              ? 'Xem đáp án chuẩn rồi tự sửa lại. Correction trong cùng lượt không cộng hoặc trừ Mastery.'
-              : item.passageId
-                ? 'Chọn phương án mà cả True/False và lý do đều khớp bài đọc.'
-                : questionTypeForItem(item) === 'classification'
-                  ? 'Phân loại hết các mục trước khi kiểm tra. Click mục đã xếp để đưa về kho và sửa lại.'
-                  : questionTypeForItem(item) === 'sentence_order' && item.orderDiagnostics
-                    ? 'Không nhất thiết phải dùng hết các khối. Chọn đúng thành phần và đúng thứ tự.'
-                    : 'Chỉ lần trả lời đầu tiên của mỗi lượt xuất hiện mới làm Mastery tăng hoặc giảm.'}</p>
+            : explainAndAccept
+              ? 'Tự gõ tiếng Anh. Sau khi Submit, đọc đáp án và giải thích rồi bấm Chấp nhận. Không có gợi ý trước.'
+              : revealAnswer
+                ? 'Xem đáp án chuẩn rồi tự sửa lại. Correction trong cùng lượt không cộng hoặc trừ Mastery.'
+                : item.passageId
+                  ? 'Chọn phương án mà cả True/False và lý do đều khớp bài đọc.'
+                  : questionTypeForItem(item) === 'classification'
+                    ? 'Phân loại hết các mục trước khi kiểm tra. Click mục đã xếp để đưa về kho và sửa lại.'
+                    : questionTypeForItem(item) === 'sentence_order' && item.orderDiagnostics
+                      ? 'Không nhất thiết phải dùng hết các khối. Chọn đúng thành phần và đúng thứ tự.'
+                      : 'Chỉ lần trả lời đầu tiên của mỗi lượt xuất hiện mới làm Mastery tăng hoặc giảm.'}</p>
         </article>
       </section>
 
       <dialog class="exit-dialog" id="exit-dialog">
         <div class="dialog-copy"><strong>${extendedMode ? 'Con đã đạt mục tiêu rồi!' : 'Em muốn dừng bài?'}</strong><p>${extendedMode
           ? `Con đã vượt ${formatMasteryPercent(set.passThreshold)}%. Có thể tiếp tục luyện hoặc nộp bài để xem báo cáo.`
-          : `Chưa đạt ${formatMasteryPercent(set.passThreshold)}% thì chưa thể nộp bài. Nếu cần dừng, báo cáo vẫn giữ thời gian và lịch sử làm bài.`}</p></div>
+          : explainAndAccept
+            ? 'Bài này hoàn thành bằng cách đi qua toàn bộ prompt: Submit → đọc giải thích → Chấp nhận.'
+            : `Chưa đạt ${formatMasteryPercent(set.passThreshold)}% thì chưa thể nộp bài. Nếu cần dừng, báo cáo vẫn giữ thời gian và lịch sử làm bài.`}</p></div>
         <div class="dialog-actions"><button class="primary-btn" id="keep-learning-btn" type="button">Tiếp tục học</button>${extendedMode
           ? '<button class="secondary-btn" id="dialog-submit-btn" type="button">Nộp bài & xem báo cáo</button>'
           : '<button class="danger-text-btn" id="abandon-btn" type="button">Bỏ cuộc và xem báo cáo</button>'}</div>
@@ -102,20 +109,23 @@ export function showSuccess({ root, type, item = null, entered, answer, teaching
 
   animateMasteryProgress(root, { from: masteryBefore, to: mastery, delta: masteryDeltaPercent });
   card.classList.remove('has-error', 'is-reveal');
-  card.classList.add('has-success');
+  const explainedIncorrect = type === 'explained_incorrect';
+  card.classList.add(explainedIncorrect ? 'has-error' : 'has-success');
   const correction = type === 'correction';
   const actualGain = Number(masteryDeltaPercent ?? 0);
-  const masteryMessage = correction
-    ? `Correction: Mastery không đổi · ${formatMasteryPercent(mastery)}%`
-    : actualGain > 0
-      ? `Mastery +${formatMasteryPercent(actualGain)}% → ${formatMasteryPercent(mastery)}%`
-      : `Mastery giữ ở ${formatMasteryPercent(mastery)}%`;
+  const masteryMessage = explainedIncorrect
+    ? `Đã ghi nhận lượt trả lời · Mastery ${actualGain < 0 ? `−${formatMasteryPercent(Math.abs(actualGain))}%` : 'không đổi'}`
+    : correction
+      ? `Correction: Mastery không đổi · ${formatMasteryPercent(mastery)}%`
+      : actualGain > 0
+        ? `Mastery +${formatMasteryPercent(actualGain)}% → ${formatMasteryPercent(mastery)}%`
+        : `Mastery giữ ở ${formatMasteryPercent(mastery)}%`;
 
   if (teachingFeedback) {
     interaction.innerHTML = `
-      <div class="success-panel teaching-success-heading" role="status">
-        <span class="success-mark">ĐÚNG</span>
-        <strong>${correction ? 'Đã sửa chính xác' : 'Retrieval chính xác'}</strong>
+      <div class="${explainedIncorrect ? 'feedback reveal-feedback' : 'success-panel teaching-success-heading'}" role="status">
+        <span class="success-mark">${explainedIncorrect ? 'CHƯA ĐÚNG' : 'ĐÚNG'}</span>
+        <strong>${explainedIncorrect ? 'Đọc đáp án và giải thích' : correction ? 'Đã sửa chính xác' : 'Retrieval chính xác'}</strong>
         <small>${masteryMessage}</small>
       </div>
       ${renderTeachingFeedback({ item, entered, answer, teachingFeedback, includeContinue: true })}`;
@@ -130,29 +140,34 @@ export function showSuccess({ root, type, item = null, entered, answer, teaching
 
   interaction.innerHTML = `
     <div class="success-panel" role="status">
-      <span class="success-mark">ĐÚNG</span>
-      <strong>${correction ? 'Đã sửa chính xác' : 'Retrieval chính xác'}</strong>
+      <span class="success-mark">${explainedIncorrect ? 'CHƯA ĐÚNG' : 'ĐÚNG'}</span>
+      <strong>${explainedIncorrect ? 'Đọc đáp án rồi tiếp tục' : correction ? 'Đã sửa chính xác' : 'Retrieval chính xác'}</strong>
       <span class="answer-reveal">${esc(answer)}</span>
       <small>${masteryMessage}</small>
     </div>`;
-  window.setTimeout(onContinue, 430);
+  window.setTimeout(onContinue, explainedIncorrect ? 1200 : 430);
 }
 
 export function renderPassed({ root, session, set, onSubmit, onContinue }) {
   const metrics = getSessionMetrics(session, set);
+  const explainAndAccept = set?.completionPolicy === EXPLAIN_ACCEPT_POLICY;
   root.innerHTML = `
     <main class="page page-centered passed-page">
       <section class="passed-card qualification-card">
         <div class="brand-lockup centered"><span class="brand-seal">MRT</span><span>Chiến Binh Dịch</span></div>
-        <p class="eyebrow">🎉 ĐÃ VƯỢT MỤC TIÊU</p>
-        <h1>${formatMasteryPercent(metrics.mastery)}% Mastery</h1>
-        <p>Con đã vượt mục tiêu ${formatMasteryPercent(set.passThreshold)}%. Con có thể nộp bài ngay hoặc làm tiếp để củng cố và nâng Mastery.</p>
-        <div class="passed-stats"><span>${metrics.totalAttempts} lượt trả lời</span><span>${metrics.retryCount} lượt gặp lại</span></div>
+        <p class="eyebrow">${explainAndAccept ? '✅ ĐÃ HOÀN THÀNH' : '🎉 ĐÃ VƯỢT MỤC TIÊU'}</p>
+        <h1>${explainAndAccept ? `${metrics.completedMainItems}/${metrics.total} lượt đã học` : `${formatMasteryPercent(metrics.mastery)}% Mastery`}</h1>
+        <p>${explainAndAccept
+          ? 'Con đã đi qua toàn bộ prompt Việt → Anh, đọc đáp án/giải thích sau mỗi lần Submit và Chấp nhận để tiếp tục.'
+          : `Con đã vượt mục tiêu ${formatMasteryPercent(set.passThreshold)}%. Con có thể nộp bài ngay hoặc làm tiếp để củng cố và nâng Mastery.`}</p>
+        <div class="passed-stats"><span>${metrics.totalAttempts} lượt trả lời</span><span>${metrics.retrievalErrors} lượt cần xem giải thích</span></div>
         <div class="qualification-actions">
           <button class="primary-btn submit-assignment-btn" id="submit-assignment-btn" type="button">Nộp bài</button>
-          <button class="secondary-btn continue-learning-btn" id="continue-learning-btn" type="button">Làm tiếp</button>
+          ${explainAndAccept ? '' : '<button class="secondary-btn continue-learning-btn" id="continue-learning-btn" type="button">Làm tiếp</button>'}
         </div>
-        <small>Cả hai lựa chọn đều giữ toàn bộ lịch sử. Nếu làm tiếp, con có thể nộp bài bất cứ lúc nào.</small>
+        <small>${explainAndAccept
+          ? 'Bài này không bắt sửa lại sau khi sai; mục tiêu là production → noticing → chấp nhận đáp án cục bộ.'
+          : 'Cả hai lựa chọn đều giữ toàn bộ lịch sử. Nếu làm tiếp, con có thể nộp bài bất cứ lúc nào.'}</small>
       </section>
     </main>`;
   root.querySelector('#submit-assignment-btn')?.addEventListener('click', async event => {
@@ -222,6 +237,7 @@ function renderTeachingFeedback({ item = null, entered, answer, teachingFeedback
     ? `<div class="teaching-copy teaching-alternatives"><span>Cách đúng khác</span><p>${alternatives.map(esc).join(' · ')}</p></div>`
     : '';
   const answerLabel = sentenceOrder ? 'Câu chuẩn' : classification ? 'Phân loại đúng' : 'Đáp án đúng là';
+  const continueLabel = item?.acceptAfterSubmit ? 'Chấp nhận' : 'Tiếp tục';
   return `
     <section class="teaching-feedback" aria-label="Giải thích đáp án">
       ${item ? renderQuestionContext(item) : ''}
@@ -234,7 +250,7 @@ function renderTeachingFeedback({ item = null, entered, answer, teachingFeedback
       ${workedLine}
       <div class="teaching-copy teaching-example"><span>Ví dụ</span><p>${esc(teachingFeedback.example)}</p></div>
       ${renderAnswerAnalysis(teachingFeedback, esc)}
-      ${includeContinue ? '<button class="primary-btn teaching-continue-btn" id="teaching-continue-btn" type="button">Tiếp tục</button>' : ''}
+      ${includeContinue ? `<button class="primary-btn teaching-continue-btn" id="teaching-continue-btn" type="button">${continueLabel}</button>` : ''}
     </section>`;
 }
 

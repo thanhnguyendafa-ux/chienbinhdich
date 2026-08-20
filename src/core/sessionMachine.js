@@ -5,6 +5,7 @@ import { sessionTypingTolerance } from './typingPolicy.js';
 import { advanceLearningPrompt, queueRetry } from './retryScheduler.js';
 
 export const SESSION_SCHEMA_VERSION = 7;
+const EXPLAIN_ACCEPT_POLICY = 'explain-and-accept';
 
 export function createSession({ studentName, set, now = Date.now() }) {
   const firstItem = set.items[0];
@@ -53,7 +54,8 @@ export function submitAnswer({ session, set, response, answer, attemptMeta = {},
     : evaluateQuestion(item, submittedResponse);
   const submittedAt = finiteTime(attemptMeta.submittedAt, now);
   const startedAt = finiteTime(attemptMeta.startedAt, submittedAt);
-  const revealAfterAttempt = !result.correct && (hasSeenAnswer || failedAttemptsBefore + 1 >= 2);
+  const explainAndAccept = set?.completionPolicy === EXPLAIN_ACCEPT_POLICY;
+  const revealAfterAttempt = !result.correct && (explainAndAccept || hasSeenAnswer || failedAttemptsBefore + 1 >= 2);
   const masteryDeltaUnits = attemptNumber === 1 ? (result.correct ? 1 : -1) : 0;
   const masteryBefore = masteryDisplayPercent(session.attempts, set.items.length);
   const expectedDisplay = expectedResponseDisplay(item);
@@ -69,7 +71,9 @@ export function submitAnswer({ session, set, response, answer, attemptMeta = {},
     submittedResponse: result.normalizedResponse,
     submittedAnswer: result.displayResponse,
     correct: result.correct,
-    result: resolveAttemptResult({ correct: result.correct, hadWrongThisExposure, revealAfterAttempt }),
+    result: explainAndAccept && !result.correct
+      ? 'explained_incorrect'
+      : resolveAttemptResult({ correct: result.correct, hadWrongThisExposure, revealAfterAttempt }),
     masteryDeltaUnits,
     startedAt,
     submittedAt,
@@ -84,6 +88,25 @@ export function submitAnswer({ session, set, response, answer, attemptMeta = {},
   nextSession.attempts.push(attempt);
   const mastery = masteryDisplayPercent(nextSession.attempts, set.items.length);
   const masteryDeltaPercent = round2(mastery - masteryBefore);
+
+  if (!result.correct && explainAndAccept) {
+    nextSession = qualifySessionIfEligible(nextSession, set);
+    if (nextSession.status !== 'passed') nextSession = advanceLearningPrompt(nextSession, set);
+    return {
+      session: nextSession,
+      event: {
+        type: 'explained_incorrect',
+        entered: result.displayResponse,
+        answer: expectedDisplay,
+        attemptNumber,
+        masteryDeltaUnits,
+        masteryBefore,
+        masteryDeltaPercent,
+        mastery,
+        passed: nextSession.status === 'passed'
+      }
+    };
+  }
 
   if (!result.correct) {
     nextSession.retryQueue = queueRetry(nextSession.retryQueue, item.id, session.promptIndex);
@@ -125,12 +148,17 @@ export function qualifySessionIfEligible(session, set) {
   if (session?.status !== 'active') return session;
   if (!completionPolicySatisfied(session, set)) return session;
   const threshold = sessionPassThreshold(session, set);
-  if (masteryPercentFromAttempts(session.attempts, set.items.length) < threshold) return session;
+  if (set?.completionPolicy !== EXPLAIN_ACCEPT_POLICY
+    && masteryPercentFromAttempts(session.attempts, set.items.length) < threshold) return session;
 
   return {
     ...session,
     status: 'passed',
-    qualifiedAt: session.qualifiedAt ?? firstQualificationTimestamp(session.attempts, set.items.length, threshold)
+    qualifiedAt: session.qualifiedAt ?? (
+      set?.completionPolicy === EXPLAIN_ACCEPT_POLICY
+        ? lastAttemptTimestamp(session.attempts)
+        : firstQualificationTimestamp(session.attempts, set.items.length, threshold)
+    )
   };
 }
 
@@ -173,7 +201,9 @@ export function getSessionMetrics(session, set, now = Date.now()) {
   const mastery = masteryDisplayPercent(attempts, set.items.length);
   const counts = getMasteryCounts(attempts);
   const completedMainIds = new Set(
-    attempts.filter(attempt => attempt.promptKind === 'main' && attempt.correct).map(attempt => attempt.itemId)
+    attempts.filter(attempt => attempt.promptKind === 'main' && (
+      attempt.correct || (set?.completionPolicy === EXPLAIN_ACCEPT_POLICY && attempt.answerRevealedAfterAttempt)
+    )).map(attempt => attempt.itemId)
   );
   const correctedPromptIds = new Set(
     attempts.filter(attempt => attempt.result === 'correction').map(attempt => attempt.promptIndex)
@@ -221,7 +251,7 @@ export function getSessionMetrics(session, set, now = Date.now()) {
 }
 
 function completionPolicySatisfied(session, set) {
-  if (set?.completionPolicy !== 'all-items') return true;
+  if (!['all-items', EXPLAIN_ACCEPT_POLICY].includes(set?.completionPolicy)) return true;
   const totalItems = Array.isArray(set?.items) ? set.items.length : 0;
   return totalItems > 0 && Number(session?.mainCursor ?? 0) >= totalItems;
 }
@@ -232,6 +262,11 @@ function firstQualificationTimestamp(attempts, totalItems, threshold) {
   if (crossingIndex < 0) return null;
   const timestamp = Number(attempts[crossingIndex]?.submittedAt);
   return Number.isFinite(timestamp) ? timestamp : null;
+}
+
+function lastAttemptTimestamp(attempts) {
+  const timestamp = Number((attempts ?? []).at(-1)?.submittedAt);
+  return Number.isFinite(timestamp) ? timestamp : Date.now();
 }
 
 function resolveAttemptResult({ correct, hadWrongThisExposure, revealAfterAttempt }) {
