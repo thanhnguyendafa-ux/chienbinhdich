@@ -17,9 +17,10 @@ export function buildG5ExplainAcceptContent({ unitNumber, unitLabel, raw }) {
       })
     })))
   })])));
-  const meta = freeze(Object.entries(lessons).map(([key, lesson], index) => freeze({
-    key, order: index + 1, title: lesson.title, itemCount: lesson.items.length
-  })));
+  const meta = freeze(raw.map(([key], index) => {
+    const lesson = lessons[key];
+    return freeze({ key, order: index + 1, title: lesson.title, itemCount: lesson.items.length });
+  }));
   return freeze({
     lessons,
     meta,
