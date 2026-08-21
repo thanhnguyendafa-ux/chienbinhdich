@@ -1,4 +1,5 @@
 import { firebaseConfig } from '../config/firebaseConfig.js';
+import { attachIntegrityTracking, configureIntegrityRuntime, finalizeIntegrityTracking } from '../core/integrityRuntime.js';
 import { browserSessionStore as browser } from './browserSessionStore.js';
 import { createFirebaseSessionRepository } from './firebaseSessionRepository.js';
 
@@ -15,18 +16,21 @@ let onlineListenerInstalled = false;
 
 export const localSessionRepository = Object.freeze({
   saveActive(session) {
-    browser.saveActive(session);
-    enqueueRemote(session);
+    const tracked = attachIntegrityTracking(session);
+    browser.saveActive(tracked);
+    enqueueRemote(tracked);
   },
   loadActive() {
-    return browser.loadActive();
+    const loaded = browser.loadActive();
+    return loaded ? attachIntegrityTracking(loaded) : null;
   },
   clearActive() {
     browser.clearActive();
   },
   saveReport(session) {
-    browser.saveReport(session);
-    enqueueRemote(session);
+    const finalized = finalizeIntegrityTracking(session);
+    browser.saveReport(finalized);
+    enqueueRemote(finalized);
   },
   loadReport(sessionId) {
     return browser.loadReport(sessionId);
@@ -48,6 +52,14 @@ export const localSessionRepository = Object.freeze({
       migrationTimestamp: browser.getFirebaseMigrationTimestamp(firebaseConfig.project.projectId),
       lastRemoteError: lastRemoteError ? String(lastRemoteError.message ?? lastRemoteError) : null
     };
+  }
+});
+
+configureIntegrityRuntime({
+  persistSession(trackedSession) {
+    if (!trackedSession?.id || !['active', 'extended'].includes(trackedSession.status)) return;
+    browser.saveActive(trackedSession);
+    enqueueRemote(trackedSession);
   }
 });
 
