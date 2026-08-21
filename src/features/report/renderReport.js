@@ -3,6 +3,7 @@ import { getMasteryTransitions } from '../../core/masteryEngine.js';
 import { questionPromptDisplay, questionTypeLabel } from '../../core/questionTypes.js';
 import { deriveAttemptAnalytics } from '../../core/attemptAnalytics.js';
 import { deriveAssignmentSummary } from '../../core/assignmentSummary.js';
+import { deriveIntegritySummary } from '../../core/integrityTracker.js';
 import { deriveReadingDiagnostics } from '../../core/readingDiagnostics.js';
 import {
   deriveSentenceOrderDiagnostics,
@@ -18,6 +19,7 @@ import { formatClockTime, formatDateTime, formatDuration, formatResponseDuration
 export function renderReport({ root, session, set, onRetry, onHome }) {
   const metrics = getSessionMetrics(session, set);
   const analytics = deriveAttemptAnalytics(session, set);
+  const integrity = deriveIntegritySummary(session, session.completedAt ?? Date.now());
   const summary = deriveAssignmentSummary(session, set);
   const reading = deriveReadingDiagnostics(session, set);
   const writing = deriveSentenceOrderDiagnostics(session, set);
@@ -40,7 +42,7 @@ export function renderReport({ root, session, set, onRetry, onHome }) {
 
       <article class="report-document shell ${submitted ? 'is-submitted' : 'is-abandoned'}">
         <header class="report-document-header"><div class="report-brand">MRT · CHIẾN BINH DỊCH</div><strong class="result-stamp">${statusLabel(summary.status)}</strong></header>
-        ${renderAssignmentHero({ session, set, summary })}
+        ${renderAssignmentHero({ session, set, summary, analytics, integrity })}
 
         ${reading.total ? metricSection('Phân tích đọc hiểu · lần đầu', [
           [
@@ -68,14 +70,14 @@ export function renderReport({ root, session, set, onRetry, onHome }) {
           [['Tổng thời gian', formatDuration(summary.durationMs)], ['Thời gian luyện thêm', metrics.extendedPractice ? formatDuration(metrics.extendedPracticeDurationMs) : '—']]
         ])}
 
-        ${metricSection('Dấu hiệu quá trình', [[['Paste detected', analytics.pasteCount], ['Phản hồi rất nhanh', analytics.rapidCount], ['Trung vị phản hồi', formatResponseDuration(analytics.medianResponseMs)] ]])}
+        ${metricSection('Dấu hiệu bổ sung', [[['Attempt có Paste', analytics.pasteCount], ['Phản hồi rất nhanh', analytics.rapidCount], ['Trung vị phản hồi', formatResponseDuration(analytics.medianResponseMs)] ]])}
         ${renderOutcome({ submitted, abandoned, metrics, set })}
 
-        <section class="process-note"><strong>Lưu ý khi đọc dữ liệu</strong><p>Đúng/Sai ở phần đầu báo cáo được tính theo lần trả lời đầu tiên của từng câu trong chuỗi chính. Reading, Writing Select + Order và Classification diagnostic cũng chỉ tính lần đầu; retry và correction không làm tăng số lỗi. Với Classification, “token xếp nhầm” là số mục bị đặt sai nhóm trong các câu phân loại. Paste và phản hồi rất nhanh chỉ là dữ liệu quá trình, không tự động bị coi là gian lận.</p></section>
+        <section class="process-note"><strong>Lưu ý khi đọc dữ liệu</strong><p>Đúng/Sai ở phần đầu báo cáo được tính theo lần trả lời đầu tiên của từng câu trong chuỗi chính. Reading, Writing Select + Order và Classification diagnostic cũng chỉ tính lần đầu; retry và correction không làm tăng số lỗi. Với Classification, “token xếp nhầm” là số mục bị đặt sai nhóm trong các câu phân loại. Copy/Paste, chuyển tab và phản hồi rất nhanh chỉ là dữ liệu quá trình, không tự động bị coi là gian lận. “Chuyển tab” được tính khi trang học chuyển sang trạng thái hidden; hệ thống không biết học sinh đã mở trang hoặc ứng dụng nào.</p></section>
 
         <section class="timeline-section">
-          <div class="timeline-heading"><div><p class="report-kicker">ACTIVITY TIMELINE</p><h2>Lịch sử từng lần trả lời</h2></div><span>${session.attempts.length} lượt</span></div>
-          <ol class="attempt-list">${analytics.attempts.map((attempt, index) => renderAttempt(attempt, itemById.get(attempt.itemId), transitions[index]?.delta ?? 0)).join('')}</ol>
+          <div class="timeline-heading"><div><p class="report-kicker">ACTIVITY TIMELINE</p><h2>Lịch sử làm bài và chuyển tab</h2></div><span>${timelineCountLabel(session, integrity)}</span></div>
+          <ol class="attempt-list">${renderActivityTimeline({ analytics, integrity, itemById, transitions })}</ol>
         </section>
         <footer class="report-document-footer"><code>Session: ${esc(session.id)}</code></footer>
       </article>
@@ -86,13 +88,15 @@ export function renderReport({ root, session, set, onRetry, onHome }) {
   root.querySelector('#home-btn')?.addEventListener('click', onHome);
 }
 
-function renderAssignmentHero({ session, set, summary }) {
+function renderAssignmentHero({ session, set, summary, analytics, integrity }) {
   return `<section class="report-assignment-hero">
     <p class="report-kicker">BÁO CÁO KẾT QUẢ BÀI GIAO</p><h1>${esc(set.title)}</h1>
     <p class="report-assignment-meta">${esc(set.course)} · ${esc(set.unit)}</p>
     <div class="report-student-line"><span>Học sinh</span><strong>${esc(session.studentName)}</strong></div>
-    <div class="report-key-results" aria-label="Kết quả chính">
+    <div class="report-key-results" aria-label="Kết quả chính và dấu hiệu tính trung thực">
       ${keyResult('Trạng thái', statusLabel(summary.status), statusNote(summary), `status-${summary.status}`)}
+      ${keyResult('Copy/Paste', copyPasteValue(integrity, analytics), copyPasteNote(integrity, analytics), integritySignalClass(integrity.trackingAvailable ? integrity.pasteCount + integrity.copyCount : analytics.pasteCount))}
+      ${keyResult('Chuyển tab', tabSwitchValue(integrity), tabSwitchNote(integrity), integritySignalClass(integrity.tabSwitchCount))}
       ${keyResult('Mastery', `${formatPercent(summary.mastery)}%`, `Mục tiêu ${set.passThreshold}%`)}
       ${keyResult('Tổng thời gian', formatDuration(summary.durationMs), 'Thời gian làm bài')}
     </div>
@@ -128,10 +132,57 @@ function questionResult(label, value, note = '') { return `<div class="report-qu
 function statusLabel(status) { if (status === 'passed') return 'PASS ✓'; if (status === 'abandoned') return 'BỎ CUỘC'; return 'ĐANG LÀM'; }
 function statusNote(summary) { if (summary.status === 'passed') return 'Đã nộp bài'; return `Đã làm ${summary.attemptedItems}/${summary.totalItems} câu`; }
 
+function copyPasteValue(integrity, analytics) {
+  if (!integrity.trackingAvailable) return String(analytics.pasteCount);
+  return `P ${integrity.pasteCount} · C ${integrity.copyCount}`;
+}
+
+function copyPasteNote(integrity, analytics) {
+  if (!integrity.trackingAvailable) return analytics.pasteCount ? 'Attempt có Paste · phiên cũ' : 'Phiên cũ · chưa đếm event';
+  return integrity.trackingScope === 'partial' ? 'Theo dõi một phần của phiên' : 'P = Paste · C = Copy';
+}
+
+function tabSwitchValue(integrity) {
+  return integrity.trackingAvailable ? String(integrity.tabSwitchCount) : '—';
+}
+
+function tabSwitchNote(integrity) {
+  if (!integrity.trackingAvailable) return 'Phiên cũ · chưa theo dõi';
+  const away = `Rời trang ${formatDuration(integrity.tabAwayMs)}`;
+  return integrity.trackingScope === 'partial' ? `Theo dõi một phần · ${away}` : away;
+}
+
+function integritySignalClass(value) {
+  return Number(value ?? 0) > 0 ? 'has-integrity-signal' : 'no-integrity-signal';
+}
+
 function metricSection(title, rows) {
   return `<section class="metric-section"><h2>${esc(title)}</h2><div class="metric-lines">${rows.map(row => `<div class="metric-line">${row.map(([label, value]) => metricItem(label, value)).join('')}</div>`).join('')}</div></section>`;
 }
 function metricItem(label, value) { return `<div class="metric-item"><span>${esc(label)}</span><strong>${esc(value)}</strong></div>`; }
+
+function renderActivityTimeline({ analytics, integrity, itemById, transitions }) {
+  const activities = analytics.attempts.map((attempt, index) => ({
+    type: 'attempt',
+    at: Number(attempt.submittedAt ?? 0),
+    index,
+    html: renderAttempt(attempt, itemById.get(attempt.itemId), transitions[index]?.delta ?? 0)
+  }));
+
+  for (const [index, event] of (integrity.tabEvents ?? []).entries()) {
+    activities.push({
+      type: 'integrity',
+      at: Number(event.at ?? 0),
+      index,
+      html: renderTabEvent(event)
+    });
+  }
+
+  return activities
+    .sort((a, b) => a.at - b.at || (a.type === 'integrity' ? -1 : 1) || a.index - b.index)
+    .map(activity => activity.html)
+    .join('');
+}
 
 function renderAttempt(attempt, item, impact) {
   const correction = attempt.result === 'correction';
@@ -147,6 +198,19 @@ function renderAttempt(attempt, item, impact) {
     ${writingDiagnostic && writingDiagnostic.code !== 'correct' ? `<div class="attempt-flags"><span class="attempt-flag">WRITING · ${esc(sentenceOrderDiagnosticLabel(writingDiagnostic.code))}</span></div>` : ''}
     ${classificationSummary ? `<div class="attempt-flags"><span class="attempt-flag">PHÂN LOẠI · ${esc(classificationSummary)}</span></div>` : ''}
     ${flags ? `<div class="attempt-flags">${flags}</div>` : ''}</div></li>`;
+}
+
+function renderTabEvent(event) {
+  const leaving = event.type === 'hidden';
+  return `<li class="attempt-row integrity-event-row"><div class="attempt-time"><strong>${formatClockTime(event.at)}</strong><span>${leaving ? 'TAB' : formatDuration(event.awayMs)}</span></div><div class="attempt-body">
+    <div class="attempt-meta"><strong class="attempt-status">${leaving ? 'RỜI TAB' : 'QUAY LẠI'}</strong><span>DẤU HIỆU QUÁ TRÌNH</span></div>
+    <p class="attempt-prompt">${leaving ? 'Trang học chuyển sang trạng thái hidden.' : `Trang học hiển thị lại sau ${formatDuration(event.awayMs)}.`}</p>
+  </div></li>`;
+}
+
+function timelineCountLabel(session, integrity) {
+  const tabEvents = integrity.trackingAvailable ? integrity.tabEvents.length : 0;
+  return tabEvents ? `${session.attempts.length} lượt · ${tabEvents} sự kiện tab` : `${session.attempts.length} lượt`;
 }
 
 function renderOutcome({ submitted, abandoned, metrics, set }) {
