@@ -33,17 +33,22 @@ test('submitted reports expose print in a top toolbar while printing stays outsi
   assert.doesNotMatch(sessionMachine, /print-report|window\.print|printedAt/);
 });
 
-test('report prioritizes parent-facing assignment results before line-based technical details', () => {
-  const heroCall = report.indexOf('renderAssignmentHero({ session, set, summary })');
+test('report puts integrity signals beside PASS before academic details', () => {
+  const heroCall = report.indexOf('renderAssignmentHero({ session, set, summary, analytics, integrity })');
   const technical = report.indexOf("metricSection('Chi tiết quá trình học'");
   assert.ok(heroCall >= 0 && technical > heroCall);
   assert.match(report, /class="report-key-results"/);
-  assert.match(report, /class="report-question-results"/);
-  assert.match(report, /Tổng số câu/);
-  assert.match(report, /Tổng thời gian/);
-  assert.match(report, /metricSection\('Chi tiết quá trình học'/);
-  assert.match(report, /metricSection\('Thời gian chi tiết'/);
-  assert.match(report, /metricSection\('Dấu hiệu quá trình'/);
+  assert.match(report, /keyResult\('Trạng thái'/);
+  assert.match(report, /keyResult\('Copy\/Paste'/);
+  assert.match(report, /keyResult\('Chuyển tab'/);
+  assert.match(report, /keyResult\('Mastery'/);
+  assert.match(report, /keyResult\('Tổng thời gian'/);
+  assert.ok(report.indexOf("keyResult('Copy/Paste'") > report.indexOf("keyResult('Trạng thái'"));
+  assert.ok(report.indexOf("keyResult('Chuyển tab'") > report.indexOf("keyResult('Copy/Paste'"));
+  assert.ok(report.indexOf("keyResult('Mastery'") > report.indexOf("keyResult('Chuyển tab'"));
+  assert.match(report, /Phiên cũ · chưa theo dõi/);
+  assert.match(report, /Theo dõi một phần/);
+  assert.match(report, /Dấu hiệu bổ sung/);
   assert.match(report, /class="metric-line"/);
   assert.doesNotMatch(report, /class="report-grid"/);
   assert.match(reportCss, /\.report-key-results\{display:grid;grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/);
@@ -51,7 +56,11 @@ test('report prioritizes parent-facing assignment results before line-based tech
   assert.match(reportCss, /border-top:1px solid black/);
 });
 
-test('timeline is a compact line report rather than colored attempt cards', () => {
+test('timeline includes tab-away events as integrity evidence without replacing attempt details', () => {
+  assert.match(report, /Lịch sử làm bài và chuyển tab/);
+  assert.match(report, /RỜI TAB/);
+  assert.match(report, /QUAY LẠI/);
+  assert.match(report, /Trang học chuyển sang trạng thái hidden/);
   assert.match(reportCss, /\.attempt-row\{display:grid[^}]*border-bottom:1px solid black[^}]*background:white/);
   assert.doesNotMatch(report, /attempt-correct|attempt-wrong/);
   assert.match(report, /SỬA ĐÚNG/);
