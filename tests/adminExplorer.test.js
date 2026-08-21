@@ -33,7 +33,7 @@ test('Explorer tree nests Global Success 2, 3, 5, 6 and 7 without changing Set i
   assert.equal(folderEntries(tree, 'global3-writing-u01').filter(node => node.type === 'lesson').length, 5);
   assert.equal(folderEntries(tree, 'global3-writing-u20').filter(node => node.type === 'lesson').length, 5);
 
-  assert.deepEqual(findAdminTreeNode(tree, 'global5').children.filter(node => node.type === 'folder').map(node => node.id), ['global5-unit1','global5-unit2','global5-unit3','global5-unit4','global5-unit5','global5-review-u1-5','global5-review']);
+  assert.deepEqual(findAdminTreeNode(tree, 'global5').children.filter(node => node.type === 'folder').map(node => node.id), ['global5-unit1','global5-unit2','global5-unit3','global5-unit4','global5-unit5','global5-unit6','global5-unit7','global5-unit8','global5-unit9','global5-unit10','global5-review-u1-5','global5-review']);
   assert.deepEqual(folderEntries(tree, 'global5-unit1').filter(node => node.type === 'lesson').map(node => node.setId), ['g5-u1-vocab-01','g5-u1-pattern-01','g5-u1-reading-01','g5-u1-writing-01']);
   assert.equal(folderEntries(tree, 'global5-review-u1-5').filter(node => node.type === 'lesson').length, 10);
   assert.equal(folderEntries(tree, 'global5-unit2-writing-typing').filter(node => node.type === 'folder').length, 5);
@@ -97,7 +97,7 @@ test('Explorer breadcrumbs and recursive lesson counts match the hierarchy', () 
   assert.equal(folderLessonCount(findAdminTreeNode(tree, 'global2')), 57);
   assert.equal(folderLessonCount(findAdminTreeNode(tree, 'global2-writing-typing')), 48);
   assert.equal(folderLessonCount(findAdminTreeNode(tree, 'global3')), 88);
-  assert.equal(folderLessonCount(findAdminTreeNode(tree, 'global5')), 100);
+  assert.equal(folderLessonCount(findAdminTreeNode(tree, 'global5')), 301);
   assert.equal(folderLessonCount(findAdminTreeNode(tree, 'global5-unit2')), 17);
   assert.equal(folderLessonCount(findAdminTreeNode(tree, 'global5-unit3')), 19);
   assert.equal(folderLessonCount(findAdminTreeNode(tree, 'global5-unit4')), 16);
