@@ -77,7 +77,7 @@ export function renderReport({ root, session, set, onRetry, onHome }) {
         <section class="process-note"><strong>Lưu ý khi đọc dữ liệu</strong><p>Đúng/Sai ở phần đầu báo cáo được tính theo lần trả lời đầu tiên của từng câu trong chuỗi chính. Reading, Writing Select + Order và Classification diagnostic cũng chỉ tính lần đầu; retry và correction không làm tăng số lỗi. Với Classification, “token xếp nhầm” là số mục bị đặt sai nhóm trong các câu phân loại. Copy/Paste, chuyển tab và phản hồi rất nhanh chỉ là dữ liệu quá trình, không tự động bị coi là gian lận. “Chuyển tab” được tính khi trang học chuyển sang trạng thái hidden; hệ thống không biết học sinh đã mở trang hoặc ứng dụng nào. Với phiên có Integrity Warning, học sinh được hiện cảnh báo blocking và phải bấm “Tôi đã nắm thông tin” trước khi tiếp tục; việc xác nhận cũng được lưu vào báo cáo.</p></section>
 
         <section class="timeline-section">
-          <div class="timeline-heading"><div><p class="report-kicker">ACTIVITY TIMELINE</p><h2>Lịch sử làm bài, chuyển tab và cảnh báo</h2></div><span>${timelineCountLabel(session, integrity)}</span></div>
+          <div class="timeline-heading"><div><p class="report-kicker">ACTIVITY TIMELINE</p><h2>Lịch sử làm bài và chuyển tab · cảnh báo</h2></div><span>${timelineCountLabel(session, integrity)}</span></div>
           <ol class="attempt-list">${renderActivityTimeline({ analytics, integrity, itemById, transitions })}</ol>
         </section>
         <footer class="report-document-footer"><code>Session: ${esc(session.id)}</code></footer>
