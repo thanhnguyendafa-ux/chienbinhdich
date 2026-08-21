@@ -16,9 +16,9 @@ let onlineListenerInstalled = false;
 
 export const localSessionRepository = Object.freeze({
   saveActive(session) {
-    const tracked = attachIntegrityTracking(session);
-    browser.saveActive(tracked);
-    enqueueRemote(tracked);
+    attachIntegrityTracking(session);
+    browser.saveActive(session);
+    enqueueRemote(session);
   },
   loadActive() {
     const loaded = browser.loadActive();
@@ -28,9 +28,9 @@ export const localSessionRepository = Object.freeze({
     browser.clearActive();
   },
   saveReport(session) {
-    const finalized = finalizeIntegrityTracking(session);
-    browser.saveReport(finalized);
-    enqueueRemote(finalized);
+    finalizeIntegrityTracking(session);
+    browser.saveReport(session);
+    enqueueRemote(session);
   },
   loadReport(sessionId) {
     return browser.loadReport(sessionId);
