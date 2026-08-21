@@ -71,12 +71,13 @@ export function renderReport({ root, session, set, onRetry, onHome }) {
         ])}
 
         ${metricSection('Dấu hiệu bổ sung', [[['Attempt có Paste', analytics.pasteCount], ['Phản hồi rất nhanh', analytics.rapidCount], ['Trung vị phản hồi', formatResponseDuration(analytics.medianResponseMs)] ]])}
+        ${renderIntegrityWarningMetrics(integrity)}
         ${renderOutcome({ submitted, abandoned, metrics, set })}
 
-        <section class="process-note"><strong>Lưu ý khi đọc dữ liệu</strong><p>Đúng/Sai ở phần đầu báo cáo được tính theo lần trả lời đầu tiên của từng câu trong chuỗi chính. Reading, Writing Select + Order và Classification diagnostic cũng chỉ tính lần đầu; retry và correction không làm tăng số lỗi. Với Classification, “token xếp nhầm” là số mục bị đặt sai nhóm trong các câu phân loại. Copy/Paste, chuyển tab và phản hồi rất nhanh chỉ là dữ liệu quá trình, không tự động bị coi là gian lận. “Chuyển tab” được tính khi trang học chuyển sang trạng thái hidden; hệ thống không biết học sinh đã mở trang hoặc ứng dụng nào.</p></section>
+        <section class="process-note"><strong>Lưu ý khi đọc dữ liệu</strong><p>Đúng/Sai ở phần đầu báo cáo được tính theo lần trả lời đầu tiên của từng câu trong chuỗi chính. Reading, Writing Select + Order và Classification diagnostic cũng chỉ tính lần đầu; retry và correction không làm tăng số lỗi. Với Classification, “token xếp nhầm” là số mục bị đặt sai nhóm trong các câu phân loại. Copy/Paste, chuyển tab và phản hồi rất nhanh chỉ là dữ liệu quá trình, không tự động bị coi là gian lận. “Chuyển tab” được tính khi trang học chuyển sang trạng thái hidden; hệ thống không biết học sinh đã mở trang hoặc ứng dụng nào. Với phiên có Integrity Warning, học sinh được hiện cảnh báo blocking và phải bấm “Tôi đã nắm thông tin” trước khi tiếp tục; việc xác nhận cũng được lưu vào báo cáo.</p></section>
 
         <section class="timeline-section">
-          <div class="timeline-heading"><div><p class="report-kicker">ACTIVITY TIMELINE</p><h2>Lịch sử làm bài và chuyển tab</h2></div><span>${timelineCountLabel(session, integrity)}</span></div>
+          <div class="timeline-heading"><div><p class="report-kicker">ACTIVITY TIMELINE</p><h2>Lịch sử làm bài, chuyển tab và cảnh báo</h2></div><span>${timelineCountLabel(session, integrity)}</span></div>
           <ol class="attempt-list">${renderActivityTimeline({ analytics, integrity, itemById, transitions })}</ol>
         </section>
         <footer class="report-document-footer"><code>Session: ${esc(session.id)}</code></footer>
@@ -125,6 +126,17 @@ function renderClassificationDiagnostics(classification) {
   const rows = [];
   for (let index = 0; index < entries.length; index += 3) rows.push(entries.slice(index, index + 3));
   return metricSection('Phân tích Classification · lần đầu', rows);
+}
+
+function renderIntegrityWarningMetrics(integrity) {
+  if (!integrity.warningTrackingAvailable) {
+    return metricSection('Cảnh báo tính trung thực', [[['Theo dõi cảnh báo', 'Phiên cũ · chưa theo dõi']]]);
+  }
+  const prefix = integrity.warningTrackingScope === 'partial' ? 'Theo dõi một phần · ' : '';
+  return metricSection('Cảnh báo tính trung thực', [
+    [['Đã hiện cảnh báo', `${prefix}${integrity.warningShownCount}`], ['Đã xác nhận', integrity.warningAcknowledgedCount], ['Chưa xác nhận', integrity.warningPendingCount]],
+    [['Paste warnings', integrity.warningCounts.paste], ['Copy warnings', integrity.warningCounts.copy], ['Tab warnings', integrity.warningCounts.tabSwitch]]
+  ]);
 }
 
 function keyResult(label, value, note, extraClass = '') { return `<div class="report-key-result ${extraClass}"><span>${esc(label)}</span><strong>${esc(value)}</strong><small>${esc(note)}</small></div>`; }
@@ -178,8 +190,17 @@ function renderActivityTimeline({ analytics, integrity, itemById, transitions })
     });
   }
 
+  for (const [index, warning] of (integrity.warningEvents ?? []).entries()) {
+    if (warning.shownAt !== null && warning.shownAt !== undefined) {
+      activities.push({ type: 'warning', at: Number(warning.shownAt), index: index * 2, html: renderWarningEvent(warning, 'shown') });
+    }
+    if (warning.acknowledgedAt !== null && warning.acknowledgedAt !== undefined) {
+      activities.push({ type: 'warning', at: Number(warning.acknowledgedAt), index: index * 2 + 1, html: renderWarningEvent(warning, 'acknowledged') });
+    }
+  }
+
   return activities
-    .sort((a, b) => a.at - b.at || (a.type === 'integrity' ? -1 : 1) || a.index - b.index)
+    .sort((a, b) => a.at - b.at || activityPriority(a.type) - activityPriority(b.type) || a.index - b.index)
     .map(activity => activity.html)
     .join('');
 }
@@ -208,9 +229,38 @@ function renderTabEvent(event) {
   </div></li>`;
 }
 
+function renderWarningEvent(warning, state) {
+  const acknowledged = state === 'acknowledged';
+  const at = acknowledged ? warning.acknowledgedAt : warning.shownAt;
+  const label = acknowledged ? 'HỌC SINH ĐÃ XÁC NHẬN' : 'CẢNH BÁO ĐÃ HIỆN';
+  const type = warningTypeLabel(warning.type);
+  return `<li class="attempt-row integrity-event-row"><div class="attempt-time"><strong>${formatClockTime(at)}</strong><span>WARNING</span></div><div class="attempt-body">
+    <div class="attempt-meta"><strong class="attempt-status">${label}</strong><span>${esc(type)}</span></div>
+    <p class="attempt-prompt">${acknowledged ? 'Học sinh đã bấm “Tôi đã nắm thông tin” để tiếp tục bài.' : `Cảnh báo blocking đã được hiển thị cho sự kiện ${esc(type.toLowerCase())} lần ${warning.occurrenceNumber}.`}</p>
+  </div></li>`;
+}
+
+function warningTypeLabel(type) {
+  if (type === 'paste') return 'PASTE';
+  if (type === 'copy') return 'COPY';
+  return 'RỜI TRANG';
+}
+
+function activityPriority(type) {
+  if (type === 'integrity') return 0;
+  if (type === 'warning') return 1;
+  return 2;
+}
+
 function timelineCountLabel(session, integrity) {
   const tabEvents = integrity.trackingAvailable ? integrity.tabEvents.length : 0;
-  return tabEvents ? `${session.attempts.length} lượt · ${tabEvents} sự kiện tab` : `${session.attempts.length} lượt`;
+  const warningEvents = integrity.warningTrackingAvailable
+    ? (integrity.warningEvents ?? []).reduce((count, warning) => count + (warning.shownAt ? 1 : 0) + (warning.acknowledgedAt ? 1 : 0), 0)
+    : 0;
+  const extras = [];
+  if (tabEvents) extras.push(`${tabEvents} sự kiện tab`);
+  if (warningEvents) extras.push(`${warningEvents} sự kiện cảnh báo`);
+  return extras.length ? `${session.attempts.length} lượt · ${extras.join(' · ')}` : `${session.attempts.length} lượt`;
 }
 
 function renderOutcome({ submitted, abandoned, metrics, set }) {
