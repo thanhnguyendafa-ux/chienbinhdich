@@ -75,7 +75,12 @@ test('every Trap Diagnosis item uses six complete Error → Repair → Reason pa
       }
 
       const correct = item.choices.find(choice => choice.id === 'correct');
-      assert.deepEqual(correct?.diagnostic, item.diagnosticSpec, `${item.id} correct diagnostic mismatch`);
+      assert.equal(correct?.diagnostic?.role, 'correct', `${item.id} correct role mismatch`);
+      assert.deepEqual({
+        error: correct?.diagnostic?.error,
+        repair: correct?.diagnostic?.repair,
+        reason: correct?.diagnostic?.reason
+      }, item.diagnosticSpec, `${item.id} correct diagnostic mismatch`);
 
       const sameRepairCount = item.choices.filter(choice => choice.diagnostic.repair === correct.diagnostic.repair).length;
       assert.ok(sameRepairCount >= 3, `${item.id} must include same-repair/different-reason traps`);
