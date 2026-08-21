@@ -67,12 +67,14 @@ test('abandoned summary keeps unanswered items separate from wrong answers', () 
 
 test('report layout puts the assignment/result hero before technical process metrics and timeline', () => {
   const source = readFileSync(new URL('../src/features/report/renderReport.js', import.meta.url), 'utf8');
-  const hero = source.indexOf('renderAssignmentHero({ session, set, summary })');
+  const hero = source.indexOf('renderAssignmentHero({ session, set, summary, analytics, integrity })');
   const technical = source.indexOf("metricSection('Chi tiết quá trình học'");
   const timeline = source.indexOf('timeline-section');
   assert.ok(hero >= 0);
   assert.ok(technical > hero);
   assert.ok(timeline > technical);
+  assert.match(source, /Copy\/Paste/);
+  assert.match(source, /Chuyển tab/);
   assert.match(source, /Tổng số câu/);
   assert.match(source, /Đúng/);
   assert.match(source, /Sai/);
