@@ -94,6 +94,8 @@ export function renderTheoryGate({ root, set, session, onBottomReached, onConfir
   });
   root.querySelector('#theory-gate-exit')?.addEventListener('click', () => onExit?.());
   scrollBox?.focus({ preventScroll: true });
+  if (typeof globalThis.requestAnimationFrame === 'function') globalThis.requestAnimationFrame(updateProgress);
+  else updateProgress();
 }
 
 function esc(value) {
