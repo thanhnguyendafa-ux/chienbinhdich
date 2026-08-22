@@ -1,5 +1,6 @@
 import { adaptG6U2WorkbookLongAnswers } from './g6-u2-workbook-mcq-adaptations.js';
 import { applyG6U2WorkbookInteractionAdaptations } from './g6-u2-workbook-interaction-adaptations.js';
+import { applyG6WorkbookTranslationPreload, getG6WorkbookPreloadCount } from './g6-workbook-translation-preload.js';
 
 const lessonSpecs = Object.freeze([
   Object.freeze({ key:'a1', order:1, title:'A1 · Phân biệt âm cuối -s /s/ và /z/', expectedTimeMinutes:6, itemCount:1, activityTypes:['classification'] }),
@@ -17,55 +18,35 @@ const lessonSpecs = Object.freeze([
 ]);
 
 export const g6U2WorkbookFolders = Object.freeze([
-  Object.freeze({
-    id:'global6-unit2-workbook',
-    name:'Sách bài tập · Unit 2',
-    description:'Bài SBT Global Success 6 Unit 2 · My House. B1, B2, B5, D3a và E3 được bỏ vì phụ thuộc hình ảnh; các bài còn lại dùng classification, MCQ, sequence, sentence order hoặc open typing theo mục tiêu nguồn.',
-    parentId:'global6-unit2',
-    order:3
-  })
+  Object.freeze({ id:'global6-unit2-workbook', name:'Sách bài tập · Unit 2', description:'Bài SBT Global Success 6 Unit 2 · My House. Mỗi bài text-based có Nhắc nhanh → Từ vựng → Cụm từ Anh–Việt → bài SBT.', parentId:'global6-unit2', order:3 })
 ]);
 
 function sourceFaithfulContent(key, content) {
-  if (!['c3', 'd3b'].includes(key)) return content;
-  return Object.freeze({
-    ...content,
-    items:Object.freeze(content.items.map(item => {
-      if (item.id === 'g6-u2-wb-c3-06') {
-        return Object.freeze({ ...item, acceptedAnswers:Object.freeze([]) });
-      }
-      if (item.id === 'g6-u2-wb-d3b-02') {
-        const acceptedAnswers = (item.acceptedAnswers ?? []).filter(answer => !/\btable\b/i.test(answer));
-        return Object.freeze({ ...item, acceptedAnswers:Object.freeze(acceptedAnswers) });
-      }
-      return item;
-    }))
-  });
+  if (!['c3','d3b'].includes(key)) return content;
+  return Object.freeze({ ...content, items:Object.freeze(content.items.map(item => {
+    if (item.id === 'g6-u2-wb-c3-06') return Object.freeze({ ...item, acceptedAnswers:Object.freeze([]) });
+    if (item.id === 'g6-u2-wb-d3b-02') return Object.freeze({ ...item, acceptedAnswers:Object.freeze((item.acceptedAnswers ?? []).filter(answer => !/\btable\b/i.test(answer))) });
+    return item;
+  })) });
 }
 
 function descriptor(spec) {
+  const preloadCount = getG6WorkbookPreloadCount('u2', spec.key);
+  const activityTypes = Object.freeze([...new Set(['mcq', ...spec.activityTypes])]);
   return Object.freeze({
-    id:`g6-u2-wb-${spec.key}`,
-    folderId:'global6-unit2-workbook',
-    order:spec.order,
-    version:3,
-    course:'Global Success 6',
-    unit:'Unit 2 · My House · Sách bài tập',
-    title:spec.title,
-    subtitle:'Nhắc nhanh · Interaction theo mục tiêu bài · Giải thích sau Submit',
-    expectedTimeMinutes:spec.expectedTimeMinutes,
-    lessonSlug:`g6-u2-wb-${spec.key}`,
-    passThreshold:80,
-    completionPolicy:'explain-and-accept',
-    typingTolerance:true,
-    teacher:'Thầy Thành MRT',
-    description:`${spec.itemCount} lượt theo bài SBT. Typing chỉ giữ cho recall ngắn hoặc câu mở; bài cues dùng sentence order và word box dùng lựa chọn trực tiếp.`,
-    activityTypes:Object.freeze(spec.activityTypes),
-    itemCount:spec.itemCount,
+    id:`g6-u2-wb-${spec.key}`, folderId:'global6-unit2-workbook', order:spec.order, version:4,
+    course:'Global Success 6', unit:'Unit 2 · My House · Sách bài tập', title:spec.title,
+    subtitle:'Nhắc nhanh · Từ vựng → Cụm từ Anh–Việt · Bài SBT · Giải thích sau Submit',
+    expectedTimeMinutes:spec.expectedTimeMinutes + 4, lessonSlug:`g6-u2-wb-${spec.key}`, passThreshold:80,
+    completionPolicy:'explain-and-accept', typingTolerance:true, teacher:'Thầy Thành MRT',
+    description:`${preloadCount} lượt nạp nghĩa Anh→Việt + ${spec.itemCount} lượt bài SBT. Preload không chỉ vị trí đáp án nguồn.`,
+    sourceActivityTypes:Object.freeze(spec.activityTypes), activityTypes,
+    sourceItemCount:spec.itemCount, preloadItemCount:preloadCount, itemCount:spec.itemCount + preloadCount,
     loadContent:() => import('./g6-u2-workbook-content.js').then(module => {
       const sourceContent = sourceFaithfulContent(spec.key, module.getG6U2WorkbookContent(spec.key));
       const stableContent = adaptG6U2WorkbookLongAnswers(spec.key, sourceContent);
-      return applyG6U2WorkbookInteractionAdaptations(spec.key, stableContent);
+      const adapted = applyG6U2WorkbookInteractionAdaptations(spec.key, stableContent);
+      return applyG6WorkbookTranslationPreload('u2', spec.key, adapted);
     })
   });
 }
