@@ -61,31 +61,52 @@ function makeSentenceOrder(id, raw, theory, adaptation) {
   });
 }
 
+function readingStimulus(spec) {
+  return spec.sourceContext ? freeze({title:'Bài đọc trong SBT',text:spec.sourceContext}) : null;
+}
+
+function withReadingStimulus(item, stimulus) {
+  return stimulus ? freeze({...item,stimulus}) : item;
+}
+
 function sourceItems(spec) {
   const theory = spec.theory.join(' ');
   const prefix = spec.id;
+  const stimulus = readingStimulus(spec);
   if (spec.type === 'MCQ') return spec.items.map((raw,index) => {
     const options = raw.options.map(([id,text]) => [id,text]);
     const answerPair = options.find(([,text]) => text === raw.answer);
     if (!answerPair) throw new Error(`${spec.id}: MCQ answer not found: ${raw.answer}`);
-    return mcq({id:`${prefix}-source-${String(index+1).padStart(2,'0')}`,prompt:raw.prompt,options,correct:answerPair[0],reason:raw.explanation,theory,example:raw.trap,stimulus:spec.sourceContext ? {title:'Bài đọc trong SBT',text:spec.sourceContext} : null});
+    return mcq({id:`${prefix}-source-${String(index+1).padStart(2,'0')}`,prompt:raw.prompt,options,correct:answerPair[0],reason:raw.explanation,theory,example:raw.trap,stimulus});
   });
-  if (spec.type === 'TYPE') return spec.items.map((raw,index) => typing({id:`${prefix}-source-${String(index+1).padStart(2,'0')}`,prompt:raw.prompt,answer:raw.answer,reason:raw.explanation,theory,example:raw.trap}));
-  if (spec.type === 'TF') return spec.items.map((raw,index) => makeTrueFalse(`${prefix}-source-${String(index+1).padStart(2,'0')}`,raw,theory));
+  if (spec.type === 'TYPE') return spec.items.map((raw,index) => withReadingStimulus(
+    typing({id:`${prefix}-source-${String(index+1).padStart(2,'0')}`,prompt:raw.prompt,answer:raw.answer,reason:raw.explanation,theory,example:raw.trap}),
+    stimulus
+  ));
+  if (spec.type === 'TF') return spec.items.map((raw,index) => withReadingStimulus(
+    makeTrueFalse(`${prefix}-source-${String(index+1).padStart(2,'0')}`,raw,theory),
+    stimulus
+  ));
   if (spec.type === 'SO') {
     const adaptation = spec.source.exercise === 'F2' ? {kind:'controlled_open_writing_to_sentence_order',reason:'F2 gốc là open writing; bản online khóa câu theo trọng tâm Unit để auto-score.'} : null;
-    return spec.items.map((raw,index) => makeSentenceOrder(`${prefix}-source-${String(index+1).padStart(2,'0')}`,raw,theory,adaptation));
+    return spec.items.map((raw,index) => withReadingStimulus(
+      makeSentenceOrder(`${prefix}-source-${String(index+1).padStart(2,'0')}`,raw,theory,adaptation),
+      stimulus
+    ));
   }
-  if (spec.type === 'SEQ') return spec.items.map((raw,index) => makeSequence(`${prefix}-source-${String(index+1).padStart(2,'0')}`,raw,theory));
+  if (spec.type === 'SEQ') return spec.items.map((raw,index) => withReadingStimulus(
+    makeSequence(`${prefix}-source-${String(index+1).padStart(2,'0')}`,raw,theory),
+    stimulus
+  ));
   if (spec.type === 'MATCH') {
     const groups = spec.items.map((pair,index) => freeze({id:`g${index+1}`,label:pair.right}));
     const tokens = spec.items.map((pair,index) => freeze({id:`t${index+1}`,text:pair.left,correctGroupId:`g${index+1}`,preserveOrder:true}));
-    return [classification({
+    return [withReadingStimulus(classification({
       id:`${prefix}-source-01`,prompt:'Ghép mỗi phần bên trái với phần bên phải phù hợp.',groups,tokens,
       correctLabel:spec.items.map(pair => `${pair.left} → ${pair.right}`).join(' | '),
       reason:spec.items.map(pair => `${pair.left} + ${pair.right}: ${pair.why}`).join(' · '),
       theory,example:'Đọc cả hai vế sau khi ghép để kiểm tra nghĩa.'
-    })];
+    }), stimulus)];
   }
   throw new Error(`Unsupported G5 workbook type: ${spec.type}`);
 }
