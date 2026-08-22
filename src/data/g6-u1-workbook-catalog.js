@@ -1,4 +1,5 @@
 import { applyG6U1WorkbookInteractionAdaptations } from './g6-u1-workbook-interaction-adaptations.js';
+import { applyG6WorkbookTranslationPreload, getG6WorkbookPreloadCount } from './g6-workbook-translation-preload.js';
 
 const lessonSpecs = Object.freeze([
   Object.freeze({ key: 'a1', order: 1, title: 'A1 · Tìm từ có âm khác', expectedTimeMinutes: 6, itemCount: 5, activityTypes: ['mcq'] }),
@@ -18,36 +19,25 @@ const lessonSpecs = Object.freeze([
 ]);
 
 export const g6U1WorkbookFolders = Object.freeze([
-  Object.freeze({
-    id: 'global6-unit1-workbook',
-    name: 'Sách bài tập · Unit 1',
-    description: 'Bài SBT Global Success 6 Unit 1 giữ nguyên mục tiêu nguồn. A2, B1 và C2 được bỏ vì phụ thuộc hình ảnh; các bài còn lại dùng MCQ, typing, sentence order hoặc open production theo đúng thao tác cần tư duy.',
-    parentId: 'global6-unit1',
-    order: 1
-  })
+  Object.freeze({ id:'global6-unit1-workbook', name:'Sách bài tập · Unit 1', description:'Bài SBT Global Success 6 Unit 1 giữ mục tiêu nguồn và thêm preload Anh→Việt theo từng bài: Nhắc nhanh → Từ vựng → Cụm từ → bài SBT.', parentId:'global6-unit1', order:1 })
 ]);
 
 function descriptor(spec) {
+  const preloadCount = getG6WorkbookPreloadCount('u1', spec.key);
+  const activityTypes = Object.freeze([...new Set(['mcq', ...spec.activityTypes])]);
   return Object.freeze({
-    id: `g6-u1-wb-${spec.key}`,
-    folderId: 'global6-unit1-workbook',
-    order: spec.order,
-    version: 2,
-    course: 'Global Success 6',
-    unit: 'Unit 1 · My New School · Sách bài tập',
-    title: spec.title,
-    subtitle: 'Interaction theo mục tiêu bài · Giải thích tiếng Việt sau Submit',
-    expectedTimeMinutes: spec.expectedTimeMinutes,
-    lessonSlug: `g6-u1-wb-${spec.key}`,
-    passThreshold: 80,
-    completionPolicy: 'explain-and-accept',
-    typingTolerance: true,
-    teacher: 'Thầy Thành MRT',
-    description: `${spec.itemCount} lượt theo đúng bài SBT. Chỉ giữ typing khi cần tự nhớ/tự viết; word box, sắp xếp câu và reading cố định dùng interaction phù hợp hơn.`,
-    activityTypes: Object.freeze(spec.activityTypes),
-    itemCount: spec.itemCount,
-    loadContent: () => import('./g6-u1-workbook-content.js')
-      .then(module => applyG6U1WorkbookInteractionAdaptations(spec.key, module.getG6U1WorkbookContent(spec.key)))
+    id:`g6-u1-wb-${spec.key}`, folderId:'global6-unit1-workbook', order:spec.order, version:3,
+    course:'Global Success 6', unit:'Unit 1 · My New School · Sách bài tập', title:spec.title,
+    subtitle:'Nhắc nhanh · Từ vựng → Cụm từ Anh–Việt · Bài SBT · Giải thích sau Submit',
+    expectedTimeMinutes:spec.expectedTimeMinutes + 4, lessonSlug:`g6-u1-wb-${spec.key}`, passThreshold:80,
+    completionPolicy:'explain-and-accept', typingTolerance:true, teacher:'Thầy Thành MRT',
+    description:`${preloadCount} lượt nạp nghĩa Anh→Việt + ${spec.itemCount} lượt bài SBT. Preload chỉ dạy semantic core, không gắn từ với vị trí đáp án nguồn.`,
+    sourceActivityTypes:Object.freeze(spec.activityTypes), activityTypes,
+    sourceItemCount:spec.itemCount, preloadItemCount:preloadCount, itemCount:spec.itemCount + preloadCount,
+    loadContent:() => import('./g6-u1-workbook-content.js').then(module => {
+      const adapted = applyG6U1WorkbookInteractionAdaptations(spec.key, module.getG6U1WorkbookContent(spec.key));
+      return applyG6WorkbookTranslationPreload('u1', spec.key, adapted);
+    })
   });
 }
 
