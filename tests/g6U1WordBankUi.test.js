@@ -10,33 +10,35 @@ const indexHtml = readFileSync(new URL('../index.html', import.meta.url), 'utf8'
 const enhancerSource = readFileSync(new URL('../src/features/drill/sourceWordBankEnhancer.js', import.meta.url), 'utf8');
 const wordBankCss = readFileSync(new URL('../styles/source-word-bank.css', import.meta.url), 'utf8');
 
-test('B5 exposes the exact SBT word bank in source order while staying typing', async () => {
+function correctChoiceText(item) {
+  return item.choices.find(choice => choice.id === item.correctChoiceId)?.text ?? '';
+}
+
+test('B5 exposes the exact SBT word bank in source order and uses direct word-bank choice', async () => {
   const descriptor = g6U1WorkbookRegistry.find(entry => entry.id === 'g6-u1-wb-b5');
   const content = await descriptor.loadContent();
   const item = content.items[0];
 
-  assert.equal(item.type, 'typing');
+  assert.equal(item.type, 'mcq');
   assert.deepEqual(item.sourceWordBank, B5_BANK);
   assert.equal(item.sourceWordBankLabel, 'Từ / cụm từ cho sẵn');
-  assert.equal(item.en, 'English lessons');
-  assert.match(item.vi, /^1\. Do you have/);
-  assert.doesNotMatch(item.vi, /^Word box:|^Từ \/ cụm từ cho sẵn:/i);
+  assert.equal(correctChoiceText(item), 'English lessons');
+  assert.match(item.prompt, /^Word box:|^1\. Do you have/);
 });
 
-test('D1 exposes the exact SBT word bank in source order while staying typing', async () => {
+test('D1 exposes the exact SBT word bank in source order and uses direct word-bank choice', async () => {
   const descriptor = g6U1WorkbookRegistry.find(entry => entry.id === 'g6-u1-wb-d1');
   const content = await descriptor.loadContent();
   const item = content.items[0];
 
-  assert.equal(item.type, 'typing');
+  assert.equal(item.type, 'mcq');
   assert.deepEqual(item.sourceWordBank, D1_BANK);
   assert.equal(item.sourceWordBankLabel, 'Từ / cụm từ cho sẵn');
-  assert.equal(item.en, 'go');
-  assert.match(item.vi, /In England, when the schoolchildren come to school/);
-  assert.doesNotMatch(item.vi, /^Từ \/ cụm từ cho sẵn:/i);
+  assert.equal(correctChoiceText(item), 'go');
+  assert.match(item.stimulus?.text ?? '', /In England, when the schoolchildren come to school/);
 });
 
-test('word-bank UI is scoped to B5 and D1 and reads structured metadata instead of parsing prompt text', () => {
+test('word-bank UI remains structured metadata instead of parsing prompt text', () => {
   assert.match(enhancerSource, /g6-u1-wb-b5/);
   assert.match(enhancerSource, /g6-u1-wb-d1/);
   assert.match(enhancerSource, /sourceWordBank/);
