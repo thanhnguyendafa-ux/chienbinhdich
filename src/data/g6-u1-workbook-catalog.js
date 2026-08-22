@@ -44,10 +44,9 @@ function sourceFormContent(key, content) {
 function sourceFillTypingItem(key, item) {
   const answer = item.choices?.find(choice => choice.id === item.correctChoiceId)?.text ?? '';
   const sourceWordBank = Object.freeze((item.choices ?? []).map(choice => choice.text));
-  const rawPrompt = key === 'd1'
+  const prompt = key === 'd1'
     ? `${item.stimulus?.text ?? ''}\n\n${String(item.prompt).replace('Chọn từ cho', 'Điền một từ trong word box vào')}`
     : String(item.prompt).replace(/^Word box:[^\n]*\n\n/i, '');
-  const prompt = `Từ / cụm từ cho sẵn: ${sourceWordBank.join(' · ')}\n\n${rawPrompt}`;
 
   return Object.freeze({
     id: item.id,
@@ -55,6 +54,7 @@ function sourceFillTypingItem(key, item) {
     vi: prompt,
     en: answer,
     sourceWordBank,
+    sourceWordBankLabel: 'Từ / cụm từ cho sẵn',
     typingUi: sourceFillTypingUi,
     theorySupport: item.theorySupport,
     teachingFeedback: item.teachingFeedback

@@ -31,7 +31,7 @@ test('workbook choices marked preserveOrder stay in SBT order', () => {
   assert.deepEqual(ordered.map(choice => choice.id), ['A', 'B', 'C', 'D']);
 });
 
-test('B5 and D1 keep the SBT word-box fill-in response form instead of becoming MCQ', async () => {
+test('B5 and D1 keep typing while exposing their SBT word banks as separate UI metadata', async () => {
   const b5Descriptor = g6U1WorkbookRegistry.find(entry => entry.id === 'g6-u1-wb-b5');
   const d1Descriptor = g6U1WorkbookRegistry.find(entry => entry.id === 'g6-u1-wb-d1');
   const [b5, d1] = await Promise.all([b5Descriptor.loadContent(), d1Descriptor.loadContent()]);
@@ -40,8 +40,16 @@ test('B5 and D1 keep the SBT word-box fill-in response form instead of becoming 
   assert.ok(d1.items.every(item => item.type === 'typing'));
   assert.equal(b5.items[0].en, 'English lessons');
   assert.equal(d1.items[0].en, 'go');
-  assert.match(b5.items[0].vi, /ball games · have · English lessons/);
+  assert.deepEqual(b5.items[0].sourceWordBank, ['ball games', 'have', 'English lessons', 'international', 'housework', 'subjects', 'share', 'study']);
+  assert.deepEqual(d1.items[0].sourceWordBank, ['their', 'begins', 'on', 'go', 'off', 'school', 'all', 'learn']);
+  assert.equal(b5.items[0].sourceWordBankLabel, 'Từ / cụm từ cho sẵn');
+  assert.doesNotMatch(b5.items[0].vi, /Word box:|Từ \/ cụm từ cho sẵn:/);
+  assert.match(b5.items[0].vi, /Do you have ______ on Monday/);
   assert.match(d1.items[0].vi, /In England, when the schoolchildren come to school/);
+});
+
+test('source word-bank enhancer module is importable without a browser DOM', async () => {
+  await assert.doesNotReject(import('../src/features/drill/sourceWordBankEnhancer.js'));
 });
 
 test('D3 final answer remains B before as in the SBT solution', () => {

@@ -1,10 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { g6U1WorkbookRegistry } from '../src/data/g6-u1-workbook-catalog.js';
-import { parseSourceWordBank } from '../src/features/drill/sourceWordBankEnhancer.js';
 
 const B5_BANK = ['ball games', 'have', 'English lessons', 'international', 'housework', 'subjects', 'share', 'study'];
 const D1_BANK = ['their', 'begins', 'on', 'go', 'off', 'school', 'all', 'learn'];
+
+const indexHtml = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+const enhancerSource = readFileSync(new URL('../src/features/drill/sourceWordBankEnhancer.js', import.meta.url), 'utf8');
+const wordBankCss = readFileSync(new URL('../styles/source-word-bank.css', import.meta.url), 'utf8');
 
 test('B5 exposes the exact SBT word bank in source order while staying typing', async () => {
   const descriptor = g6U1WorkbookRegistry.find(entry => entry.id === 'g6-u1-wb-b5');
@@ -13,11 +17,10 @@ test('B5 exposes the exact SBT word bank in source order while staying typing', 
 
   assert.equal(item.type, 'typing');
   assert.deepEqual(item.sourceWordBank, B5_BANK);
+  assert.equal(item.sourceWordBankLabel, 'Từ / cụm từ cho sẵn');
   assert.equal(item.en, 'English lessons');
-  const parsed = parseSourceWordBank(item.vi);
-  assert.deepEqual(parsed.items, B5_BANK);
-  assert.match(parsed.prompt, /^1\. Do you have/);
-  assert.doesNotMatch(parsed.prompt, /^Word box:/i);
+  assert.match(item.vi, /^1\. Do you have/);
+  assert.doesNotMatch(item.vi, /^Word box:|^Từ \/ cụm từ cho sẵn:/i);
 });
 
 test('D1 exposes the exact SBT word bank in source order while staying typing', async () => {
@@ -27,12 +30,24 @@ test('D1 exposes the exact SBT word bank in source order while staying typing', 
 
   assert.equal(item.type, 'typing');
   assert.deepEqual(item.sourceWordBank, D1_BANK);
+  assert.equal(item.sourceWordBankLabel, 'Từ / cụm từ cho sẵn');
   assert.equal(item.en, 'go');
-  const parsed = parseSourceWordBank(item.vi);
-  assert.deepEqual(parsed.items, D1_BANK);
-  assert.match(parsed.prompt, /In England, when the schoolchildren come to school/);
+  assert.match(item.vi, /In England, when the schoolchildren come to school/);
+  assert.doesNotMatch(item.vi, /^Từ \/ cụm từ cho sẵn:/i);
 });
 
-test('word-bank parser ignores ordinary typing prompts', () => {
-  assert.equal(parseSourceWordBank('Where does Ms Lan live?'), null);
+test('word-bank UI is scoped to B5 and D1 and reads structured metadata instead of parsing prompt text', () => {
+  assert.match(enhancerSource, /g6-u1-wb-b5/);
+  assert.match(enhancerSource, /g6-u1-wb-d1/);
+  assert.match(enhancerSource, /sourceWordBank/);
+  assert.doesNotMatch(enhancerSource, /WORD_BANK_PREFIX|split\(['\"]·['\"]\)/);
+});
+
+test('app shell loads the dedicated non-interactive word-bank visual layer', () => {
+  assert.match(indexHtml, /styles\/source-word-bank\.css/);
+  assert.match(indexHtml, /src\/features\/drill\/sourceWordBankEnhancer\.js/);
+  assert.match(wordBankCss, /\.source-word-bank-grid/);
+  assert.match(wordBankCss, /gap:/);
+  assert.match(wordBankCss, /\.source-word-bank-item/);
+  assert.match(wordBankCss, /grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
 });
