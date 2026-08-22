@@ -1,10 +1,11 @@
 import { firebaseConfig } from '../config/firebaseConfig.js';
-import { attachIntegrityTracking, configureIntegrityRuntime, finalizeIntegrityTracking } from '../core/integrityRuntime.js';
+import { attachIntegrityTracking, configureIntegrityRuntime, detachIntegrityTracking, finalizeIntegrityTracking } from '../core/integrityRuntime.js';
 import { browserSessionStore as browser } from './browserSessionStore.js';
 import { createFirebaseSessionRepository } from './firebaseSessionRepository.js';
 
 // Compatibility facade: existing app imports keep working while persistence dual-writes.
-// Legacy keys remain cbd.activeSession.v7 and cbd.report.v7. for safe V7 migration.
+// Session/report semantics stay V7 (cbd.report.v7.); cbd.activeSession.v7 is migration-only.
+// Active in-progress attempts use scoped cbd.activeSession.v8.* keys so different lesson links cannot overwrite each other.
 const pendingSessions = new Map();
 let remoteRepository = null;
 let remoteReady = false;
@@ -20,12 +21,20 @@ export const localSessionRepository = Object.freeze({
     browser.saveActive(session);
     enqueueRemote(session);
   },
-  loadActive() {
-    const loaded = browser.loadActive();
-    return loaded ? attachIntegrityTracking(loaded) : null;
+  loadActive(accessContext = null) {
+    const loaded = browser.loadActive(accessContext);
+    if (!loaded) {
+      detachIntegrityTracking();
+      return null;
+    }
+    return attachIntegrityTracking(loaded);
   },
-  clearActive() {
-    browser.clearActive();
+  clearActive(sessionOrAccess = null) {
+    browser.clearActive(sessionOrAccess);
+    detachIntegrityTracking();
+  },
+  suspendIntegrityTracking() {
+    detachIntegrityTracking();
   },
   saveReport(session) {
     finalizeIntegrityTracking(session);
