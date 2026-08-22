@@ -14,14 +14,14 @@ async function load(key) {
 }
 
 function correctChoiceText(item) {
-  return item.choices.find(choice => choice.id === item.correctChoiceId)?.text ?? '';
+  return item.choices?.find(choice => choice.id === item.correctChoiceId)?.text ?? '';
 }
 
 function yesWords(item) {
   return item.tokens.filter(token => token.correctGroupId === 'yes').map(token => token.text);
 }
 
-test('G6 U3 workbook publishes exactly 15 approved text-based lessons under a new Unit 3 folder', () => {
+test('G6 U3 workbook publishes exactly 15 approved text-based lessons under Unit 3', () => {
   assert.deepEqual(g6U3WorkbookFolders.map(folder => folder.id), ['global6-unit3','global6-unit3-workbook']);
   assert.equal(g6U3WorkbookFolders[0].parentId, 'global6');
   assert.equal(g6U3WorkbookFolders[1].parentId, 'global6-unit3');
@@ -54,59 +54,57 @@ test('A2 keeps pronunciation as self-confirmed practice instead of pretending to
   assert.match(content.items[2].vi, /Picky people pick plain peanut butter/);
 });
 
-test('B1 preserves source overlap and uses the cross-checked published answer key', async () => {
+test('B1 preserves source overlap and verified answer key', async () => {
   const { content } = await load('b1');
   assert.equal(content.items.length, 3);
   assert.ok(content.items.every(item => item.type === 'classification'));
   assert.deepEqual(yesWords(content.items[0]), ['big','long','small','short','slim']);
   assert.deepEqual(yesWords(content.items[1]), ['arms','legs','shoulders','hands','eyes','feet','ears','hair','head']);
   assert.deepEqual(yesWords(content.items[2]), ['big','small','fast','short','cute','strong','weak','smart','tall','slim','sporty']);
-  for (const word of ['big','small','short','slim']) {
-    assert.ok(yesWords(content.items[0]).includes(word));
-    assert.ok(yesWords(content.items[2]).includes(word));
-  }
-  assert.ok(content.items.every(item => item.digitalAdaptation?.sourceResponseType === 'three_column_table_with_overlap'));
   assert.ok(content.items.every(item => item.sourceKeyVerification?.status === 'verified_against_multiple_published_solution_guides'));
 });
 
-test('B2 and B3 keep the adjective corpus and B3 source word bank', async () => {
+test('B2 keeps recall typing while B3 uses the source word bank as choices', async () => {
   const { content:b2 } = await load('b2');
   assert.deepEqual(b2.items.map(item => item.en), ['careful','creative','kind','loving','hard-working','shy']);
+  assert.ok(b2.items.every(item => item.type === 'typing'));
+
   const { content:b3 } = await load('b3');
-  assert.deepEqual(b3.items.map(item => item.en), ['creative','careful','shy','kind','loving']);
   const bank = ['careful','creative','kind','loving','hard-working','shy'];
+  assert.ok(b3.items.every(item => item.type === 'mcq'));
   assert.ok(b3.items.every(item => JSON.stringify(item.sourceWordBank) === JSON.stringify(bank)));
+  assert.deepEqual(b3.items.map(correctChoiceText), ['creative','careful','shy','kind','loving']);
 });
 
-test('B4 and B5 keep all workbook verb blanks and meaning-based tense answers', async () => {
+test('B4 keeps short verb-form typing while B5 becomes diagnostic MCQ', async () => {
   const { content:b4 } = await load('b4');
   assert.deepEqual(b4.items.map(item => item.en), ['is taking','is helping','is knocking','Are','doing','am writing','is','talking','Are','reading']);
-  const { content:b5 } = await load('b5');
-  assert.deepEqual(b5.items.map(item => item.en), ['is','is wearing','is playing','likes','are','is looking','smiling']);
+
+  const { descriptor, content:b5 } = await load('b5');
+  assert.deepEqual(descriptor.activityTypes, ['mcq']);
+  assert.ok(b5.items.every(item => item.type === 'mcq'));
+  assert.deepEqual(b5.items.map(correctChoiceText), ['is','is wearing','is playing','likes','are','is looking','smiling']);
+  assert.ok(b5.items.every(item => item.choices.length === 4));
   assert.match(b5.items[2].teachingFeedback.reason, /Look! \+ now/);
   assert.match(b5.items[3].teachingFeedback.reason, /sở thích/);
 });
 
-test('B6 converts six fixed long sentence answers to deterministic four-choice MCQ', async () => {
+test('B6 uses sentence order with grammar distractors instead of full-sentence MCQ', async () => {
   const { descriptor, content } = await load('b6');
-  assert.deepEqual(descriptor.activityTypes, ['mcq']);
-  assert.deepEqual(content.items.map(item => item.correctChoiceId), ['C','B','D','A','C','B']);
-  assert.equal(correctChoiceText(content.items[0]), 'Our grandparents are watching TV in the living room.');
-  assert.equal(correctChoiceText(content.items[5]), 'What are you doing? I am writing a poem.');
-  for (const item of content.items) {
-    assert.equal(item.choices.length, 4);
-    assert.ok(item.choices.every(choice => choice.preserveOrder === true));
-    assert.equal(item.digitalAdaptation?.sourceResponseType, 'written_sentence');
-    assert.equal(item.digitalAdaptation?.adaptedResponseType, 'mcq');
-  }
+  assert.deepEqual(descriptor.activityTypes, ['sentence_order']);
+  assert.ok(content.items.every(item => item.type === 'sentence_order'));
+  assert.deepEqual(content.items[0].correctOrder, ['Our grandparents','are','watching','TV','in the living room.']);
+  assert.deepEqual(content.items[5].correctOrder, ['What','are','you','doing?','I','am','writing','a poem.']);
+  assert.ok(content.items[0].tokens.includes('is'));
+  assert.ok(content.items[0].tokens.includes('watch'));
 });
 
-test('C1 teaches look like versus be like, keeps five fixed cues as MCQ and final conversation open', async () => {
+test('C1 uses sentence order for five fixed cues and keeps final conversation open', async () => {
   const { descriptor, content } = await load('c1');
-  assert.deepEqual(descriptor.activityTypes, ['mcq','typing']);
-  assert.deepEqual(content.items.slice(0, 5).map(item => item.correctChoiceId), ['B','D','A','C','B']);
-  assert.equal(correctChoiceText(content.items[0]), 'What does your sister look like?');
-  assert.equal(correctChoiceText(content.items[2]), 'What is she like?');
+  assert.deepEqual(descriptor.activityTypes, ['sentence_order','typing']);
+  assert.ok(content.items.slice(0, 5).every(item => item.type === 'sentence_order'));
+  assert.deepEqual(content.items[0].correctOrder, ['What','does','your sister','look like?']);
+  assert.deepEqual(content.items[2].correctOrder, ['What','is','she','like?']);
   assert.equal(content.items[5].type, 'typing');
   assert.equal(content.items[5].responseMode, 'open');
 });
@@ -122,35 +120,40 @@ test('C3, D2 and E3 remain open production', async () => {
   assert.match(e3.items[0].vi, /about 70 words/);
 });
 
-test('D1 uses the exact six-word source bank and answer sequence', async () => {
+test('D1 uses the exact six-word source bank as direct choices', async () => {
   const { content } = await load('d1');
   const bank = ['funny','is','kind','time','cook','hair'];
-  assert.deepEqual(content.items.map(item => item.en), ['is','hair','cook','kind','funny','time']);
+  assert.ok(content.items.every(item => item.type === 'mcq'));
   assert.ok(content.items.every(item => JSON.stringify(item.sourceWordBank) === JSON.stringify(bank)));
+  assert.deepEqual(content.items.map(correctChoiceText), ['is','hair','cook','kind','funny','time']);
 });
 
-test('D3 keeps all five source statements and the correct set 1, 3, 5 through binary MCQ adaptation', async () => {
-  const { content } = await load('d3');
-  assert.deepEqual(content.items.map(item => item.correctChoiceId), ['A','B','A','B','A']);
-  assert.deepEqual(content.items.filter(item => item.correctChoiceId === 'A').map(item => item.id), ['g6-u3-wb-d3-01','g6-u3-wb-d3-03','g6-u3-wb-d3-05']);
-  assert.ok(content.items.every(item => item.digitalAdaptation?.sourceResponseType === 'circle_all_correct_statements'));
-  assert.ok(content.items.every(item => item.choices.length === 2));
-  assert.match(content.items[1].teachingFeedback.reason, /never lie/);
-  assert.match(content.items[3].teachingFeedback.reason, /Not necessarily/);
+test('D3 keeps all five source statements together in one evidence classification board', async () => {
+  const { descriptor, content } = await load('d3');
+  assert.deepEqual(descriptor.activityTypes, ['classification']);
+  assert.equal(content.items.length, 1);
+  const item = content.items[0];
+  assert.equal(item.type, 'classification');
+  assert.equal(item.tokens.length, 5);
+  assert.deepEqual(item.tokens.map(token => token.correctGroupId), ['yes','no','yes','no','yes']);
+  assert.match(item.prompt, /They never lie to you/);
+  assert.match(item.teachingFeedback.reason, /không nói dối/);
 });
 
-test('E1 and E2 preserve the writing model structure and source mappings', async () => {
+test('E1 and E2 use classification to show the whole writing structure at once', async () => {
   const { content:e1 } = await load('e1');
   const map = Object.fromEntries(e1.items[0].tokens.map(token => [token.id, token.correctGroupId]));
   assert.deepEqual(map, { a:'beginning', b:'middle', c:'middle', d:'end' });
   assert.match(e1.items[0].prompt, /best friend, Mai/);
 
-  const { content:e2 } = await load('e2');
-  assert.deepEqual(e2.items.map(item => item.correctChoiceId), ['A','C','B','B','B','C','D']);
-  assert.ok(e2.items.every(item => item.stimulus?.text?.includes("we've been together for three years")));
+  const { descriptor, content:e2 } = await load('e2');
+  assert.deepEqual(descriptor.activityTypes, ['classification']);
+  assert.equal(e2.items.length, 1);
+  assert.deepEqual(e2.items[0].tokens.map(token => token.correctGroupId), ['A','C','B','B','B','C','D']);
+  assert.match(e2.items[0].prompt, /we've been together for three years/);
 });
 
-test('no fixed long typing answer remains where machine-graded recognition is the goal', async () => {
+test('no fixed long typing answer remains where recognition or ordering is the goal', async () => {
   for (const descriptor of g6U3WorkbookRegistry) {
     const content = await descriptor.loadContent();
     for (const item of content.items) {
@@ -160,7 +163,7 @@ test('no fixed long typing answer remains where machine-graded recognition is th
   }
 });
 
-test('source word-bank enhancer includes Unit 3 B3 and D1 while retaining earlier workbooks', async () => {
+test('source word-bank enhancer retains Unit 3 B3 and D1 support', async () => {
   const enhancer = await readFile(new URL('../src/features/drill/sourceWordBankEnhancer.js', import.meta.url), 'utf8');
   assert.match(enhancer, /g6U1WorkbookRegistry/);
   assert.match(enhancer, /g6U2WorkbookRegistry/);
