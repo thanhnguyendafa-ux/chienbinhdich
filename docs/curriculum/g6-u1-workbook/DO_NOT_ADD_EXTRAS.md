@@ -1,1 +1,0 @@
-No new exercise questions, paraphrase traps, or image replacements are permitted in this module.
