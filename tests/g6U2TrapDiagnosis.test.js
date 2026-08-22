@@ -127,11 +127,17 @@ test('grade 3 copy removes repeated full sentences from Writing Reorder choices'
   }
 });
 
-test('there-is/are explanation is concrete for young learners', () => {
+test('there-is/are explanation follows the repaired form, not the wrong form', () => {
   const thereLesson = getG6U2TrapContent('grammar-there-01');
   const text = JSON.stringify(thereLesson);
+  const byId = new Map(thereLesson.items.map(item => [item.id, item]));
+
   assert.match(text, /số ít|số nhiều/);
   assert.doesNotMatch(text, /\bNP\b|noun phrase/i);
   assert.doesNotMatch(text, /hòa hợp|agreement/i);
   assert.doesNotMatch(text, /a chair and a bookshelf[^\n]{0,120}(số ít|singular)/i);
+
+  assert.equal(byId.get('g6u2-trap-grammar-there-01-q03')?.diagnosticSpec?.reason, 'Cụm sau there là số nhiều.');
+  assert.equal(byId.get('g6u2-trap-grammar-there-01-q04')?.diagnosticSpec?.reason, 'Cụm sau there là số ít.');
+  assert.equal(byId.get('g6u2-trap-grammar-there-01-q11')?.diagnosticSpec?.reason, 'Cụm sau there là số ít.');
 });
