@@ -29,7 +29,7 @@ const choiceLearnerText = item => JSON.stringify(item.choices?.map(choice => ({
   diagnostic: choice.diagnostic
 })));
 
-const ADULT_JARGON = /\b(category|context|referent|verdict|marker|skeleton|evidence|keyword|slot|transcript|spelling)\b|speech function/i;
+const ADULT_JARGON = /\b(category|context|referent|verdict|marker|skeleton|evidence|keywords?|slot|transcript|spelling|chunks?)\b|speech function/i;
 
 test('GS6 Unit 2 Trap Diagnosis publishes 21 lessons / 238 six-choice MCQ items', async () => {
   assert.equal(g6U2TrapSource.length, 21);
