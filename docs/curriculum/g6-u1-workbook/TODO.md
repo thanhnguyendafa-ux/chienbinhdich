@@ -1,0 +1,6 @@
+- Implement catalog
+- Implement 14 workbook lessons
+- Integrate with Global 6 catalog
+- Add Vietnamese theory/solutions
+- Run validation/tests
+- Deploy/verify
