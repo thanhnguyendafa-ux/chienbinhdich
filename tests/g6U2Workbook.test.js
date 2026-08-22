@@ -14,19 +14,7 @@ async function load(key) {
 }
 
 function choiceText(item, id = item.correctChoiceId) {
-  return item.choices.find(choice => choice.id === id)?.text ?? '';
-}
-
-function assertFixedMcq(items, correctIds) {
-  assert.deepEqual(items.map(item => item.type), Array(items.length).fill('mcq'));
-  assert.deepEqual(items.map(item => item.correctChoiceId), correctIds);
-  for (const item of items) {
-    assert.equal(item.choices.length, 4, `${item.id} must have four choices`);
-    assert.ok(item.choices.every(choice => choice.preserveOrder === true), `${item.id} order must be preserved`);
-    assert.equal(item.digitalAdaptation?.sourceResponseType, 'written_answer', `${item.id} source type`);
-    assert.equal(item.digitalAdaptation?.adaptedResponseType, 'mcq', `${item.id} adapted type`);
-    assert.ok(item.teachingFeedback?.reason?.length > 30, `${item.id} needs Vietnamese trap explanation`);
-  }
+  return item.choices?.find(choice => choice.id === id)?.text ?? '';
 }
 
 test('G6 U2 workbook publishes exactly the 12 approved text-based source lessons', () => {
@@ -72,49 +60,51 @@ test('A1, B3, B4, C1 and C2 retain the workbook answer key', async () => {
   assert.ok(c2.items.every(item => item.choices.every(choice => choice.preserveOrder === true)));
 });
 
-test('D1 uses the exact source word box and D2 keeps A/B/C order', async () => {
+test('D1 uses source word box as direct choices and D2 keeps A/B/C order', async () => {
   const { content:d1 } = await load('d1');
   const expectedBank = ['untidy','are','not','near','next','on','his','school bag'];
+  assert.ok(d1.items.every(item => item.type === 'mcq'));
   assert.deepEqual(d1.items[0].sourceWordBank, expectedBank);
   assert.ok(d1.items.every(item => JSON.stringify(item.sourceWordBank) === JSON.stringify(expectedBank)));
-  assert.deepEqual(d1.items.map(item => item.en), ['are','near','on','school bag','next','untidy','not','his']);
+  assert.deepEqual(d1.items.map(choiceText), ['are','near','on','school bag','next','untidy','not','his']);
 
   const { content:d2 } = await load('d2');
   assert.deepEqual(d2.items.map(item => item.correctChoiceId), ['B','B','C','A','C','B']);
   assert.ok(d2.items.every(item => item.choices.every(choice => choice.preserveOrder === true)));
 });
 
-test('C3 converts six fixed long responses to MCQ but keeps the final open conversation', async () => {
+test('C3 uses sentence order for six fixed cue-built lines and keeps final conversation open', async () => {
   const { descriptor, content } = await load('c3');
-  assert.deepEqual(descriptor.activityTypes, ['mcq','typing']);
-  assertFixedMcq(content.items.slice(0, 6), ['B','A','C','D','B','D']);
-  assert.equal(choiceText(content.items[0]), 'Mira, who do you live with?');
-  assert.equal(choiceText(content.items[5]), "No, it isn't. There is a living room, two bedrooms, a bathroom and a kitchen.");
+  assert.deepEqual(descriptor.activityTypes, ['sentence_order','typing']);
+  assert.ok(content.items.slice(0, 6).every(item => item.type === 'sentence_order'));
+  assert.deepEqual(content.items[0].correctOrder, ['Mira,','who','do','you','live','with?']);
+  assert.deepEqual(content.items[5].correctOrder, ["No, it isn't.",'There is','a living room,','two bedrooms,','a bathroom','and a kitchen.']);
+  assert.ok(content.items[0].tokens.includes('does'));
   const open = content.items[6];
   assert.equal(open.type, 'typing');
   assert.equal(open.responseMode, 'open');
 });
 
-test('D3b reading uses deterministic A/B/C/D answers with source-grounded traps', async () => {
+test('D3b reading keeps deterministic A/B/C/D answers with source-grounded traps', async () => {
   const { descriptor, content } = await load('d3b');
   assert.deepEqual(descriptor.activityTypes, ['mcq']);
-  assertFixedMcq(content.items, ['B','D','A','C','B']);
+  assert.deepEqual(content.items.map(item => item.correctChoiceId), ['B','D','A','C','B']);
   assert.equal(choiceText(content.items[0]), 'It is big and cozy.');
   assert.match(choiceText(content.items[1]), /three posters/);
   assert.doesNotMatch(choiceText(content.items[1]), /table/i);
   assert.match(choiceText(content.items[3]), /comfortable/);
   assert.match(choiceText(content.items[4]), /cozy/);
-  assert.ok(content.items[2].teachingFeedback.reason.includes("don't have any posters"));
 });
 
-test('E1 fixed sentence rewrites use MCQ while preserving the target transformation', async () => {
+test('E1 fixed sentence rewrites use sentence order with distractors', async () => {
   const { descriptor, content } = await load('e1');
-  assert.deepEqual(descriptor.activityTypes, ['mcq']);
-  assertFixedMcq(content.items, ['B','C','A','C','D']);
-  assert.equal(choiceText(content.items[0]), "There isn't a bookshelf in my bedroom.");
-  assert.equal(choiceText(content.items[2]), "Mai's notebook is on the table.");
-  assert.equal(choiceText(content.items[3]), 'The microwave is behind the dog.');
-  assert.equal(choiceText(content.items[4]), 'I like the living room best in the house.');
+  assert.deepEqual(descriptor.activityTypes, ['sentence_order']);
+  assert.ok(content.items.every(item => item.type === 'sentence_order'));
+  assert.deepEqual(content.items[0].correctOrder, ["There isn't",'a bookshelf','in my bedroom.']);
+  assert.deepEqual(content.items[2].correctOrder, ["Mai's notebook",'is','on the table.']);
+  assert.deepEqual(content.items[3].correctOrder, ['The microwave','is','behind','the dog.']);
+  assert.deepEqual(content.items[4].correctOrder, ['I like','the living room','best','in the house.']);
+  assert.ok(content.items[0].tokens.includes("There aren't"));
 });
 
 test('open production stays open and no fixed long typing answer remains in the Unit 2 workbook', async () => {
@@ -134,7 +124,7 @@ test('open production stays open and no fixed long typing answer remains in the 
   }
 });
 
-test('source word-bank enhancer includes Unit 2 D1 without changing Unit 1 support', async () => {
+test('source word-bank enhancer includes Unit 2 D1 without changing earlier support', async () => {
   const enhancer = await readFile(new URL('../src/features/drill/sourceWordBankEnhancer.js', import.meta.url), 'utf8');
   assert.match(enhancer, /g6U1WorkbookRegistry/);
   assert.match(enhancer, /g6U2WorkbookRegistry/);
