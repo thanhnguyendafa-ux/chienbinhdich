@@ -33,13 +33,13 @@ export const g6U2TrapFolders = Object.freeze([
     parentId: 'global6-unit2',
     order: 2
   }),
-  Object.freeze({ id:'global6-unit2-trap-vocab', name:'01 · Từ vựng', description:'Nhóm từ, chọn từ đúng câu và ghép từ đúng nghĩa.', parentId:'global6-unit2-exam-traps', order:1 }),
-  Object.freeze({ id:'global6-unit2-trap-grammar', name:'02 · Ngữ pháp', description:'There is/are, have/has, vị trí, lời đề nghị và câu tả.', parentId:'global6-unit2-exam-traps', order:2 }),
-  Object.freeze({ id:'global6-unit2-trap-reading', name:'03 · Đọc hiểu', description:'Đúng/Sai, số và chi tiết, câu hỏi và it/them/one.', parentId:'global6-unit2-exam-traps', order:3 }),
-  Object.freeze({ id:'global6-unit2-trap-writing', name:'04 · Viết', description:'Xếp từ, tìm lỗi, viết lại và Việt → Anh.', parentId:'global6-unit2-exam-traps', order:4 }),
-  Object.freeze({ id:'global6-unit2-trap-pronunciation', name:'05 · Phát âm', description:'Âm cuối -s: /s/ và /z/.', parentId:'global6-unit2-exam-traps', order:5 }),
-  Object.freeze({ id:'global6-unit2-trap-communication', name:'06 · Giao tiếp', description:'Chọn câu đáp lại phù hợp.', parentId:'global6-unit2-exam-traps', order:6 }),
-  Object.freeze({ id:'global6-unit2-trap-mixed', name:'07 · Tổng hợp', description:'Dễ → Vừa → Khó.', parentId:'global6-unit2-exam-traps', order:7 })
+  Object.freeze({ id:'global6-unit2-trap-vocab', name:'01 · Vocabulary', description:'Nhóm từ, chọn từ đúng câu và ghép từ đúng nghĩa.', parentId:'global6-unit2-exam-traps', order:1 }),
+  Object.freeze({ id:'global6-unit2-trap-grammar', name:'02 · Grammar', description:'There is/are, have/has, vị trí, lời đề nghị và câu tả.', parentId:'global6-unit2-exam-traps', order:2 }),
+  Object.freeze({ id:'global6-unit2-trap-reading', name:'03 · Reading', description:'Đúng/Sai, số và chi tiết, câu hỏi và it/them/one.', parentId:'global6-unit2-exam-traps', order:3 }),
+  Object.freeze({ id:'global6-unit2-trap-writing', name:'04 · Writing', description:'Xếp từ, tìm lỗi, viết lại và Việt → Anh.', parentId:'global6-unit2-exam-traps', order:4 }),
+  Object.freeze({ id:'global6-unit2-trap-pronunciation', name:'05 · Pronunciation', description:'Âm cuối -s: /s/ và /z/.', parentId:'global6-unit2-exam-traps', order:5 }),
+  Object.freeze({ id:'global6-unit2-trap-communication', name:'06 · Communication', description:'Chọn câu đáp lại phù hợp.', parentId:'global6-unit2-exam-traps', order:6 }),
+  Object.freeze({ id:'global6-unit2-trap-mixed', name:'07 · Mixed Challenge', description:'Dễ → Vừa → Khó.', parentId:'global6-unit2-exam-traps', order:7 })
 ]);
 
 export const g6U2TrapRegistry = Object.freeze(g6U2TrapSource.map(source => {
