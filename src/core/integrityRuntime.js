@@ -45,6 +45,11 @@ export function attachIntegrityTracking(session, now = Date.now()) {
   return session;
 }
 
+export function detachIntegrityTracking() {
+  currentSession = null;
+  scheduleWarningNotification();
+}
+
 export function finalizeIntegrityTracking(session, now = Date.now()) {
   if (!session) return session;
   const finalized = finalizeIntegrityState(session, now);
