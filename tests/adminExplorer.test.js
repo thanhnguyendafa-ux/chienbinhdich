@@ -52,10 +52,10 @@ test('Explorer breadcrumbs include all three G7 workbook units',()=>{
   assert.deepEqual(folderBreadcrumbs(tree,'global6-unit3-workbook').map(item=>item.label),['Bài tập','Global Success 6','Unit 3 · My Friends','Sách bài tập · Unit 3']);
 });
 
-test('Explorer recursive lesson counts include recovered G6 and existing G7 workbook lessons',()=>{
+test('Explorer recursive lesson counts include G5 workbook plus existing G6/G7 workbook lessons',()=>{
   assert.equal(folderLessonCount(findAdminTreeNode(tree,'global2')),57);
   assert.equal(folderLessonCount(findAdminTreeNode(tree,'global3')),88);
-  assert.equal(folderLessonCount(findAdminTreeNode(tree,'global5')),301);
+  assert.equal(folderLessonCount(findAdminTreeNode(tree,'global5')),442);
   assert.equal(folderLessonCount(findAdminTreeNode(tree,'global6')),153);
   assert.equal(folderLessonCount(findAdminTreeNode(tree,'global7-unit1')),59);
   assert.equal(folderLessonCount(findAdminTreeNode(tree,'global7-unit1-workbook')),12);
