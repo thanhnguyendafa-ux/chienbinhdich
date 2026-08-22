@@ -31,6 +31,19 @@ test('workbook choices marked preserveOrder stay in SBT order', () => {
   assert.deepEqual(ordered.map(choice => choice.id), ['A', 'B', 'C', 'D']);
 });
 
+test('B5 and D1 keep the SBT word-box fill-in response form instead of becoming MCQ', async () => {
+  const b5Descriptor = g6U1WorkbookRegistry.find(entry => entry.id === 'g6-u1-wb-b5');
+  const d1Descriptor = g6U1WorkbookRegistry.find(entry => entry.id === 'g6-u1-wb-d1');
+  const [b5, d1] = await Promise.all([b5Descriptor.loadContent(), d1Descriptor.loadContent()]);
+
+  assert.ok(b5.items.every(item => item.type === 'typing'));
+  assert.ok(d1.items.every(item => item.type === 'typing'));
+  assert.equal(b5.items[0].en, 'English lessons');
+  assert.equal(d1.items[0].en, 'go');
+  assert.match(b5.items[0].vi, /ball games · have · English lessons/);
+  assert.match(d1.items[0].vi, /In England, when the schoolchildren come to school/);
+});
+
 test('D3 final answer remains B before as in the SBT solution', () => {
   const item = getG6U1WorkbookContent('d3').items.at(-1);
   assert.equal(item.correctChoiceId, 'B');
