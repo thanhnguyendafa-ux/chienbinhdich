@@ -1,3 +1,4 @@
+import { normalizeLessonSlug, parseLegacyAssignmentToken } from '../core/lessonLinks.js';
 import { SESSION_SCHEMA_VERSION } from '../core/sessionMachine.js';
 
 const LEGACY_ACTIVE_KEY = 'cbd.activeSession.v7';
@@ -7,38 +8,37 @@ const REPORT_PREFIX = 'cbd.report.v7.';
 const MIGRATION_PREFIX = 'cbd.firebaseMigration.v1.';
 
 export const browserSessionStore = Object.freeze({
-  saveActive(session) {
+  saveActive(session, accessContext = null) {
     const storage = requireStorage();
-    const key = activeKeyForSession(session);
+    const key = activeKeyFor(session, accessContext);
     storage.setItem(key, JSON.stringify(session));
     storage.setItem(LAST_NAME_KEY, session.studentName);
-    removeMatchingLegacyActive(storage, session);
+    removeMatchingLegacyActive(storage, session, accessContext);
   },
   loadActive(accessContext = null) {
     const storage = requireStorage();
-    if (!accessContext) {
+    const scope = currentLinkScope() ?? scopeForAccess(accessContext);
+    if (!scope) {
       const legacy = safeParse(storage.getItem(LEGACY_ACTIVE_KEY));
       return isCurrentSession(legacy) ? legacy : null;
     }
 
-    const scopedKey = activeKeyForAccess(accessContext);
-    if (!scopedKey) return null;
+    const scopedKey = activeKey(scope);
     const scoped = safeParse(storage.getItem(scopedKey));
     if (isCurrentSession(scoped) && sessionMatchesAccess(scoped, accessContext)) return scoped;
 
     const legacy = safeParse(storage.getItem(LEGACY_ACTIVE_KEY));
-    if (!isCurrentSession(legacy) || !sessionMatchesAccess(legacy, accessContext)) return null;
+    if (!canSafelyMigrateLegacy(legacy, scope, accessContext)) return null;
     storage.setItem(scopedKey, JSON.stringify(legacy));
     storage.removeItem(LEGACY_ACTIVE_KEY);
     return legacy;
   },
   clearActive(sessionOrAccess = null) {
     const storage = requireStorage();
-    const key = sessionOrAccess
-      ? (isCurrentSession(sessionOrAccess) ? activeKeyForSession(sessionOrAccess) : activeKeyForAccess(sessionOrAccess))
-      : LEGACY_ACTIVE_KEY;
-    if (key) storage.removeItem(key);
-    if (sessionOrAccess) removeMatchingLegacyActive(storage, sessionOrAccess);
+    const scope = currentLinkScope()
+      ?? (isCurrentSession(sessionOrAccess) ? scopeForSession(sessionOrAccess) : scopeForAccess(sessionOrAccess));
+    storage.removeItem(scope ? activeKey(scope) : LEGACY_ACTIVE_KEY);
+    if (sessionOrAccess) removeMatchingLegacyActive(storage, sessionOrAccess, null);
   },
   saveReport(session) {
     const storage = requireStorage();
@@ -87,34 +87,49 @@ export const browserSessionKeys = Object.freeze({
   migrationPrefix: MIGRATION_PREFIX
 });
 
-function activeKeyForSession(session) {
-  const scope = scopeForSession(session);
-  return scope ? `${ACTIVE_PREFIX}${encodeURIComponent(scope)}` : LEGACY_ACTIVE_KEY;
+function activeKeyFor(session, accessContext) {
+  const scope = currentLinkScope() ?? scopeForAccess(accessContext) ?? scopeForSession(session);
+  return scope ? activeKey(scope) : LEGACY_ACTIVE_KEY;
 }
 
-function activeKeyForAccess(accessContext) {
-  const scope = scopeForAccess(accessContext);
-  return scope ? `${ACTIVE_PREFIX}${encodeURIComponent(scope)}` : null;
+function activeKey(scope) {
+  return `${ACTIVE_PREFIX}${encodeURIComponent(scope)}`;
+}
+
+function currentLinkScope() {
+  const pathname = globalThis.location?.pathname;
+  if (!pathname) return null;
+  const match = String(pathname).replace(/\/+$/, '').match(/^\/a\/([^/]+)$/);
+  if (!match) return null;
+  const token = decodeURIComponent(match[1]).trim();
+  const legacy = parseLegacyAssignmentToken(token);
+  if (legacy) return `link:${legacy.slug}-${legacy.code}`;
+  const slug = normalizeLessonSlug(token);
+  return slug ? `link:${slug}` : null;
 }
 
 function scopeForSession(session) {
   if (!session) return null;
-  if (session.entryMode === 'fixed-link' && session.accessSlug) return `fixed:${session.accessSlug}`;
+  if (session.entryMode === 'fixed-link' && session.accessSlug) return `link:${session.accessSlug}`;
   if (session.entryMode === 'legacy-assignment' && session.assignmentId) return `assignment:${session.assignmentId}`;
-  if (session.accessSlug) return `fixed:${session.accessSlug}`;
+  if (session.accessSlug) return `link:${session.accessSlug}`;
   if (session.assignmentId) return `assignment:${session.assignmentId}`;
   return session.setId ? `set:${session.setId}` : null;
 }
 
 function scopeForAccess(accessContext) {
   if (!accessContext) return null;
-  if (accessContext.kind === 'fixed-link' && accessContext.slug) return `fixed:${accessContext.slug}`;
+  if (accessContext.kind === 'fixed-link' && accessContext.slug) return `link:${accessContext.slug}`;
+  if (accessContext.kind === 'legacy-assignment' && accessContext.code && accessContext.slug) {
+    return `link:${accessContext.slug}-${String(accessContext.code).toUpperCase()}`;
+  }
   if (accessContext.kind === 'legacy-assignment' && accessContext.assignmentId) return `assignment:${accessContext.assignmentId}`;
   return accessContext.setId ? `set:${accessContext.setId}` : null;
 }
 
 function sessionMatchesAccess(session, accessContext) {
-  if (!isCurrentSession(session) || !accessContext) return false;
+  if (!isCurrentSession(session)) return false;
+  if (!accessContext) return true;
   if (accessContext.setId && session.setId !== accessContext.setId) return false;
   if (accessContext.kind === 'fixed-link') {
     return session.entryMode === 'fixed-link' && session.accessSlug === accessContext.slug;
@@ -122,14 +137,28 @@ function sessionMatchesAccess(session, accessContext) {
   if (accessContext.kind === 'legacy-assignment') {
     return session.entryMode === 'legacy-assignment' && session.assignmentId === accessContext.assignmentId;
   }
-  return scopeForSession(session) === scopeForAccess(accessContext);
+  return true;
 }
 
-function removeMatchingLegacyActive(storage, sessionOrAccess) {
+function canSafelyMigrateLegacy(session, targetScope, accessContext) {
+  if (!isCurrentSession(session)) return false;
+  if (accessContext && !sessionMatchesAccess(session, accessContext)) return false;
+  if (targetScope.startsWith('link:') && !targetScope.match(/-[A-HJ-NP-Z2-9]{6}$/i)) {
+    return session.entryMode === 'fixed-link' && targetScope === `link:${session.accessSlug}`;
+  }
+  // Old global storage cannot prove which legacy-assignment code created the session.
+  // Do not migrate an ambiguous legacy assignment into a different link.
+  if (targetScope.startsWith('link:')) return false;
+  return scopeForSession(session) === targetScope;
+}
+
+function removeMatchingLegacyActive(storage, session, accessContext) {
   const legacy = safeParse(storage.getItem(LEGACY_ACTIVE_KEY));
   if (!isCurrentSession(legacy)) return;
-  const targetScope = isCurrentSession(sessionOrAccess) ? scopeForSession(sessionOrAccess) : scopeForAccess(sessionOrAccess);
-  if (targetScope && scopeForSession(legacy) === targetScope) storage.removeItem(LEGACY_ACTIVE_KEY);
+  const scope = currentLinkScope() ?? scopeForAccess(accessContext) ?? scopeForSession(session);
+  if (canSafelyMigrateLegacy(legacy, scope ?? '', accessContext) || legacy.id === session?.id) {
+    storage.removeItem(LEGACY_ACTIVE_KEY);
+  }
 }
 
 function isCurrentSession(session) {
