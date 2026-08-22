@@ -1,10 +1,12 @@
-# G5 Workbook sharded architecture
+# G5 Workbook bounded Unit architecture
 
-Student UI remains **20 Unit folders / 141 semantic lesson links**. Physical content is stored in four lazy data shards to keep the published catalog small while avoiding 141 eager imports.
+Student UI remains **20 Unit folders / 141 semantic lesson links**.
 
-- `u01-u05.js`
-- `u06-u10.js`
-- `u11-u15.js`
-- `u16-u20.js`
+Physical content is stored in **20 bounded Unit modules**, not one giant content file and not four coarse shards:
 
-Every retained source exercise still has a unique stable lesson id `g5-uXX-wb-...`; A/B/E/F source labels remain internal trace metadata only.
+- `units/u01.js` … `units/u20.js`
+- each file contains only that Unit's retained lesson specs plus its 11-slot source manifest;
+- `index.js` keeps lightweight lesson metadata and dynamically imports the correct Unit module;
+- shared rendering/build rules live once in `shared/workbook-lesson.js`.
+
+This boundary keeps source traceability local to each Unit, prevents a curriculum god component, and preserves lazy loading. Every retained exercise keeps a stable id `g5-uXX-wb-*`; source labels such as A2/B1/E2/F2 stay in internal trace metadata only.
