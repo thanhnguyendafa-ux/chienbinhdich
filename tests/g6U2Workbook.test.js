@@ -66,7 +66,7 @@ test('D1 uses source word box as direct choices and D2 keeps A/B/C order', async
   assert.ok(d1.items.every(item => item.type === 'mcq'));
   assert.deepEqual(d1.items[0].sourceWordBank, expectedBank);
   assert.ok(d1.items.every(item => JSON.stringify(item.sourceWordBank) === JSON.stringify(expectedBank)));
-  assert.deepEqual(d1.items.map(choiceText), ['are','near','on','school bag','next','untidy','not','his']);
+  assert.deepEqual(d1.items.map(item => choiceText(item)), ['are','near','on','school bag','next','untidy','not','his']);
 
   const { content:d2 } = await load('d2');
   assert.deepEqual(d2.items.map(item => item.correctChoiceId), ['B','B','C','A','C','B']);
