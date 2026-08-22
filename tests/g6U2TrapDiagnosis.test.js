@@ -104,6 +104,9 @@ test('every Trap Diagnosis item keeps six complete but short Sai · Sửa · Vì
 
       if (String(item.trapCode).startsWith('R-')) {
         assert.ok(item.stimulus?.text?.trim(), `${item.id} Reading trap must include stimulus evidence`);
+        assert.match(item.stimulus?.title ?? '', /^Đọc:/, `${item.id} Reading title must be child-friendly`);
+        assert.equal(item.prompt, 'Bạn này sai ở đâu? Chọn cách giải thích đúng.', item.id);
+        assert.doesNotMatch(item.stimulus?.title ?? '', /paraphrase|reference|detail|number|mcq/i, `${item.id} Reading title contains adult exam jargon`);
       }
 
       assert.doesNotMatch(learnerText(item), /\bNP\b|noun phrase/i, `${item.id} must not use NP/noun phrase`);
