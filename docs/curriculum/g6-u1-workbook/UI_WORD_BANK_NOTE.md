@@ -1,0 +1,1 @@
+Word-bank UI enhancement is visual-only and preserves the current app flow.
