@@ -1,1 +1,0 @@
-Verification marker: production word-bank UI is implemented and requires final CI/preview smoke verification.
