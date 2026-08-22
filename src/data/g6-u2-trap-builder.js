@@ -147,8 +147,10 @@ function shortRepair(record) {
 
 function targetThereForm(record) {
   const text = String(record.correctDiagnosis.repair ?? '').toLowerCase();
-  if (/thành are\b|\bare there\b|dùng are\b/.test(text)) return 'are';
-  if (/thành is\b|\bis there\b|dùng is\b/.test(text)) return 'is';
+  const replacement = text.match(/thành\s+(are|is)(?:\s+there)?\b/);
+  if (replacement) return replacement[1];
+  if (/dùng\s+are\b/.test(text)) return 'are';
+  if (/dùng\s+is\b/.test(text)) return 'is';
   return null;
 }
 
