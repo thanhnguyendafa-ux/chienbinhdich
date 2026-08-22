@@ -1,1 +1,0 @@
-Final scope: B5 and D1 only; visual word-bank separation only; no logic/content changes.
