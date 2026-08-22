@@ -1,5 +1,6 @@
 import { applyG6U3VerifiedAdaptations } from './g6-u3-workbook-verified-adaptations.js';
 import { applyG6U3WorkbookInteractionAdaptations } from './g6-u3-workbook-interaction-adaptations.js';
+import { applyG6WorkbookTranslationPreload, getG6WorkbookPreloadCount } from './g6-workbook-translation-preload.js';
 
 const lessonSpecs = Object.freeze([
   Object.freeze({ key:'a2', order:1, title:'A2 · Luyện đọc âm /p/ và /b/', expectedTimeMinutes:7, itemCount:3, activityTypes:['typing'] }),
@@ -20,44 +21,26 @@ const lessonSpecs = Object.freeze([
 ]);
 
 export const g6U3WorkbookFolders = Object.freeze([
-  Object.freeze({
-    id:'global6-unit3',
-    name:'Unit 3 · My Friends',
-    description:'Global Success 6 · Unit 3 · My Friends',
-    parentId:'global6',
-    order:3
-  }),
-  Object.freeze({
-    id:'global6-unit3-workbook',
-    name:'Sách bài tập · Unit 3',
-    description:'Bài SBT Global Success 6 Unit 3 · My Friends. A1 và C2 được bỏ vì phụ thuộc trực tiếp vào hình ảnh; các bài còn lại dùng classification, MCQ, sentence order hoặc typing theo đúng mục tiêu nguồn.',
-    parentId:'global6-unit3',
-    order:1
-  })
+  Object.freeze({ id:'global6-unit3', name:'Unit 3 · My Friends', description:'Global Success 6 · Unit 3 · My Friends', parentId:'global6', order:3 }),
+  Object.freeze({ id:'global6-unit3-workbook', name:'Sách bài tập · Unit 3', description:'Bài SBT Global Success 6 Unit 3 · My Friends. Mỗi bài text-based có Nhắc nhanh → Từ vựng → Cụm từ Anh–Việt → bài SBT.', parentId:'global6-unit3', order:1 })
 ]);
 
 function descriptor(spec) {
+  const preloadCount = getG6WorkbookPreloadCount('u3', spec.key);
+  const activityTypes = Object.freeze([...new Set(['mcq', ...spec.activityTypes])]);
   return Object.freeze({
-    id:`g6-u3-wb-${spec.key}`,
-    folderId:'global6-unit3-workbook',
-    order:spec.order,
-    version:2,
-    course:'Global Success 6',
-    unit:'Unit 3 · My Friends · Sách bài tập',
-    title:spec.title,
-    subtitle:'Nhắc nhanh · Interaction theo mục tiêu bài · Giải thích sau Submit',
-    expectedTimeMinutes:spec.expectedTimeMinutes,
-    lessonSlug:`g6-u3-wb-${spec.key}`,
-    passThreshold:80,
-    completionPolicy:'explain-and-accept',
-    typingTolerance:true,
-    teacher:'Thầy Thành MRT',
-    description:`${spec.itemCount} lượt interaction. Recall ngắn và bài mở giữ typing; word box, grammar discrimination, cues và matching dùng dạng phù hợp hơn.`,
-    activityTypes:Object.freeze(spec.activityTypes),
-    itemCount:spec.itemCount,
+    id:`g6-u3-wb-${spec.key}`, folderId:'global6-unit3-workbook', order:spec.order, version:3,
+    course:'Global Success 6', unit:'Unit 3 · My Friends · Sách bài tập', title:spec.title,
+    subtitle:'Nhắc nhanh · Từ vựng → Cụm từ Anh–Việt · Bài SBT · Giải thích sau Submit',
+    expectedTimeMinutes:spec.expectedTimeMinutes + 4, lessonSlug:`g6-u3-wb-${spec.key}`, passThreshold:80,
+    completionPolicy:'explain-and-accept', typingTolerance:true, teacher:'Thầy Thành MRT',
+    description:`${preloadCount} lượt nạp nghĩa Anh→Việt + ${spec.itemCount} lượt bài SBT. Bài recall từ chỉ preload từ khóa, không dạy trước target answer.`,
+    sourceActivityTypes:Object.freeze(spec.activityTypes), activityTypes,
+    sourceItemCount:spec.itemCount, preloadItemCount:preloadCount, itemCount:spec.itemCount + preloadCount,
     loadContent:() => import('./g6-u3-workbook-content.js').then(module => {
       const verified = applyG6U3VerifiedAdaptations(spec.key, module.getG6U3WorkbookContent(spec.key));
-      return applyG6U3WorkbookInteractionAdaptations(spec.key, verified);
+      const adapted = applyG6U3WorkbookInteractionAdaptations(spec.key, verified);
+      return applyG6WorkbookTranslationPreload('u3', spec.key, adapted);
     })
   });
 }
