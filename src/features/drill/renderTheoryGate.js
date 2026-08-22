@@ -2,6 +2,9 @@ export function renderTheoryGate({ root, set, session, onBottomReached, onConfir
   const theory = set?.preLessonTheory;
   if (!theory?.required) return onConfirm?.();
   const bottomAlreadyReached = Boolean(session?.theoryGate?.bottomReachedAt);
+  const sourceLabel = Array.isArray(theory.sourceSections) && theory.sourceSections.length
+    ? theory.sourceSections.join(' · ')
+    : '';
 
   root.innerHTML = `
     <main class="theory-gate-page">
@@ -15,6 +18,7 @@ export function renderTheoryGate({ root, set, session, onBottomReached, onConfir
           <p class="eyebrow">GLOBAL SUCCESS 6 · UNIT 2</p>
           <h1>${esc(theory.title)}</h1>
           <p>${esc(theory.intro)}</p>
+          ${sourceLabel ? `<p class="theory-source-note"><strong>Bám theo Unit 2:</strong> ${esc(sourceLabel)}</p>` : ''}
         </div>
 
         <div class="theory-read-progress" aria-live="polite">
