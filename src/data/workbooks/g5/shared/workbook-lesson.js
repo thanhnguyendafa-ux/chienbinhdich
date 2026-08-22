@@ -31,9 +31,10 @@ function preloadItems(prefix, vocab, phrases) {
   });
 }
 
-function makeTrueFalse(id, raw, theory) {
+function makeTrueFalse(id, raw, theory, stimulus = null) {
   return freeze({
     id, type:'true_false', statement:raw.statement, answer:Boolean(raw.answer), learningPhase:'source', theorySupport,
+    ...(stimulus ? { stimulus:freeze(stimulus) } : {}),
     teachingFeedback:freeze({
       correctLabel:raw.answer ? 'TRUE' : 'FALSE',
       reason:raw.explanation,
@@ -64,14 +65,15 @@ function makeSentenceOrder(id, raw, theory, adaptation) {
 function sourceItems(spec) {
   const theory = spec.theory.join(' ');
   const prefix = spec.id;
+  const sourceStimulus = spec.sourceContext ? freeze({ title:'Bài đọc trong SBT', text:spec.sourceContext, promptLabel:'Đọc bài trong SBT rồi trả lời' }) : null;
   if (spec.type === 'MCQ') return spec.items.map((raw,index) => {
     const options = raw.options.map(([id,text]) => [id,text]);
     const answerPair = options.find(([,text]) => text === raw.answer);
     if (!answerPair) throw new Error(`${spec.id}: MCQ answer not found: ${raw.answer}`);
-    return mcq({id:`${prefix}-source-${String(index+1).padStart(2,'0')}`,prompt:raw.prompt,options,correct:answerPair[0],reason:raw.explanation,theory,example:raw.trap,stimulus:spec.sourceContext ? {title:'Bài đọc trong SBT',text:spec.sourceContext} : null});
+    return mcq({id:`${prefix}-source-${String(index+1).padStart(2,'0')}`,prompt:raw.prompt,options,correct:answerPair[0],reason:raw.explanation,theory,example:raw.trap,stimulus:sourceStimulus});
   });
-  if (spec.type === 'TYPE') return spec.items.map((raw,index) => typing({id:`${prefix}-source-${String(index+1).padStart(2,'0')}`,prompt:raw.prompt,answer:raw.answer,reason:raw.explanation,theory,example:raw.trap}));
-  if (spec.type === 'TF') return spec.items.map((raw,index) => makeTrueFalse(`${prefix}-source-${String(index+1).padStart(2,'0')}`,raw,theory));
+  if (spec.type === 'TYPE') return spec.items.map((raw,index) => typing({id:`${prefix}-source-${String(index+1).padStart(2,'0')}`,prompt:raw.prompt,answer:raw.answer,reason:raw.explanation,theory,example:raw.trap,stimulus:sourceStimulus}));
+  if (spec.type === 'TF') return spec.items.map((raw,index) => makeTrueFalse(`${prefix}-source-${String(index+1).padStart(2,'0')}`,raw,theory,sourceStimulus));
   if (spec.type === 'SO') {
     const adaptation = spec.source.exercise === 'F2' ? {kind:'controlled_open_writing_to_sentence_order',reason:'F2 gốc là open writing; bản online khóa câu theo trọng tâm Unit để auto-score.'} : null;
     return spec.items.map((raw,index) => makeSentenceOrder(`${prefix}-source-${String(index+1).padStart(2,'0')}`,raw,theory,adaptation));
