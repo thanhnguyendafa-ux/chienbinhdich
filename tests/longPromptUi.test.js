@@ -16,14 +16,15 @@ test('long-prompt classifier is generic and leaves short questions unchanged', (
   assert.equal(isLongPromptText(Array.from({ length: 36 }, (_, index) => `word${index + 1}`).join(' ')), true);
 });
 
-test('G6 U1 D1 receives long-prompt treatment while B5 keeps normal question sizing', async () => {
+test('G6 U1 D1 keeps its long reading text as a stimulus while the question prompt stays compact', async () => {
   const d1Descriptor = g6U1WorkbookRegistry.find(entry => entry.id === 'g6-u1-wb-d1');
   const b5Descriptor = g6U1WorkbookRegistry.find(entry => entry.id === 'g6-u1-wb-b5');
   const d1 = await d1Descriptor.loadContent();
   const b5 = await b5Descriptor.loadContent();
 
-  assert.equal(isLongPromptText(d1.items[0].vi), true);
-  assert.equal(isLongPromptText(b5.items[0].vi), false);
+  assert.equal(isLongPromptText(d1.items[0].stimulus?.text), true);
+  assert.equal(isLongPromptText(d1.items[0].prompt), false);
+  assert.equal(isLongPromptText(b5.items[0].prompt), false);
 });
 
 test('desktop long prompts are exactly 13pt and the override loads after the academic theme', async () => {
