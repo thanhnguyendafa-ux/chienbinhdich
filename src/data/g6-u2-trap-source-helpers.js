@@ -9,7 +9,7 @@ export function defineTrapLesson(raw) {
     exactCorpusRequired: row[2] === true,
     originalQuestion: row[3],
     wrongResponse: row[4],
-    diagnosisPrompt: 'Bạn này sai ở đâu, nên sửa lại thế nào và vì sao?',
+    diagnosisPrompt: 'Bạn này sai ở đâu? Sửa thế nào? Vì sao?',
     correctDiagnosis: Object.freeze({ error: row[5], repair: row[6], reason: row[7] })
   }));
   return Object.freeze({ ...raw, items: Object.freeze(items) });
