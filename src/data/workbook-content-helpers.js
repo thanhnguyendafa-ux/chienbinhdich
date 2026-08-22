@@ -44,9 +44,10 @@ export function mcq({ id,prompt,options,correct,reason,theory,example,stimulus=n
   });
 }
 
-export function typing({ id,prompt,answer,acceptedAnswers=[],reason,theory,example,open=false,sourceWordBank=null,phase='source' }) {
+export function typing({ id,prompt,answer,acceptedAnswers=[],reason,theory,example,open=false,sourceWordBank=null,phase='source',stimulus=null }) {
   return freeze({
     id,type:'typing',vi:prompt,en:answer,learningPhase:phase,
+    ...(stimulus ? { stimulus:freeze(stimulus) } : {}),
     ...(acceptedAnswers.length ? { acceptedAnswers:freeze(acceptedAnswers) } : {}),
     ...(open ? { responseMode:'open' } : {}),
     ...(sourceWordBank ? { sourceWordBank:freeze(sourceWordBank),sourceWordBankLabel:'Từ / cụm từ cho sẵn' } : {}),
