@@ -94,3 +94,9 @@ test('source word-bank enhancer includes Unit 2 D1 without changing Unit 1 suppo
   assert.match(enhancer, /g6-u1-wb-b5/);
   assert.match(enhancer, /g6-u1-wb-d1/);
 });
+
+test('required micro-theory can unlock immediately when its content fits without scrolling', async () => {
+  const gate = await readFile(new URL('../src/features/drill/renderTheoryGate.js', import.meta.url), 'utf8');
+  assert.match(gate, /requestAnimationFrame\(updateProgress\)/);
+  assert.match(gate, /else updateProgress\(\)/);
+});
