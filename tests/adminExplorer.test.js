@@ -79,8 +79,9 @@ test('Explorer type filters still distinguish single-type and mixed lessons',()=
   for(const id of ['g2u01-writing-01','g3u01-writing-01','g6-u1-writing-s1-01','g7-u1-writing-s1-01']) assert.equal(lessonMatchesType(sets.find(set=>set.id===id),'typing'),true);
   assert.equal(lessonMatchesType(sets.find(set=>set.id==='g7-u1-translation-01'),'mcq'),true);
   assert.equal(lessonMatchesType(sets.find(set=>set.id==='mrt-left-cut-right-01'),'mix'),true);
-  assert.equal(lessonMatchesType(sets.find(set=>set.id==='g7-u2-wb-b5'),'order'),true);
-  assert.equal(lessonMatchesType(sets.find(set=>set.id==='g7-u3-wb-c2'),'classify'),true);
+  assert.equal(lessonMatchesType(sets.find(set=>set.id==='g7-u2-wb-b5'),'mix'),true);
+  assert.equal(lessonMatchesType(sets.find(set=>set.id==='g7-u3-wb-c2'),'mix'),true);
+  assert.equal(lessonMatchesType({activityTypes:['classification']},'classify'),true);
 });
 
 test('every published Set appears exactly once in the Explorer tree',()=>{
