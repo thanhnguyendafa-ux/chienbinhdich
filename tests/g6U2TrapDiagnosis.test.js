@@ -127,17 +127,32 @@ test('grade 3 copy removes repeated full sentences from Writing Reorder choices'
   }
 });
 
-test('there-is/are explanation follows the repaired form, not the wrong form', () => {
+test('there-is/are explanation follows the repaired form for all 12 items', () => {
   const thereLesson = getG6U2TrapContent('grammar-there-01');
   const text = JSON.stringify(thereLesson);
   const byId = new Map(thereLesson.items.map(item => [item.id, item]));
+  const expectedReasonByQuestion = Object.freeze({
+    q01: 'Cụm sau there là số nhiều.',
+    q02: 'Cụm sau there là số ít.',
+    q03: 'Cụm sau there là số nhiều.',
+    q04: 'Cụm sau there là số ít.',
+    q05: 'Cụm sau there là số nhiều.',
+    q06: 'Cụm sau there là số ít.',
+    q07: 'Cụm sau there là số nhiều.',
+    q08: 'Cụm sau there là số ít.',
+    q09: 'Cụm sau there là số nhiều.',
+    q10: 'Cụm sau there là số ít.',
+    q11: 'Cụm sau there là số ít.',
+    q12: 'Cụm sau there là số nhiều.'
+  });
 
   assert.match(text, /số ít|số nhiều/);
   assert.doesNotMatch(text, /\bNP\b|noun phrase/i);
   assert.doesNotMatch(text, /hòa hợp|agreement/i);
   assert.doesNotMatch(text, /a chair and a bookshelf[^\n]{0,120}(số ít|singular)/i);
 
-  assert.equal(byId.get('g6u2-trap-grammar-there-01-q03')?.diagnosticSpec?.reason, 'Cụm sau there là số nhiều.');
-  assert.equal(byId.get('g6u2-trap-grammar-there-01-q04')?.diagnosticSpec?.reason, 'Cụm sau there là số ít.');
-  assert.equal(byId.get('g6u2-trap-grammar-there-01-q11')?.diagnosticSpec?.reason, 'Cụm sau there là số ít.');
+  for (const [question, expectedReason] of Object.entries(expectedReasonByQuestion)) {
+    const id = `g6u2-trap-grammar-there-01-${question}`;
+    assert.equal(byId.get(id)?.diagnosticSpec?.reason, expectedReason, id);
+  }
 });
