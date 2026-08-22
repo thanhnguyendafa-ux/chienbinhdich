@@ -1,70 +1,83 @@
-const WORD_BANK_PREFIX = 'Từ / cụm từ cho sẵn:';
+import { g6U1WorkbookRegistry } from '../../data/g6-u1-workbook-catalog.js';
 
-export function parseSourceWordBank(text = '') {
-  const normalized = String(text).replace(/\r/g, '').trim();
-  if (!normalized.startsWith(WORD_BANK_PREFIX)) return null;
+const SUPPORTED_SLUGS = new Set(['g6-u1-wb-b5', 'g6-u1-wb-d1']);
+const configCache = new Map();
+let scheduled = false;
 
-  const separatorIndex = normalized.indexOf('\n\n');
-  if (separatorIndex < 0) return null;
-
-  const bankText = normalized.slice(WORD_BANK_PREFIX.length, separatorIndex).trim();
-  const prompt = normalized.slice(separatorIndex + 2).trim();
-  const items = bankText.split('·').map(item => item.trim()).filter(Boolean);
-  if (!items.length || !prompt) return null;
-
-  return { items, prompt };
+function currentLessonSlug() {
+  const match = globalThis.location?.pathname?.match(/\/a\/([^/]+)/);
+  return match ? decodeURIComponent(match[1]) : '';
 }
 
-export function enhanceSourceWordBanks(root = document) {
-  root.querySelectorAll('.typing-question').forEach(form => {
-    const scope = form.parentElement;
-    const promptBlock = scope?.querySelector('.prompt-block');
-    const heading = promptBlock?.querySelector('h1');
-    if (!promptBlock || !heading || heading.dataset.sourceWordBankEnhanced === '1') return;
+async function sourceWordBankConfig(slug) {
+  if (configCache.has(slug)) return configCache.get(slug);
+  const descriptor = g6U1WorkbookRegistry.find(entry => entry.lessonSlug === slug);
+  if (!descriptor) return null;
+  const content = await descriptor.loadContent();
+  const item = content.items?.find(candidate => Array.isArray(candidate.sourceWordBank) && candidate.sourceWordBank.length);
+  if (!item) return null;
+  const config = Object.freeze({
+    label: item.sourceWordBankLabel || 'Từ / cụm từ cho sẵn',
+    words: Object.freeze([...item.sourceWordBank])
+  });
+  configCache.set(slug, config);
+  return config;
+}
 
-    const parsed = parseSourceWordBank(heading.textContent ?? '');
-    if (!parsed) return;
+function buildWordBank(slug, config) {
+  const section = document.createElement('section');
+  section.className = 'source-word-bank';
+  section.dataset.sourceWordBankSlug = slug;
+  section.setAttribute('aria-label', config.label);
 
-    const bank = document.createElement('section');
-    bank.className = 'source-word-bank';
-    bank.setAttribute('aria-label', 'Từ hoặc cụm từ cho sẵn');
+  const label = document.createElement('p');
+  label.className = 'source-word-bank-label';
+  label.textContent = config.label;
+  section.appendChild(label);
 
-    const label = document.createElement('p');
-    label.className = 'source-word-bank-label';
-    label.textContent = 'TỪ / CỤM TỪ CHO SẴN';
+  const grid = document.createElement('div');
+  grid.className = 'source-word-bank-grid';
+  for (const word of config.words) {
+    const chip = document.createElement('span');
+    chip.className = 'source-word-bank-item';
+    chip.textContent = word;
+    grid.appendChild(chip);
+  }
+  section.appendChild(grid);
+  return section;
+}
 
-    const grid = document.createElement('div');
-    grid.className = 'source-word-bank-grid';
+async function applySourceWordBank() {
+  const slug = currentLessonSlug();
+  if (!SUPPORTED_SLUGS.has(slug)) return;
 
-    parsed.items.forEach(text => {
-      const item = document.createElement('span');
-      item.className = 'source-word-bank-item';
-      item.textContent = text;
-      grid.append(item);
-    });
+  const promptBlock = document.querySelector('.question-card .prompt-block');
+  if (!promptBlock) return;
+  if (promptBlock.querySelector(`.source-word-bank[data-source-word-bank-slug="${slug}"]`)) return;
 
-    bank.append(label, grid);
-    promptBlock.insertBefore(bank, heading);
-    promptBlock.classList.add('has-source-word-bank');
-    heading.textContent = parsed.prompt;
-    heading.dataset.sourceWordBankEnhanced = '1';
+  const config = await sourceWordBankConfig(slug);
+  if (!config || currentLessonSlug() !== slug || !promptBlock.isConnected) return;
+
+  promptBlock.querySelector('.source-word-bank')?.remove();
+  const bank = buildWordBank(slug, config);
+  const promptLabel = promptBlock.querySelector('.prompt-label');
+  if (promptLabel) promptLabel.insertAdjacentElement('afterend', bank);
+  else promptBlock.prepend(bank);
+  promptBlock.classList.add('has-source-word-bank');
+}
+
+function scheduleApply() {
+  if (scheduled) return;
+  scheduled = true;
+  queueMicrotask(() => {
+    scheduled = false;
+    applySourceWordBank().catch(() => {});
   });
 }
 
-export function installSourceWordBankEnhancer() {
-  const app = document.querySelector('#app');
-  if (!app) return null;
-
-  enhanceSourceWordBanks(app);
-  const observer = new MutationObserver(() => enhanceSourceWordBanks(app));
-  observer.observe(app, { childList: true, subtree: true });
-  return observer;
-}
-
 if (typeof document !== 'undefined') {
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', installSourceWordBankEnhancer, { once: true });
-  } else {
-    installSourceWordBankEnhancer();
-  }
+  const observer = new MutationObserver(scheduleApply);
+  observer.observe(document.documentElement, { childList: true, subtree: true });
+  globalThis.addEventListener?.('popstate', scheduleApply);
+  scheduleApply();
 }
