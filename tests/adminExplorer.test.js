@@ -61,7 +61,8 @@ test('Explorer tree nests Global Success 2, 3, 5, 6 and 7 without changing Set i
   assert.equal(folderEntries(tree, 'global6-unit1-writing-s1').filter(node => node.type === 'lesson').length, 4);
   assert.equal(folderEntries(tree, 'global6-unit1-writing-s6').filter(node => node.type === 'lesson').length, 5);
   assert.equal(folderEntries(tree, 'global6-unit1-writing-final').filter(node => node.type === 'lesson').length, 3);
-  assert.deepEqual(findAdminTreeNode(tree, 'global6-unit2').children.filter(node => node.type === 'folder').map(node => node.id), ['global6-unit2-writing-sentence-builder','global6-unit2-exam-traps']);
+  assert.deepEqual(findAdminTreeNode(tree, 'global6-unit2').children.filter(node => node.type === 'folder').map(node => node.id), ['global6-unit2-writing-sentence-builder','global6-unit2-exam-traps','global6-unit2-workbook']);
+  assert.equal(folderEntries(tree, 'global6-unit2-workbook').filter(node => node.type === 'lesson').length, 12);
   assert.equal(folderEntries(tree, 'global6-unit2-writing-sentence-builder').filter(node => node.type === 'folder').length, 6);
   assert.equal(folderEntries(tree, 'global6-unit2-writing-s5').filter(node => node.type === 'lesson').length, 5);
   assert.equal(folderEntries(tree, 'global6-unit2-exam-traps').filter(node => node.type === 'folder').length, 7);
@@ -104,6 +105,7 @@ test('Explorer breadcrumbs and recursive lesson counts match the hierarchy', () 
   assert.deepEqual(folderBreadcrumbs(tree, 'global6-unit1-mlh-writing').map(item => item.label), ['Bài tập','Global Success 6','Unit 1 · My New School','Writing · Mai Lan Hương']);
   assert.deepEqual(folderBreadcrumbs(tree, 'global6-unit2-writing-s1').map(item => item.label), ['Bài tập','Global Success 6','Unit 2 · My House','Writing · Sentence Builder','Cấu trúc 1 · Possessive']);
   assert.deepEqual(folderBreadcrumbs(tree, 'global6-unit2-trap-reading').map(item => item.label), ['Bài tập','Global Success 6','Unit 2 · My House','Bẫy đề thi · Vì sao sai?','03 · Reading']);
+  assert.deepEqual(folderBreadcrumbs(tree, 'global6-unit2-workbook').map(item => item.label), ['Bài tập','Global Success 6','Unit 2 · My House','Sách bài tập · Unit 2']);
   assert.deepEqual(folderBreadcrumbs(tree, 'global7-unit1-writing-final').map(item => item.label), ['Bài tập','Global Success 7','Unit 1 · Hobbies','G7Unit1 Writing Typing','Final Writing Integration']);
   assert.deepEqual(folderBreadcrumbs(tree, 'global7-unit2-writing-s1').map(item => item.label), ['Bài tập','Global Success 7','Unit 2 · Healthy Living','Writing · Sentence Builder','Cấu trúc 1 · Healthy habits & benefits']);
   assert.equal(folderLessonCount(findAdminTreeNode(tree, 'global2')), 57);
@@ -114,9 +116,10 @@ test('Explorer breadcrumbs and recursive lesson counts match the hierarchy', () 
   assert.equal(folderLessonCount(findAdminTreeNode(tree, 'global5-unit3')), 19);
   assert.equal(folderLessonCount(findAdminTreeNode(tree, 'global5-unit4')), 16);
   assert.equal(folderLessonCount(findAdminTreeNode(tree, 'global5-unit5')), 19);
-  assert.equal(folderLessonCount(findAdminTreeNode(tree, 'global6')), 123);
+  assert.equal(folderLessonCount(findAdminTreeNode(tree, 'global6')), 135);
   assert.equal(folderLessonCount(findAdminTreeNode(tree, 'global6-unit1')), 63);
-  assert.equal(folderLessonCount(findAdminTreeNode(tree, 'global6-unit2')), 37);
+  assert.equal(folderLessonCount(findAdminTreeNode(tree, 'global6-unit2')), 49);
+  assert.equal(folderLessonCount(findAdminTreeNode(tree, 'global6-unit2-workbook')), 12);
   assert.equal(folderLessonCount(findAdminTreeNode(tree, 'global6-unit2-exam-traps')), 21);
   assert.equal(folderLessonCount(findAdminTreeNode(tree, 'global6-unit-review')), 23);
   assert.equal(folderLessonCount(findAdminTreeNode(tree, 'global7')), 83);
