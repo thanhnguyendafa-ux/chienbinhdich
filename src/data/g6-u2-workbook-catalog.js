@@ -23,6 +23,23 @@ export const g6U2WorkbookFolders = Object.freeze([
   })
 ]);
 
+function sourceFaithfulContent(key, content) {
+  if (!['c3', 'd3b'].includes(key)) return content;
+  return Object.freeze({
+    ...content,
+    items:Object.freeze(content.items.map(item => {
+      if (item.id === 'g6-u2-wb-c3-06') {
+        return Object.freeze({ ...item, acceptedAnswers:Object.freeze([]) });
+      }
+      if (item.id === 'g6-u2-wb-d3b-02') {
+        const acceptedAnswers = (item.acceptedAnswers ?? []).filter(answer => !/\btable\b/i.test(answer));
+        return Object.freeze({ ...item, acceptedAnswers:Object.freeze(acceptedAnswers) });
+      }
+      return item;
+    }))
+  });
+}
+
 function descriptor(spec) {
   return Object.freeze({
     id:`g6-u2-wb-${spec.key}`,
@@ -42,7 +59,7 @@ function descriptor(spec) {
     description:`${spec.itemCount} lượt theo đúng bài SBT. Trước bài có phần Nhắc nhanh bắt buộc, sau Submit có đáp án và giải thích tiếng Việt dễ hiểu.`,
     activityTypes:Object.freeze(spec.activityTypes),
     itemCount:spec.itemCount,
-    loadContent:() => import('./g6-u2-workbook-content.js').then(module => module.getG6U2WorkbookContent(spec.key))
+    loadContent:() => import('./g6-u2-workbook-content.js').then(module => sourceFaithfulContent(spec.key, module.getG6U2WorkbookContent(spec.key)))
   });
 }
 
