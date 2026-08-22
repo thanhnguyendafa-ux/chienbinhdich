@@ -23,6 +23,22 @@ function sentenceOrder(item, { correctOrder, tokens, acceptedOrders = [] }) {
   });
 }
 
+function withSourceWordBank(item) {
+  const bank = (item.choices ?? []).map(candidate => String(candidate.text));
+  if (!bank.length) return item;
+  return freeze({
+    ...item,
+    sourceWordBank: freeze(bank),
+    sourceWordBankLabel: 'Từ / cụm từ cho sẵn',
+    digitalAdaptation: freeze({
+      ...(item.digitalAdaptation ?? {}),
+      sourceResponseType: 'word_box_fill',
+      adaptedResponseType: 'word_bank_choice',
+      reason: 'Đề đã cho word box nên học sinh chọn trực tiếp từ bank thay vì phải gõ lại.'
+    })
+  });
+}
+
 function splitReadingPrompt(text) {
   const source = String(text ?? '');
   const cut = source.lastIndexOf('\n\n');
@@ -115,6 +131,7 @@ export function applyG6U1WorkbookInteractionAdaptations(key, content) {
   const lessonKey = String(key ?? '').toLowerCase();
   let items = content.items ?? [];
 
+  if (lessonKey === 'b5' || lessonKey === 'd1') items = items.map(withSourceWordBank);
   if (lessonKey === 'b6') items = items.map(item => adaptBySpec(item, B6));
   if (lessonKey === 'e1') items = items.map(item => adaptBySpec(item, E1));
   if (lessonKey === 'e2') items = items.map(item => adaptBySpec(item, E2));
