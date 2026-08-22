@@ -1,3 +1,5 @@
+import { applyG6U3VerifiedAdaptations } from './g6-u3-workbook-verified-adaptations.js';
+
 const lessonSpecs = Object.freeze([
   Object.freeze({ key:'a2', order:1, title:'A2 · Luyện đọc âm /p/ và /b/', expectedTimeMinutes:7, itemCount:3, activityTypes:['typing'] }),
   Object.freeze({ key:'b1', order:2, title:'B1 · Phân loại từ với has và is', expectedTimeMinutes:12, itemCount:3, activityTypes:['classification'] }),
@@ -52,7 +54,7 @@ function descriptor(spec) {
     description:`${spec.itemCount} lượt theo bài SBT. Bài phụ thuộc hình bị loại; câu dài cố định được chuyển sang lựa chọn khi cần; bài mở vẫn giữ production.`,
     activityTypes:Object.freeze(spec.activityTypes),
     itemCount:spec.itemCount,
-    loadContent:() => import('./g6-u3-workbook-content.js').then(module => module.getG6U3WorkbookContent(spec.key))
+    loadContent:() => import('./g6-u3-workbook-content.js').then(module => applyG6U3VerifiedAdaptations(spec.key, module.getG6U3WorkbookContent(spec.key)))
   });
 }
 
