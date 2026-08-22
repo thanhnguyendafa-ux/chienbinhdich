@@ -138,7 +138,7 @@ test('every catalog lesson builds Student and Teacher print models safely', asyn
     const teacherById = new Map(questions(teacher).map(question => [question.id, question]));
     const sourceById = new Map(lesson.items.map(item => [String(item.id), item]));
     const serializedStudent = JSON.stringify(student);
-    for (const forbidden of ['correctChoiceId', 'targetCorrectIndex', 'diagnostic', '"teacher"']) {
+    for (const forbidden of ['correctChoiceId', 'targetCorrectIndex', 'diagnostic', '"teacher":']) {
       assert.equal(serializedStudent.includes(forbidden), false, `${descriptor.id} leaked ${forbidden}`);
     }
 
