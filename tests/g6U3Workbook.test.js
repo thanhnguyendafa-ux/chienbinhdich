@@ -54,18 +54,19 @@ test('A2 keeps pronunciation as self-confirmed practice instead of pretending to
   assert.match(content.items[2].vi, /Picky people pick plain peanut butter/);
 });
 
-test('B1 preserves source overlap by splitting the three table columns into three classifications', async () => {
+test('B1 preserves source overlap and uses the cross-checked published answer key', async () => {
   const { content } = await load('b1');
   assert.equal(content.items.length, 3);
   assert.ok(content.items.every(item => item.type === 'classification'));
-  assert.deepEqual(yesWords(content.items[0]), ['big','long','small','short','strong','weak']);
+  assert.deepEqual(yesWords(content.items[0]), ['big','long','small','short','slim']);
   assert.deepEqual(yesWords(content.items[1]), ['arms','legs','shoulders','hands','eyes','feet','ears','hair','head']);
   assert.deepEqual(yesWords(content.items[2]), ['big','small','fast','short','cute','strong','weak','smart','tall','slim','sporty']);
-  for (const word of ['big','small','short','strong','weak']) {
+  for (const word of ['big','small','short','slim']) {
     assert.ok(yesWords(content.items[0]).includes(word));
     assert.ok(yesWords(content.items[2]).includes(word));
   }
   assert.ok(content.items.every(item => item.digitalAdaptation?.sourceResponseType === 'three_column_table_with_overlap'));
+  assert.ok(content.items.every(item => item.sourceKeyVerification?.status === 'verified_against_multiple_published_solution_guides'));
 });
 
 test('B2 and B3 keep the adjective corpus and B3 source word bank', async () => {
