@@ -4,36 +4,55 @@ import { SUPPORTED_QUESTION_TYPES } from '../src/core/questionTypes.js';
 import { g6U1WorkbookRegistry } from '../src/data/g6-u1-workbook-catalog.js';
 import { g6U2WorkbookRegistry } from '../src/data/g6-u2-workbook-catalog.js';
 import { g6U3WorkbookRegistry } from '../src/data/g6-u3-workbook-catalog.js';
+import { G6_WORKBOOK_PRELOAD_KEYS, getG6WorkbookPreloadSpec } from '../src/data/g6-workbook-translation-preload.js';
 
 const registries = [g6U1WorkbookRegistry, g6U2WorkbookRegistry, g6U3WorkbookRegistry];
 
 test('engine keeps six stable interaction primitives', () => {
-  assert.deepEqual(SUPPORTED_QUESTION_TYPES, [
-    'typing',
-    'mcq',
-    'true_false',
-    'sentence_order',
-    'sequence_number',
-    'classification'
-  ]);
+  assert.deepEqual(SUPPORTED_QUESTION_TYPES, ['typing','mcq','true_false','sentence_order','sequence_number','classification']);
 });
 
-test('G6 workbook Units 1-3 use the engine mix instead of defaulting to typing', () => {
+test('G6 workbook Units 1-3 preserve source interaction mix while adding MCQ translation preload', () => {
   const descriptors = registries.flat();
   assert.equal(descriptors.length, 41);
+  const sourceTypes = new Set(descriptors.flatMap(descriptor => descriptor.sourceActivityTypes));
+  for (const type of ['typing','mcq','sentence_order','sequence_number','classification']) assert.ok(sourceTypes.has(type), `missing source type ${type}`);
+  const typingOnly = descriptors.filter(descriptor => descriptor.sourceActivityTypes.length === 1 && descriptor.sourceActivityTypes[0] === 'typing');
+  assert.ok(typingOnly.length <= 14, `too many source typing-only lessons: ${typingOnly.length}`);
+  assert.ok(descriptors.every(descriptor => descriptor.activityTypes.includes('mcq')), 'every lesson must expose translation MCQ preload');
+  assert.ok(descriptors.every(descriptor => descriptor.preloadItemCount === 8), 'each lesson has 4 vocab + 4 phrase items');
+});
 
-  const types = new Set(descriptors.flatMap(descriptor => descriptor.activityTypes));
-  for (const type of ['typing','mcq','sentence_order','sequence_number','classification']) {
-    assert.ok(types.has(type), `missing interaction type ${type}`);
+test('all 41 G6 workbook lessons have four vocabulary and four phrase meanings', () => {
+  assert.equal(G6_WORKBOOK_PRELOAD_KEYS.u1.length, 14);
+  assert.equal(G6_WORKBOOK_PRELOAD_KEYS.u2.length, 12);
+  assert.equal(G6_WORKBOOK_PRELOAD_KEYS.u3.length, 15);
+  for (const [unitKey, registry] of [['u1',g6U1WorkbookRegistry],['u2',g6U2WorkbookRegistry],['u3',g6U3WorkbookRegistry]]) {
+    for (const descriptor of registry) {
+      const key = descriptor.id.split('-').at(-1);
+      const spec = getG6WorkbookPreloadSpec(unitKey, key);
+      assert.equal(spec?.vocab.length, 4, `${descriptor.id} vocab`);
+      assert.equal(spec?.phrases.length, 4, `${descriptor.id} phrase`);
+    }
   }
+});
 
-  const typingOnly = descriptors.filter(descriptor => descriptor.activityTypes.length === 1 && descriptor.activityTypes[0] === 'typing');
-  assert.ok(typingOnly.length <= 14, `too many typing-only G6 workbook lessons: ${typingOnly.length}`);
+test('recall-definition lessons do not preload their target answers', () => {
+  const u1b3 = getG6WorkbookPreloadSpec('u1','b3');
+  const u1Targets = new Set(['bench','coloured pencils','bike','bicycle','dictionary','notebook','calculator','library','poster']);
+  for (const [english] of [...u1b3.vocab, ...u1b3.phrases]) assert.equal(u1Targets.has(english.toLowerCase()), false, `U1 B3 leaked ${english}`);
 
-  const taskMatched = new Map(descriptors.map(descriptor => [descriptor.id, descriptor.activityTypes]));
-  assert.deepEqual(taskMatched.get('g6-u1-wb-b6'), ['sentence_order']);
-  assert.deepEqual(taskMatched.get('g6-u2-wb-c1'), ['sequence_number']);
-  assert.deepEqual(taskMatched.get('g6-u2-wb-e1'), ['sentence_order']);
-  assert.deepEqual(taskMatched.get('g6-u3-wb-d3'), ['classification']);
-  assert.deepEqual(taskMatched.get('g6-u3-wb-e2'), ['classification']);
+  const u3b2 = getG6WorkbookPreloadSpec('u3','b2');
+  const u3Targets = new Set(['careful','creative','kind','loving','hard-working','hard working','shy']);
+  for (const [english] of [...u3b2.vocab, ...u3b2.phrases]) assert.equal(u3Targets.has(english.toLowerCase()), false, `U3 B2 leaked ${english}`);
+});
+
+test('representative source task mappings remain visible in sourceActivityTypes', () => {
+  const descriptors = registries.flat();
+  const map = new Map(descriptors.map(descriptor => [descriptor.id, descriptor.sourceActivityTypes]));
+  assert.deepEqual(map.get('g6-u1-wb-b6'), ['sentence_order']);
+  assert.deepEqual(map.get('g6-u2-wb-c1'), ['sequence_number']);
+  assert.deepEqual(map.get('g6-u2-wb-e1'), ['sentence_order']);
+  assert.deepEqual(map.get('g6-u3-wb-d3'), ['classification']);
+  assert.deepEqual(map.get('g6-u3-wb-e2'), ['classification']);
 });
