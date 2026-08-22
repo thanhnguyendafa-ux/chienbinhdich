@@ -1,0 +1,1 @@
+Next: implement and wire lesson data, validate, deploy.
