@@ -1,3 +1,5 @@
+import { adaptG6U2WorkbookLongAnswers } from './g6-u2-workbook-mcq-adaptations.js';
+
 const lessonSpecs = Object.freeze([
   Object.freeze({ key:'a1', order:1, title:'A1 · Phân biệt âm cuối -s /s/ và /z/', expectedTimeMinutes:6, itemCount:1, activityTypes:['classification'] }),
   Object.freeze({ key:'a2', order:2, title:'A2 · Viết từ theo âm cuối /s/ và /z/', expectedTimeMinutes:7, itemCount:2, activityTypes:['typing'] }),
@@ -5,11 +7,11 @@ const lessonSpecs = Object.freeze([
   Object.freeze({ key:'b4', order:4, title:"B4 · Dạng sở hữu 's", expectedTimeMinutes:9, itemCount:6, activityTypes:['typing'] }),
   Object.freeze({ key:'c1', order:5, title:'C1 · Sắp xếp hội thoại', expectedTimeMinutes:7, itemCount:1, activityTypes:['sequence_number'] }),
   Object.freeze({ key:'c2', order:6, title:'C2 · Hoàn thành hội thoại', expectedTimeMinutes:9, itemCount:5, activityTypes:['mcq'] }),
-  Object.freeze({ key:'c3', order:7, title:'C3 · Tạo hội thoại từ từ/cụm từ cho sẵn', expectedTimeMinutes:12, itemCount:7, activityTypes:['typing'] }),
+  Object.freeze({ key:'c3', order:7, title:'C3 · Tạo hội thoại từ từ/cụm từ cho sẵn', expectedTimeMinutes:12, itemCount:7, activityTypes:['mcq','typing'] }),
   Object.freeze({ key:'d1', order:8, title:'D1 · Điền từ vào đoạn văn', expectedTimeMinutes:12, itemCount:8, activityTypes:['typing'] }),
   Object.freeze({ key:'d2', order:9, title:'D2 · Chọn từ hoàn thành hội thoại', expectedTimeMinutes:10, itemCount:6, activityTypes:['mcq'] }),
-  Object.freeze({ key:'d3b', order:10, title:'D3b · Đọc email Vy và Tom rồi trả lời', expectedTimeMinutes:12, itemCount:5, activityTypes:['typing'] }),
-  Object.freeze({ key:'e1', order:11, title:'E1 · Viết lại câu cùng nghĩa', expectedTimeMinutes:10, itemCount:5, activityTypes:['typing'] }),
+  Object.freeze({ key:'d3b', order:10, title:'D3b · Đọc email Vy và Tom rồi trả lời', expectedTimeMinutes:12, itemCount:5, activityTypes:['mcq'] }),
+  Object.freeze({ key:'e1', order:11, title:'E1 · Viết lại câu cùng nghĩa', expectedTimeMinutes:10, itemCount:5, activityTypes:['mcq'] }),
   Object.freeze({ key:'e2', order:12, title:'E2 · Trả lời về căn phòng yêu thích', expectedTimeMinutes:8, itemCount:3, activityTypes:['typing'] })
 ]);
 
@@ -45,7 +47,7 @@ function descriptor(spec) {
     id:`g6-u2-wb-${spec.key}`,
     folderId:'global6-unit2-workbook',
     order:spec.order,
-    version:1,
+    version:2,
     course:'Global Success 6',
     unit:'Unit 2 · My House · Sách bài tập',
     title:spec.title,
@@ -56,10 +58,13 @@ function descriptor(spec) {
     completionPolicy:'explain-and-accept',
     typingTolerance:true,
     teacher:'Thầy Thành MRT',
-    description:`${spec.itemCount} lượt theo đúng bài SBT. Trước bài có phần Nhắc nhanh bắt buộc, sau Submit có đáp án và giải thích tiếng Việt dễ hiểu.`,
+    description:`${spec.itemCount} lượt theo bài SBT. Câu trả lời cố định nhưng dài được chuyển sang A/B/C/D để máy chấm ổn định; bài mở và bài cần gõ ngắn vẫn giữ typing.`,
     activityTypes:Object.freeze(spec.activityTypes),
     itemCount:spec.itemCount,
-    loadContent:() => import('./g6-u2-workbook-content.js').then(module => sourceFaithfulContent(spec.key, module.getG6U2WorkbookContent(spec.key)))
+    loadContent:() => import('./g6-u2-workbook-content.js').then(module => {
+      const sourceContent = sourceFaithfulContent(spec.key, module.getG6U2WorkbookContent(spec.key));
+      return adaptG6U2WorkbookLongAnswers(spec.key, sourceContent);
+    })
   });
 }
 
