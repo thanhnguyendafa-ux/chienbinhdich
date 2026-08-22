@@ -4,6 +4,8 @@ import { readFile } from 'node:fs/promises';
 import { g6U2TrapSource } from '../src/data/g6-u2-trap-source.js';
 import { getG6U2TrapContent } from '../src/data/g6-u2-trap-content.js';
 import { g6U2TrapTheoryCodes } from '../src/data/g6-u2-trap-prelesson-theory.js';
+import { g6U2TrapRegistry } from '../src/data/g6-u2-trap-catalog.js';
+import { loadLessonSet } from '../src/repositories/lessonRepository.js';
 
 const ADULT_JARGON = /\b(referent|evidence|agreement|exact target|transcript|semantic|predicate|morphology|noun phrase|NP)\b/i;
 
@@ -32,6 +34,15 @@ test('all 21 GS6 Unit 2 trap lessons have a required grade-3-friendly theory pac
         assert.ok(bullet.length <= 150, `${lesson.key} theory bullet too long: ${bullet}`);
       }
     }
+  }
+});
+
+test('required theory metadata survives loadLessonSet for all 21 published trap lessons', async () => {
+  assert.equal(g6U2TrapRegistry.length, 21);
+  for (const descriptor of g6U2TrapRegistry) {
+    const set = await loadLessonSet(descriptor.id);
+    assert.equal(set.preLessonTheory?.required, true, descriptor.id);
+    assert.equal(set.preLessonTheory?.sections?.length, 4, descriptor.id);
   }
 });
 
