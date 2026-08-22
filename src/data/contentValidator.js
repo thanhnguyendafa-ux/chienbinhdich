@@ -26,7 +26,7 @@ export function validateSet(set) {
     ids.add(item.id);
 
     validateItemByType(item, type, errors);
-    validateStimulus(item, type, errors);
+    validateStimulus(item, errors);
     validateReadingItem(item, set, errors);
     validateTeachingFeedback(item, errors);
     validateTheorySupport(item, errors);
@@ -264,12 +264,8 @@ function validatePassages(set, errors) {
   }
 }
 
-function validateStimulus(item, type, errors) {
+function validateStimulus(item, errors) {
   if (item.stimulus === undefined) return;
-  if (type !== 'mcq') {
-    errors.push(`Stimulus chỉ hỗ trợ MCQ tại ${item.id}`);
-    return;
-  }
   const stimulus = item.stimulus;
   if (!stimulus || typeof stimulus !== 'object' || Array.isArray(stimulus)) {
     errors.push(`Stimulus không hợp lệ tại ${item.id}`);
@@ -277,7 +273,7 @@ function validateStimulus(item, type, errors) {
   }
   if (!nonEmpty(stimulus.title)) errors.push(`Stimulus ${item.id} thiếu title`);
   if (!nonEmpty(stimulus.text)) errors.push(`Stimulus ${item.id} thiếu text`);
-  if (item.passageId !== undefined) errors.push(`MCQ ${item.id} không được dùng đồng thời stimulus và passageId`);
+  if (item.passageId !== undefined) errors.push(`Item ${item.id} không được dùng đồng thời stimulus và passageId`);
 }
 
 function validatePrintGroups(set, errors) {

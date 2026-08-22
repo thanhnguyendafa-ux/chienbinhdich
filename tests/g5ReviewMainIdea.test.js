@@ -27,7 +27,7 @@ function fixtureMcq(overrides = {}) {
   };
 }
 
-test('optional MCQ stimulus validates independently from Reading diagnostic passages', () => {
+test('optional shared stimulus validates independently from Reading diagnostic passages', () => {
   const valid = { id: 'stimulus-set', items: [fixtureMcq()] };
   assert.deepEqual(validateSet(valid), []);
 
@@ -50,10 +50,10 @@ test('optional MCQ stimulus validates independently from Reading diagnostic pass
       type: 'typing',
       vi: 'một',
       en: 'one',
-      stimulus: { title: 'Not allowed', text: 'Typing items cannot use a stimulus.' }
+      stimulus: { title: 'A short passage', text: 'Typing items may share reading context.' }
     }]
   };
-  assert.ok(validateSet(nonMcq).some(error => error.includes('Stimulus chỉ hỗ trợ MCQ')));
+  assert.deepEqual(validateSet(nonMcq), []);
 });
 
 test('online MCQ renderer shows stimulus separately without changing ordinary or diagnostic MCQ labels', async () => {

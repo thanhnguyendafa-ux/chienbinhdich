@@ -20,7 +20,15 @@ export function renderQuestionInteraction(item, options = {}) {
   const type = questionTypeForItem(item);
   const definition = registry[type];
   if (!definition) throw new Error(`Unsupported question renderer: ${type}`);
-  return definition.render(item, options);
+  const interaction = definition.render(item, options);
+  if (type === 'mcq') return interaction;
+  const readingBlock = readingBlockForItem(item, options.passages ?? []);
+  return `${readingBlock ? renderReadingPassage(readingBlock) : ''}${interaction}`;
+}
+
+function readingBlockForItem(item, passages = []) {
+  const passage = item?.passageId ? passages.find(candidate => candidate.id === item.passageId) : null;
+  return passage ?? item?.stimulus ?? null;
 }
 
 export function bindQuestionInteraction({ root, item, onSubmit, attemptStartedAt = Date.now() }) {
