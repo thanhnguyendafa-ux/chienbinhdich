@@ -73,6 +73,13 @@ const WRONG_REASON_TWO_BY_TRAP = freeze({
   'M-HARD': 'Câu nghe tự nhiên thì luôn đúng.'
 });
 
+const READING_TITLE_BY_TRAP = freeze({
+  'R-TF': 'Đọc: Đúng hay Sai',
+  'R-NUM-REL': 'Đọc: Số và chi tiết',
+  'R-WH': 'Đọc: Đề đang hỏi gì?',
+  'R-REF': 'Đọc: it / them / one'
+});
+
 const LIVING_ROOM = 'living room';
 const HER_PARENTS = 'her parents';
 
@@ -337,13 +344,13 @@ function readingContext(record) {
 function buildPrompt(record) {
   const scenario = compactScenario(record.originalQuestion);
   const exactNote = record.exactCorpusRequired ? ' Phải đúng với bài đã học.' : '';
-  return `Đề: ${scenario} | Bạn này làm: ${record.wrongResponse} ❌. Chọn gói giải thích đúng.${exactNote}`;
+  return `Đề: ${scenario} | Bạn này làm: ${record.wrongResponse} ❌. Chọn cách giải thích đúng.${exactNote}`;
 }
 
 function buildStimulus(record) {
   if (!String(record.trapCode).startsWith('R-')) return null;
   return freeze({
-    title: record.examType,
+    title: READING_TITLE_BY_TRAP[record.trapCode] ?? 'Đọc hiểu',
     promptLabel: 'ĐỌC BÀI → CHỌN GIẢI THÍCH ĐÚNG',
     text: `${readingContext(record)}\n\nCÂU HỎI: ${compactScenario(record.originalQuestion)}\nBẠN NÀY CHỌN: ${record.wrongResponse} ❌`
   });
@@ -372,7 +379,7 @@ export function buildG6U2TrapLesson(lesson) {
     return freeze({
       id: record.id,
       type: 'mcq',
-      prompt: stimulus ? 'Bạn này sai ở đâu? Chọn gói giải thích đúng.' : buildPrompt(record),
+      prompt: stimulus ? 'Bạn này sai ở đâu? Chọn cách giải thích đúng.' : buildPrompt(record),
       ...(stimulus ? { stimulus } : {}),
       choices,
       correctChoiceId: 'correct',
