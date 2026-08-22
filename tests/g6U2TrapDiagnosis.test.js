@@ -23,6 +23,14 @@ const learnerText = item => JSON.stringify({
   teachingFeedback: item.teachingFeedback
 });
 
+const choiceLearnerText = item => JSON.stringify(item.choices?.map(choice => ({
+  text: choice.text,
+  feedback: choice.feedback,
+  diagnostic: choice.diagnostic
+})));
+
+const ADULT_JARGON = /\b(category|context|referent|verdict|marker|skeleton|evidence|keywords?|slot|transcript|spelling|chunks?)\b|speech function/i;
+
 test('GS6 Unit 2 Trap Diagnosis publishes 21 lessons / 238 six-choice MCQ items', async () => {
   assert.equal(g6U2TrapSource.length, 21);
   assert.equal(g6U2TrapRegistry.length, 21);
@@ -35,6 +43,8 @@ test('GS6 Unit 2 Trap Diagnosis publishes 21 lessons / 238 six-choice MCQ items'
   for (const folder of g6U2TrapFolders) assert.ok(publishedFolderIds.has(folder.id), folder.id);
 
   for (const descriptor of g6U2TrapRegistry) {
+    assert.equal(descriptor.version, 2, descriptor.id);
+    assert.equal(descriptor.subtitle, 'Chọn: Sai – Sửa – Vì', descriptor.id);
     const resolved = getSetDescriptorBySlug(descriptor.lessonSlug);
     assert.ok(resolved, descriptor.lessonSlug);
     assert.equal(resolved.id, descriptor.id);
@@ -47,7 +57,7 @@ test('GS6 Unit 2 Trap Diagnosis publishes 21 lessons / 238 six-choice MCQ items'
   }
 });
 
-test('every Trap Diagnosis item uses six complete Error → Repair → Reason packages', () => {
+test('every Trap Diagnosis item keeps six complete but short Sai · Sửa · Vì packages', () => {
   let totalItems = 0;
 
   for (const lesson of g6U2TrapSource) {
@@ -67,11 +77,14 @@ test('every Trap Diagnosis item uses six complete Error → Repair → Reason pa
       assert.equal(new Set(item.choices.map(choice => choice.text)).size, 6, `${item.id} duplicate choice text`);
 
       for (const choice of item.choices) {
-        assert.match(choice.text, /^Sai ở: .+ → Sửa: .+ → Vì: .+$/s, `${item.id}/${choice.id}`);
+        assert.match(choice.text, /^Sai: .+ · Sửa: .+ · Vì: .+$/s, `${item.id}/${choice.id}`);
+        assert.ok(choice.text.length <= 220, `${item.id}/${choice.id} choice is too long for grade 3: ${choice.text.length}`);
         assert.ok(choice.feedback?.trim(), `${item.id}/${choice.id} missing feedback`);
+        assert.ok(choice.feedback.length <= 90, `${item.id}/${choice.id} feedback is too long`);
         assert.ok(choice.diagnostic?.error?.trim(), `${item.id}/${choice.id} missing diagnostic error`);
         assert.ok(choice.diagnostic?.repair?.trim(), `${item.id}/${choice.id} missing diagnostic repair`);
         assert.ok(choice.diagnostic?.reason?.trim(), `${item.id}/${choice.id} missing diagnostic reason`);
+        assert.ok(choice.diagnostic.reason.trim().split(/\s+/).length <= 15, `${item.id}/${choice.id} reason has too many words`);
       }
 
       const correct = item.choices.find(choice => choice.id === 'correct');
@@ -91,19 +104,55 @@ test('every Trap Diagnosis item uses six complete Error → Repair → Reason pa
 
       if (String(item.trapCode).startsWith('R-')) {
         assert.ok(item.stimulus?.text?.trim(), `${item.id} Reading trap must include stimulus evidence`);
+        assert.match(item.stimulus?.title ?? '', /^Đọc:/, `${item.id} Reading title must be child-friendly`);
+        assert.equal(item.prompt, 'Bạn này sai ở đâu? Chọn cách giải thích đúng.', item.id);
+        assert.doesNotMatch(item.stimulus?.title ?? '', /paraphrase|reference|detail|number|mcq/i, `${item.id} Reading title contains adult exam jargon`);
       }
 
-      assert.doesNotMatch(learnerText(item), /\bNP\b|noun phrase/i, `${item.id} must use “cụm danh từ”, not NP/noun phrase`);
+      assert.doesNotMatch(learnerText(item), /\bNP\b|noun phrase/i, `${item.id} must not use NP/noun phrase`);
+      assert.doesNotMatch(choiceLearnerText(item), ADULT_JARGON, `${item.id} choices must avoid adult diagnostic jargon`);
     }
   }
 
   assert.equal(totalItems, 238);
 });
 
-test('there-is/are learner theory uses “cụm danh từ” terminology', () => {
+test('grade 3 copy removes repeated full sentences from Writing Reorder choices', () => {
+  const reorder = getG6U2TrapContent('writing-reorder-01');
+  for (const item of reorder.items) {
+    for (const choice of item.choices) {
+      assert.doesNotMatch(choice.text, /trật tự từ trong câu/i, `${item.id}/${choice.id}`);
+      assert.doesNotMatch(choice.text, /English skeleton|chunk order/i, `${item.id}/${choice.id}`);
+    }
+  }
+});
+
+test('there-is/are explanation follows the repaired form for all 12 items', () => {
   const thereLesson = getG6U2TrapContent('grammar-there-01');
   const text = JSON.stringify(thereLesson);
-  assert.match(text, /cụm danh từ/);
+  const byId = new Map(thereLesson.items.map(item => [item.id, item]));
+  const expectedReasonByQuestion = Object.freeze({
+    q01: 'Cụm sau there là số nhiều.',
+    q02: 'Cụm sau there là số ít.',
+    q03: 'Cụm sau there là số nhiều.',
+    q04: 'Cụm sau there là số ít.',
+    q05: 'Cụm sau there là số nhiều.',
+    q06: 'Cụm sau there là số ít.',
+    q07: 'Cụm sau there là số nhiều.',
+    q08: 'Cụm sau there là số ít.',
+    q09: 'Cụm sau there là số nhiều.',
+    q10: 'Cụm sau there là số ít.',
+    q11: 'Cụm sau there là số ít.',
+    q12: 'Cụm sau there là số nhiều.'
+  });
+
+  assert.match(text, /số ít|số nhiều/);
   assert.doesNotMatch(text, /\bNP\b|noun phrase/i);
+  assert.doesNotMatch(text, /hòa hợp|agreement/i);
   assert.doesNotMatch(text, /a chair and a bookshelf[^\n]{0,120}(số ít|singular)/i);
+
+  for (const [question, expectedReason] of Object.entries(expectedReasonByQuestion)) {
+    const id = `g6u2-trap-grammar-there-01-${question}`;
+    assert.equal(byId.get(id)?.diagnosticSpec?.reason, expectedReason, id);
+  }
 });
