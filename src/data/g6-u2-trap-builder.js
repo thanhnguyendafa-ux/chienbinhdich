@@ -73,6 +73,9 @@ const WRONG_REASON_TWO_BY_TRAP = freeze({
   'M-HARD': 'Câu nghe tự nhiên thì luôn đúng.'
 });
 
+const LIVING_ROOM = 'living room';
+const HER_PARENTS = 'her parents';
+
 const MAI_HOUSE_CONTEXT = [
   'Mai lives in a townhouse in Hanoi with her parents.',
   'There are six rooms in the house: a living room, a kitchen, two bedrooms and two bathrooms.',
@@ -252,14 +255,14 @@ function thirdCandidate(record) {
   const pools = {
     'G-PREP': ['on the wall', 'next to the kitchen', 'near the house', 'in Hanoi', 'with my parents', 'behind you', 'for my bedroom'],
     'G-SUGGEST': ['put', 'putting', 'to put', 'go', 'going', 'to go', 'buy', 'buying'],
-    'R-NUM-REL': ['two', 'three', 'six', 'living room', 'bedroom', 'clock'],
-    'R-WH': ['her parents', 'in Hanoi', 'in her bedroom', 'the living room', 'because it is bright', 'a clock', 'six', 'two'],
-    'R-REF': ['living room', 'bedroom', 'kitchen', 'bowls and chopsticks', 'picture', 'department store'],
+    'R-NUM-REL': ['two', 'three', 'six', LIVING_ROOM, 'bedroom', 'clock'],
+    'R-WH': [HER_PARENTS, 'in Hanoi', 'in her bedroom', 'the living room', 'because it is bright', 'a clock', 'six', 'two'],
+    'R-REF': [LIVING_ROOM, 'bedroom', 'kitchen', 'bowls and chopsticks', 'picture', 'department store'],
     'C-FUNCTION': ['Great idea.', 'On the wall.', 'A picture.', 'There is one.'],
     'P-FINAL-S': ['lamps', 'sinks', 'flats', 'toilets', 'cupboards', 'sofas', 'kitchens', 'rooms'],
-    'M-EASY': ['two', 'six', 'living room', 'bedroom', 'her parents', 'in Hanoi', 'TRUE', 'FALSE', 'because', 'but'],
-    'M-MED': ['two', 'three', 'six', 'living room', 'bedroom', 'her parents', 'in Hanoi', 'TRUE', 'FALSE', 'near', 'next to'],
-    'M-HARD': ['TRUE', 'FALSE', 'two bedrooms', 'six rooms', 'living room', 'bedroom', 'her parents', 'in Hanoi']
+    'M-EASY': ['two', 'six', LIVING_ROOM, 'bedroom', HER_PARENTS, 'in Hanoi', 'TRUE', 'FALSE', 'because', 'but'],
+    'M-MED': ['two', 'three', 'six', LIVING_ROOM, 'bedroom', HER_PARENTS, 'in Hanoi', 'TRUE', 'FALSE', 'near', 'next to'],
+    'M-HARD': ['TRUE', 'FALSE', 'two bedrooms', 'six rooms', LIVING_ROOM, 'bedroom', HER_PARENTS, 'in Hanoi']
   };
   const pool = pools[record.trapCode] ?? [];
   const haystack = `${record.wrongResponse} ${record.correctDiagnosis.repair}`.toLowerCase();
