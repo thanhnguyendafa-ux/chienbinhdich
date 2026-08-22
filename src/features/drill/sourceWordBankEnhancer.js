@@ -1,9 +1,10 @@
 import { g6U1WorkbookRegistry } from '../../data/g6-u1-workbook-catalog.js';
 import { g6U2WorkbookRegistry } from '../../data/g6-u2-workbook-catalog.js';
 import { g6U3WorkbookRegistry } from '../../data/g6-u3-workbook-catalog.js';
+import { g7U1WorkbookRegistry } from '../../data/g7-u1-workbook-catalog.js';
 
-const WORKBOOK_REGISTRY = Object.freeze([...g6U1WorkbookRegistry, ...g6U2WorkbookRegistry, ...g6U3WorkbookRegistry]);
-const SUPPORTED_SLUGS = new Set(['g6-u1-wb-b5', 'g6-u1-wb-d1', 'g6-u2-wb-d1', 'g6-u3-wb-b3', 'g6-u3-wb-d1']);
+const WORKBOOK_REGISTRY = Object.freeze([...g6U1WorkbookRegistry, ...g6U2WorkbookRegistry, ...g6U3WorkbookRegistry, ...g7U1WorkbookRegistry]);
+const SUPPORTED_SLUGS = new Set(['g6-u1-wb-b5', 'g6-u1-wb-d1', 'g6-u2-wb-d1', 'g6-u3-wb-b3', 'g6-u3-wb-d1', 'g7-u1-wb-d1']);
 const configCache = new Map();
 let scheduled = false;
 
