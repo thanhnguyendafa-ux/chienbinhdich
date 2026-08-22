@@ -1,5 +1,6 @@
 export function orderForExposure(values = [], exposureKey = '') {
   const output = values.slice();
+  if (output.some(value => value?.preserveOrder === true)) return output;
   let state = hashString(String(exposureKey));
 
   for (let index = output.length - 1; index > 0; index -= 1) {

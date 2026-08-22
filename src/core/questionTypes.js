@@ -1,4 +1,4 @@
-import { evaluateAnswer } from './answerEvaluator.js';
+import { evaluateAnswer, normalizeAnswer } from './answerEvaluator.js';
 
 const evaluators = Object.freeze({
   typing: evaluateTyping,
@@ -32,7 +32,12 @@ export function evaluateQuestion(item, response, options = {}) {
 
 export function expectedResponseDisplay(item) {
   const type = questionTypeForItem(item);
-  if (type === 'typing') return String(item.en ?? '');
+  if (type === 'typing') {
+    const answers = [item.en, ...(Array.isArray(item.acceptedAnswers) ? item.acceptedAnswers : [])]
+      .filter(value => String(value ?? '').trim().length > 0)
+      .map(String);
+    return [...new Set(answers)].join(' / ');
+  }
   if (type === 'mcq') return String(item.choices?.find(choice => choice.id === item.correctChoiceId)?.text ?? '');
   if (type === 'true_false') return item.answer === true ? 'TRUE' : 'FALSE';
   if (type === 'sentence_order') return (item.correctOrder ?? []).join(' ');
@@ -146,14 +151,44 @@ export function questionTypeLabel(itemOrType) {
 
 function evaluateTyping(item, response, options = {}) {
   const tolerant = options?.typingTolerance === true;
-  const result = evaluateAnswer(String(response ?? ''), item.en, {
+  const normalizedOpen = normalizeAnswer(String(response ?? ''), {
+    ignoreCase: false,
+    ignorePunctuation: false
+  });
+  if (item?.responseMode === 'open') {
+    return {
+      correct: normalizedOpen.length > 0,
+      normalizedResponse: normalizedOpen,
+      displayResponse: normalizedOpen
+    };
+  }
+
+  const answers = [item.en, ...(Array.isArray(item.acceptedAnswers) ? item.acceptedAnswers : [])]
+    .filter(value => String(value ?? '').trim().length > 0);
+  let fallback = evaluateAnswer(String(response ?? ''), answers[0] ?? '', {
     ignoreCase: tolerant,
     ignorePunctuation: tolerant
   });
+
+  for (const expected of answers) {
+    const result = evaluateAnswer(String(response ?? ''), expected, {
+      ignoreCase: tolerant,
+      ignorePunctuation: tolerant
+    });
+    if (result.correct) {
+      return {
+        correct: true,
+        normalizedResponse: result.normalizedInput,
+        displayResponse: result.normalizedInput
+      };
+    }
+    fallback = fallback ?? result;
+  }
+
   return {
-    correct: result.correct,
-    normalizedResponse: result.normalizedInput,
-    displayResponse: result.normalizedInput
+    correct: false,
+    normalizedResponse: fallback.normalizedInput,
+    displayResponse: fallback.normalizedInput
   };
 }
 

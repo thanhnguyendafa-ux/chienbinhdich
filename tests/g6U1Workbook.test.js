@@ -1,0 +1,38 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { evaluateQuestion, expectedResponseDisplay } from '../src/core/questionTypes.js';
+import { orderForExposure } from '../src/core/exposureOrder.js';
+import { g6U1WorkbookRegistry } from '../src/data/g6-u1-workbook-catalog.js';
+import { getG6U1WorkbookContent } from '../src/data/g6-u1-workbook-content.js';
+
+test('Global 6 Unit 1 workbook publishes exactly the 14 retained SBT lessons', () => {
+  assert.equal(g6U1WorkbookRegistry.length, 14);
+  const keys = g6U1WorkbookRegistry.map(entry => entry.id);
+  assert.ok(!keys.some(id => /-a2$|-b1$|-c2$/.test(id)));
+  assert.deepEqual(keys.slice(0, 3), ['g6-u1-wb-a1', 'g6-u1-wb-b2', 'g6-u1-wb-b3']);
+});
+
+test('typing accepts source-supported alternative answers', () => {
+  const item = getG6U1WorkbookContent('b4').items.find(candidate => candidate.id === 'g6-u1-wb-b4-06a');
+  assert.equal(evaluateQuestion(item, 'spending', { typingTolerance: true }).correct, true);
+  assert.equal(evaluateQuestion(item, 'to spend', { typingTolerance: true }).correct, true);
+  assert.match(expectedResponseDisplay(item), /spending/);
+});
+
+test('open SBT production tasks accept any non-empty student response', () => {
+  const item = getG6U1WorkbookContent('e3').items[0];
+  assert.equal(evaluateQuestion(item, 'My class rules are important.').correct, true);
+  assert.equal(evaluateQuestion(item, '   ').correct, false);
+});
+
+test('workbook choices marked preserveOrder stay in SBT order', () => {
+  const item = getG6U1WorkbookContent('a1').items[0];
+  const ordered = orderForExposure(item.choices, 'any-session-key');
+  assert.deepEqual(ordered.map(choice => choice.id), ['A', 'B', 'C', 'D']);
+});
+
+test('D3 final answer remains B before as in the SBT solution', () => {
+  const item = getG6U1WorkbookContent('d3').items.at(-1);
+  assert.equal(item.correctChoiceId, 'B');
+  assert.equal(item.choices.find(choice => choice.id === 'B').text, 'before');
+});
