@@ -69,7 +69,23 @@ test('G7 U2 source answers and interaction types match the workbook tasks',async
   const {content:d1}=await loadU2('d1');assert.deepEqual(sourceItems(d1).map(item=>item.en),['heart','safe','physical','exercise','sleep','Handwash']);
   const {content:d2}=await loadU2('d2');assert.deepEqual(sourceItems(d2).map(item=>item.correctChoiceId),['B','A','C','A','B','A','C','C']);
   const {content:d3}=await loadU2('d3');assert.deepEqual(sourceItems(d3).map(item=>item.correctChoiceId),['A','A','B','C','B']);
-  const {content:e3}=await loadU2('e3');assert.equal(sourceItems(e3)[0].responseMode,'open');
+});
+
+test('G7 U2 E3 keeps habit planning and turns open writing into six auto-graded sentence orders',async()=>{
+  const {descriptor,content}=await loadU2('e3');const items=sourceItems(content);
+  assert.deepEqual(descriptor.activityTypes,['mcq','sentence_order']);
+  assert.equal(items.length,7);
+  assert.equal(items[0].type,'mcq');
+  assert.equal(items[0].correctChoiceId,'C');
+  assert.equal(items[0].choices.find(choice=>choice.id==='C').text,'eat a lot of meat and snacks');
+  assert.ok(items.slice(1).every(item=>item.type==='sentence_order'));
+  assert.equal(items[1].digitalAdaptation?.sourceResponseType,'habit_selection_then_open_writing_about_70_words');
+  const paragraph=items.slice(1).map(item=>item.correctOrder.join(' ')).join(' ');
+  const wordCount=paragraph.replace(/[,.]/g,'').trim().split(/\s+/).length;
+  assert.ok(wordCount>=65&&wordCount<=75,`guided paragraph has ${wordCount} words`);
+  assert.match(paragraph,/eat breakfast/);
+  assert.match(paragraph,/seven to eight hours/);
+  assert.match(paragraph,/chat with my friends/);
 });
 
 test('G7 U3 source answers and interaction types match the workbook tasks',async()=>{
@@ -88,8 +104,8 @@ test('G7 U3 source answers and interaction types match the workbook tasks',async
   const {content:e3}=await loadU3('e3');assert.equal(sourceItems(e3)[0].responseMode,'open');
 });
 
-test('open/discussion tasks stay open instead of inventing a single source key',async()=>{
-  for(const [loader,key] of [[loadU2,'b2'],[loadU2,'c1'],[loadU2,'c2'],[loadU2,'c3'],[loadU2,'e2'],[loadU2,'e3'],[loadU3,'c1'],[loadU3,'c3'],[loadU3,'e3']]){
+test('genuinely open discussion tasks stay open instead of inventing a single source key',async()=>{
+  for(const [loader,key] of [[loadU2,'b2'],[loadU2,'c1'],[loadU2,'c2'],[loadU2,'c3'],[loadU2,'e2'],[loadU3,'c1'],[loadU3,'c3'],[loadU3,'e3']]){
     const {content}=await loader(key);assert.ok(sourceItems(content).some(item=>item.responseMode==='open'),key);
   }
 });
