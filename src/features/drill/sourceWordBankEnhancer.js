@@ -1,6 +1,8 @@
 import { g6U1WorkbookRegistry } from '../../data/g6-u1-workbook-catalog.js';
+import { g6U2WorkbookRegistry } from '../../data/g6-u2-workbook-catalog.js';
 
-const SUPPORTED_SLUGS = new Set(['g6-u1-wb-b5', 'g6-u1-wb-d1']);
+const WORKBOOK_REGISTRY = Object.freeze([...g6U1WorkbookRegistry, ...g6U2WorkbookRegistry]);
+const SUPPORTED_SLUGS = new Set(['g6-u1-wb-b5', 'g6-u1-wb-d1', 'g6-u2-wb-d1']);
 const configCache = new Map();
 let scheduled = false;
 
@@ -11,7 +13,7 @@ function currentLessonSlug() {
 
 async function sourceWordBankConfig(slug) {
   if (configCache.has(slug)) return configCache.get(slug);
-  const descriptor = g6U1WorkbookRegistry.find(entry => entry.lessonSlug === slug);
+  const descriptor = WORKBOOK_REGISTRY.find(entry => entry.lessonSlug === slug);
   if (!descriptor) return null;
   const content = await descriptor.loadContent();
   const item = content.items?.find(candidate => Array.isArray(candidate.sourceWordBank) && candidate.sourceWordBank.length);
