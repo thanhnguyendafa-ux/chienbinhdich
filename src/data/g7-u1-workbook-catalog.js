@@ -12,7 +12,7 @@ const lessonSpecs = Object.freeze([
   Object.freeze({ key:'d3a', order:9, title:'D3a · Ghép từ với nghĩa', expectedTimeMinutes:12, activityTypes:['mcq','classification'] }),
   Object.freeze({ key:'d3b', order:10, title:'D3b · True / False / No Information', expectedTimeMinutes:15, activityTypes:['mcq'] }),
   Object.freeze({ key:'e1', order:11, title:'E1 · Viết câu từ từ/cụm từ cho sẵn', expectedTimeMinutes:18, activityTypes:['mcq','typing'] }),
-  Object.freeze({ key:'e3', order:12, title:'E3 · Hobby của bố / mẹ', expectedTimeMinutes:22, activityTypes:['mcq','typing'] })
+  Object.freeze({ key:'e3', order:12, title:'E3 · Hobby của bố / mẹ', expectedTimeMinutes:20, activityTypes:['mcq','typing'] })
 ]);
 
 export const g7U1WorkbookFolders = Object.freeze([
