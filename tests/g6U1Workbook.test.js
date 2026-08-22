@@ -10,22 +10,20 @@ async function load(key) {
   assert.ok(descriptor, `missing descriptor ${key}`);
   return { descriptor, content: await descriptor.loadContent() };
 }
-
-function correctChoiceText(item) {
-  return item.choices?.find(choice => choice.id === item.correctChoiceId)?.text ?? '';
-}
+const sourceItems = content => content.items.filter(item => item.learningPhase === 'source');
+function correctChoiceText(item) { return item.choices?.find(choice => choice.id === item.correctChoiceId)?.text ?? ''; }
 
 test('Global 6 Unit 1 workbook publishes exactly the 14 retained SBT lessons', () => {
   assert.equal(g6U1WorkbookRegistry.length, 14);
   const keys = g6U1WorkbookRegistry.map(entry => entry.id);
   assert.ok(!keys.some(id => /-a2$|-b1$|-c2$/.test(id)));
-  assert.deepEqual(keys.slice(0, 3), ['g6-u1-wb-a1', 'g6-u1-wb-b2', 'g6-u1-wb-b3']);
+  assert.deepEqual(keys.slice(0, 3), ['g6-u1-wb-a1','g6-u1-wb-b2','g6-u1-wb-b3']);
 });
 
 test('typing accepts source-supported alternative answers', () => {
   const item = getG6U1WorkbookContent('b4').items.find(candidate => candidate.id === 'g6-u1-wb-b4-06a');
-  assert.equal(evaluateQuestion(item, 'spending', { typingTolerance: true }).correct, true);
-  assert.equal(evaluateQuestion(item, 'to spend', { typingTolerance: true }).correct, true);
+  assert.equal(evaluateQuestion(item, 'spending', { typingTolerance:true }).correct, true);
+  assert.equal(evaluateQuestion(item, 'to spend', { typingTolerance:true }).correct, true);
   assert.match(expectedResponseDisplay(item), /spending/);
 });
 
@@ -38,53 +36,54 @@ test('open SBT production tasks accept any non-empty student response', () => {
 test('workbook choices marked preserveOrder stay in SBT order', () => {
   const item = getG6U1WorkbookContent('a1').items[0];
   const ordered = orderForExposure(item.choices, 'any-session-key');
-  assert.deepEqual(ordered.map(choice => choice.id), ['A', 'B', 'C', 'D']);
+  assert.deepEqual(ordered.map(choice => choice.id), ['A','B','C','D']);
 });
 
 test('B5 and D1 use word-bank choice instead of typing and keep source bank metadata', async () => {
-  const { content:b5 } = await load('b5');
-  const { content:d1 } = await load('d1');
-  const b5Bank = ['ball games', 'have', 'English lessons', 'international', 'housework', 'subjects', 'share', 'study'];
-  const d1Bank = ['their', 'begins', 'on', 'go', 'off', 'school', 'all', 'learn'];
-
-  assert.ok(b5.items.every(item => item.type === 'mcq'));
-  assert.ok(d1.items.every(item => item.type === 'mcq'));
-  assert.deepEqual(b5.items[0].sourceWordBank, b5Bank);
-  assert.deepEqual(d1.items[0].sourceWordBank, d1Bank);
-  assert.equal(correctChoiceText(b5.items[0]), 'English lessons');
-  assert.equal(correctChoiceText(d1.items[0]), 'go');
+  const { content:b5 } = await load('b5'); const b5Source = sourceItems(b5);
+  const { content:d1 } = await load('d1'); const d1Source = sourceItems(d1);
+  const b5Bank = ['ball games','have','English lessons','international','housework','subjects','share','study'];
+  const d1Bank = ['their','begins','on','go','off','school','all','learn'];
+  assert.ok(b5Source.every(item => item.type === 'mcq'));
+  assert.ok(d1Source.every(item => item.type === 'mcq'));
+  assert.deepEqual(b5Source[0].sourceWordBank, b5Bank);
+  assert.deepEqual(d1Source[0].sourceWordBank, d1Bank);
+  assert.equal(correctChoiceText(b5Source[0]), 'English lessons');
+  assert.equal(correctChoiceText(d1Source[0]), 'go');
 });
 
 test('B6 and E1/E2 use sentence order because source task is building word order', async () => {
-  const { content:b6 } = await load('b6');
-  const { content:e1 } = await load('e1');
-  const { content:e2 } = await load('e2');
-  assert.ok(b6.items.every(item => item.type === 'sentence_order'));
-  assert.ok(e1.items.every(item => item.type === 'sentence_order'));
-  assert.ok(e2.items.every(item => item.type === 'sentence_order'));
-  assert.deepEqual(b6.items[0].correctOrder, ['My grandmother','is','always','at home','in the evening']);
-  assert.deepEqual(e1.items[0].correctOrder, ['What','are','your']);
-  assert.deepEqual(e2.items[3].correctOrder, ['Where','does','Ms Lan','live?']);
-  assert.ok(b6.items[0].tokens.includes('are'));
-  assert.ok(e2.items[3].tokens.includes('lives?'));
+  const b6 = sourceItems((await load('b6')).content);
+  const e1 = sourceItems((await load('e1')).content);
+  const e2 = sourceItems((await load('e2')).content);
+  assert.ok(b6.every(item => item.type === 'sentence_order'));
+  assert.ok(e1.every(item => item.type === 'sentence_order'));
+  assert.ok(e2.every(item => item.type === 'sentence_order'));
+  assert.deepEqual(b6[0].correctOrder, ['My grandmother','is','always','at home','in the evening']);
+  assert.deepEqual(e1[0].correctOrder, ['What','are','your']);
+  assert.deepEqual(e2[3].correctOrder, ['Where','does','Ms Lan','live?']);
+  assert.ok(b6[0].tokens.includes('are'));
+  assert.ok(e2[3].tokens.includes('lives?'));
 });
 
 test('D2 keeps short recall typing but moves long fixed reading answers to MCQ', async () => {
   const { descriptor, content } = await load('d2');
-  assert.deepEqual(descriptor.activityTypes, ['mcq','typing']);
-  assert.deepEqual(content.items.map(item => item.type), ['mcq','mcq','typing','typing','mcq']);
-  assert.match(correctChoiceText(content.items[0]), /teachers and most of his classmates/);
-  assert.equal(content.items[2].en, 'IT.');
-  assert.equal(content.items[3].en, 'The judo club.');
-  assert.match(correctChoiceText(content.items[4]), /good first day/);
+  const items = sourceItems(content);
+  assert.deepEqual(descriptor.sourceActivityTypes, ['mcq','typing']);
+  assert.deepEqual(items.map(item => item.type), ['mcq','mcq','typing','typing','mcq']);
+  assert.match(correctChoiceText(items[0]), /teachers and most of his classmates/);
+  assert.equal(items[2].en, 'IT.');
+  assert.equal(items[3].en, 'The judo club.');
+  assert.match(correctChoiceText(items[4]), /good first day/);
 });
 
 test('source word-bank enhancer module is importable without a browser DOM', async () => {
   await assert.doesNotReject(import('../src/features/drill/sourceWordBankEnhancer.js'));
 });
 
-test('D3 final answer remains B before as in the SBT solution', () => {
-  const item = getG6U1WorkbookContent('d3').items.at(-1);
+test('D3 final source answer remains B before as in the SBT solution', async () => {
+  const items = sourceItems((await load('d3')).content);
+  const item = items.at(-1);
   assert.equal(item.correctChoiceId, 'B');
   assert.equal(item.choices.find(choice => choice.id === 'B').text, 'before');
 });
