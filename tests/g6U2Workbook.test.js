@@ -13,6 +13,22 @@ async function load(key) {
   return { descriptor, content: await descriptor.loadContent() };
 }
 
+function choiceText(item, id = item.correctChoiceId) {
+  return item.choices.find(choice => choice.id === id)?.text ?? '';
+}
+
+function assertFixedMcq(items, correctIds) {
+  assert.deepEqual(items.map(item => item.type), Array(items.length).fill('mcq'));
+  assert.deepEqual(items.map(item => item.correctChoiceId), correctIds);
+  for (const item of items) {
+    assert.equal(item.choices.length, 4, `${item.id} must have four choices`);
+    assert.ok(item.choices.every(choice => choice.preserveOrder === true), `${item.id} order must be preserved`);
+    assert.equal(item.digitalAdaptation?.sourceResponseType, 'written_answer', `${item.id} source type`);
+    assert.equal(item.digitalAdaptation?.adaptedResponseType, 'mcq', `${item.id} adapted type`);
+    assert.ok(item.teachingFeedback?.reason?.length > 30, `${item.id} needs Vietnamese trap explanation`);
+  }
+}
+
 test('G6 U2 workbook publishes exactly the 12 approved text-based source lessons', () => {
   assert.equal(g6U2WorkbookFolders.length, 1);
   assert.equal(g6U2WorkbookFolders[0].id, 'global6-unit2-workbook');
@@ -68,22 +84,54 @@ test('D1 uses the exact source word box and D2 keeps A/B/C order', async () => {
   assert.ok(d2.items.every(item => item.choices.every(choice => choice.preserveOrder === true)));
 });
 
-test('D3b and E1 use source-grounded target answers while personal tasks stay open', async () => {
-  const { content:d3b } = await load('d3b');
-  assert.equal(d3b.items[0].en, "It's big.");
-  assert.match(d3b.items[3].en, /comfortable/);
-  assert.match(d3b.items[4].en, /cozy/);
+test('C3 converts six fixed long responses to MCQ but keeps the final open conversation', async () => {
+  const { descriptor, content } = await load('c3');
+  assert.deepEqual(descriptor.activityTypes, ['mcq','typing']);
+  assertFixedMcq(content.items.slice(0, 6), ['B','A','C','D','B','D']);
+  assert.equal(choiceText(content.items[0]), 'Mira, who do you live with?');
+  assert.equal(choiceText(content.items[5]), "No, it isn't. There is a living room, two bedrooms, a bathroom and a kitchen.");
+  const open = content.items[6];
+  assert.equal(open.type, 'typing');
+  assert.equal(open.responseMode, 'open');
+});
 
-  const { content:e1 } = await load('e1');
-  assert.equal(e1.items[0].en, "There isn't a bookshelf in my bedroom.");
-  assert.equal(e1.items[2].en, "Mai's notebook is on the table.");
-  assert.equal(e1.items[3].en, 'The microwave is behind the dog.');
-  assert.equal(e1.items[4].en, 'I like the living room best in the house.');
+test('D3b reading uses deterministic A/B/C/D answers with source-grounded traps', async () => {
+  const { descriptor, content } = await load('d3b');
+  assert.deepEqual(descriptor.activityTypes, ['mcq']);
+  assertFixedMcq(content.items, ['B','D','A','C','B']);
+  assert.equal(choiceText(content.items[0]), 'It is big and cozy.');
+  assert.match(choiceText(content.items[1]), /three posters/);
+  assert.doesNotMatch(choiceText(content.items[1]), /table/i);
+  assert.match(choiceText(content.items[3]), /comfortable/);
+  assert.match(choiceText(content.items[4]), /cozy/);
+  assert.ok(content.items[2].teachingFeedback.reason.includes("don't have any posters"));
+});
 
+test('E1 fixed sentence rewrites use MCQ while preserving the target transformation', async () => {
+  const { descriptor, content } = await load('e1');
+  assert.deepEqual(descriptor.activityTypes, ['mcq']);
+  assertFixedMcq(content.items, ['B','C','A','C','D']);
+  assert.equal(choiceText(content.items[0]), "There isn't a bookshelf in my bedroom.");
+  assert.equal(choiceText(content.items[2]), "Mai's notebook is on the table.");
+  assert.equal(choiceText(content.items[3]), 'The microwave is behind the dog.');
+  assert.equal(choiceText(content.items[4]), 'I like the living room best in the house.');
+});
+
+test('open production stays open and no fixed long typing answer remains in the Unit 2 workbook', async () => {
   const { content:a2 } = await load('a2');
+  const { content:c3 } = await load('c3');
   const { content:e2 } = await load('e2');
   assert.ok(a2.items.every(item => item.responseMode === 'open'));
+  assert.equal(c3.items.at(-1).responseMode, 'open');
   assert.ok(e2.items.every(item => item.responseMode === 'open'));
+
+  for (const descriptor of g6U2WorkbookRegistry) {
+    const content = await descriptor.loadContent();
+    for (const item of content.items) {
+      if (item.type !== 'typing' || item.responseMode === 'open') continue;
+      assert.ok(String(item.en ?? '').length <= 20, `${item.id} still has a fixed long typing answer: ${item.en}`);
+    }
+  }
 });
 
 test('source word-bank enhancer includes Unit 2 D1 without changing Unit 1 support', async () => {
