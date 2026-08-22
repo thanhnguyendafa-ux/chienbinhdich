@@ -24,13 +24,15 @@ function bankMcq(item) {
   const choices = bank.map((text,index)=>choice(`w${index+1}`,String(text)));
   const correct = choices.find(candidate => candidate.text.toLowerCase() === answer.toLowerCase());
   if (!correct) return item;
-  const { vi, en, acceptedAnswers, typingUi, responseMode, sourceWordBank, sourceWordBankLabel, ...rest } = item;
+  const { vi, en, acceptedAnswers, typingUi, responseMode, ...rest } = item;
   return freeze({
     ...rest,
     type:'mcq',
     prompt:`${vi}\n\nTừ / cụm từ cho sẵn: ${bank.join(' · ')}`,
     choices:freeze(choices),
     correctChoiceId:correct.id,
+    sourceWordBank:freeze(bank),
+    sourceWordBankLabel:item.sourceWordBankLabel || 'Từ / cụm từ cho sẵn',
     digitalAdaptation:freeze({ sourceResponseType:'word_box_fill', adaptedResponseType:'word_bank_choice', reason:'Đề đã cho word box nên học sinh chọn từ đúng thay vì phải gõ lại.' }),
     teachingFeedback:item.teachingFeedback
   });
