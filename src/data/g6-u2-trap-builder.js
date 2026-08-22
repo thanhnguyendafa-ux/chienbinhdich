@@ -25,6 +25,54 @@ const THEORY_BY_TRAP = freeze({
   'M-HARD': 'Câu nghe hợp lý vẫn có thể không đúng ý bài.'
 });
 
+const WRONG_REASON_ONE_BY_TRAP = freeze({
+  'V-CAT': 'Các từ đều nói về nhà nên cùng nhóm.',
+  'V-CTX': 'Từ có trong Unit 2 là dùng được.',
+  'V-REL': 'Hai từ cùng Unit 2 nên ghép được.',
+  'G-THERE': 'Nhìn từ cuối câu để chọn is/are.',
+  'G-HAVE-THERE': 'Thấy nghĩa “có” thì luôn dùng have.',
+  'G-PREP': 'Từ nào chỉ nơi chốn cũng dùng được.',
+  'G-SUGGEST': "How about và Let's dùng cùng dạng động từ.",
+  'G-DESC': 'Chỉ cần có từ tả là câu đúng.',
+  'R-TF': 'Có từ giống bài thì câu là đúng.',
+  'R-NUM-REL': 'Con số có trong bài là dùng được.',
+  'R-WH': 'Đáp án có trong bài là đủ.',
+  'R-REF': 'Chọn danh từ đứng gần nhất.',
+  'W-ORDER': 'Đủ từ là được, thứ tự không quan trọng.',
+  'W-ERROR': 'Câu sai thì từ nào cũng có thể sửa.',
+  'W-REWRITE': 'Chỉ cần nghĩa gần giống là được.',
+  'W-VI-EN': 'Dịch đúng từng từ là đủ.',
+  'P-FINAL-S': 'Chỉ nhìn chữ -s là biết âm.',
+  'C-FUNCTION': 'Cùng chủ đề là trả lời được.',
+  'M-EASY': 'Có từ đúng chủ đề thì không cần sửa.',
+  'M-MED': 'Thông tin có trong bài thì dùng ở đâu cũng được.',
+  'M-HARD': 'Câu đúng ngữ pháp thì luôn đúng đáp án.'
+});
+
+const WRONG_REASON_TWO_BY_TRAP = freeze({
+  'V-CAT': 'Từ quen nhất là từ khác nhóm.',
+  'V-CTX': 'Chỉ cần câu đúng ngữ pháp là đủ.',
+  'V-REL': 'Chỉ cần từng từ riêng đều đúng.',
+  'G-THERE': 'Có số trong câu thì luôn dùng are.',
+  'G-HAVE-THERE': 'Thấy nghĩa “có” thì luôn dùng There is.',
+  'G-PREP': 'Từ có trong bài thì đổi cho nhau được.',
+  'G-SUGGEST': 'Sau hai mẫu đều dùng to + V.',
+  'G-DESC': 'because và but đổi cho nhau được.',
+  'R-TF': 'Đúng một nửa câu là đủ.',
+  'R-NUM-REL': 'Các số về phòng có thể đổi cho nhau.',
+  'R-WH': 'Who/Where chỉ giúp tìm dòng trong bài.',
+  'R-REF': 'Danh từ ở câu trước đều dùng được.',
+  'W-ORDER': 'Đi theo thứ tự tiếng Việt là đúng.',
+  'W-ERROR': 'Sửa từ đã khoanh là đủ.',
+  'W-REWRITE': 'Giữ mẫu câu cũ cũng được.',
+  'W-VI-EN': 'Giữ thứ tự tiếng Việt là đúng.',
+  'P-FINAL-S': 'Từ có -s cuối đều đọc giống nhau.',
+  'C-FUNCTION': 'Câu đúng ngữ pháp là trả lời được.',
+  'M-EASY': 'Chỉ cần thấy một từ quen là chọn.',
+  'M-MED': 'Đúng một chi tiết là đủ.',
+  'M-HARD': 'Câu nghe tự nhiên thì luôn đúng.'
+});
+
 const MAI_HOUSE_CONTEXT = [
   'Mai lives in a townhouse in Hanoi with her parents.',
   'There are six rooms in the house: a living room, a kitchen, two bedrooms and two bathrooms.',
@@ -52,13 +100,6 @@ const COMMUNICATION_CONTEXT = [
 ].join(' ');
 
 const WRONG_FEEDBACK = 'Chưa đúng. Xem lại 3 phần: Sai – Sửa – Vì.';
-
-function swap(text, left, right) {
-  const source = String(text ?? '');
-  if (!source.includes(left) && !source.includes(right)) return source;
-  const marker = '§§SWAP§§';
-  return source.replaceAll(left, marker).replaceAll(right, left).replaceAll(marker, right);
-}
 
 function cleanRepair(text) {
   return String(text ?? '')
@@ -112,104 +153,80 @@ function whMeaning(record) {
   return 'đúng loại thông tin';
 }
 
-function correctReason(record) {
+function thereReason(record) {
+  return targetThereForm(record) === 'are'
+    ? 'Cụm sau there là số nhiều.'
+    : 'Cụm sau there là số ít.';
+}
+
+function haveThereReason(record) {
+  const repair = String(record.correctDiagnosis.repair ?? '').toLowerCase();
+  if (/\bhas\b/.test(repair)) return 'Chủ ngữ số ít dùng has.';
+  if (/\bhave\b/.test(repair)) return 'I/you/we/they dùng have.';
+  if (repair.includes('there are')) return 'Câu nói có nhiều đồ vật hoặc phòng.';
+  if (repair.includes('there is')) return 'Câu nói có một đồ vật hoặc phòng.';
+  return 'Phải chọn đúng mẫu có trong câu.';
+}
+
+function suggestionReason(record) {
   const repair = String(record.correctDiagnosis.repair ?? '').toLowerCase();
   const question = String(record.originalQuestion ?? '').toLowerCase();
-  switch (record.trapCode) {
-    case 'V-CAT': return 'Từ này khác nhóm với các từ còn lại.';
-    case 'V-CTX': return 'Chỗ này cần đúng nghĩa của cả câu.';
-    case 'V-REL': return 'Hai từ phải đi với nhau đúng nghĩa.';
-    case 'G-THERE': {
-      const target = targetThereForm(record);
-      return target === 'are' ? 'Cụm sau there là số nhiều.' : 'Cụm sau there là số ít.';
-    }
-    case 'G-HAVE-THERE':
-      if (/\bhas\b/.test(repair)) return 'Chủ ngữ số ít dùng has.';
-      if (/\bhave\b/.test(repair)) return 'I/you/we/they dùng have.';
-      if (repair.includes('there are')) return 'Câu nói có nhiều đồ vật hoặc phòng.';
-      if (repair.includes('there is')) return 'Câu nói có một đồ vật hoặc phòng.';
-      return 'Phải chọn đúng mẫu có trong câu.';
-    case 'G-PREP': return 'Từ chỉ vị trí phải đúng với bài.';
-    case 'G-SUGGEST':
-      if (question.includes('how about') || /\bputting\b|\bgoing\b|\bbuying\b/.test(repair)) return 'Sau How about dùng V-ing.';
-      return "Sau Let's dùng động từ thường.";
-    case 'G-DESC':
-      if (repair.includes('because')) return 'because dùng để nói lý do.';
-      if (repair.includes('but')) return 'but nối hai ý trái nhau.';
-      if (question.includes('often') || repair.includes('often')) return 'often đứng trước động từ thường.';
-      return 'Tính từ đi sau is/are.';
-    case 'R-TF': return 'Chi tiết này bị gắn nhầm người hoặc phòng.';
-    case 'R-NUM-REL': return 'Số hoặc chi tiết này thuộc chỗ khác.';
-    case 'R-WH': return `Đề đang hỏi ${whMeaning(record)}.`;
-    case 'R-REF': return 'Nhìn mạch câu để biết từ này nhắc lại gì.';
-    case 'W-ORDER': return 'Tiếng Anh có thứ tự từ riêng.';
-    case 'W-ERROR': return 'Phải sửa đúng chỗ sai, không sửa chỗ đang đúng.';
-    case 'W-REWRITE': return 'Câu mới phải giữ đúng ý và đúng mẫu.';
-    case 'W-VI-EN': return 'Tiếng Anh cần đúng mẫu và đúng thứ tự.';
-    case 'P-FINAL-S':
-      if (repair.includes('/s/')) return 'Từ này có âm cuối /s/.';
-      if (repair.includes('/z/')) return 'Từ này có âm cuối /z/.';
-      return 'Phải nghe đúng âm cuối của từ.';
-    case 'C-FUNCTION': return 'Đây là lời đề nghị nên cần câu đáp phù hợp.';
-    case 'M-EASY': return 'Câu này có một lỗi rõ cần sửa.';
-    case 'M-MED': return 'Thông tin đúng nhưng bị gắn nhầm chỗ.';
-    case 'M-HARD': return 'Câu nghe đúng nhưng không đúng ý bài.';
-    default: return 'Phải khớp đúng câu hỏi và đúng bài.';
-  }
+  return question.includes('how about') || /\bputting\b|\bgoing\b|\bbuying\b/.test(repair)
+    ? 'Sau How about dùng V-ing.'
+    : "Sau Let's dùng động từ thường.";
+}
+
+function descriptionReason(record) {
+  const repair = String(record.correctDiagnosis.repair ?? '').toLowerCase();
+  const question = String(record.originalQuestion ?? '').toLowerCase();
+  if (repair.includes('because')) return 'because dùng để nói lý do.';
+  if (repair.includes('but')) return 'but nối hai ý trái nhau.';
+  if (question.includes('often') || repair.includes('often')) return 'often đứng trước động từ thường.';
+  return 'Tính từ đi sau is/are.';
+}
+
+function pronunciationReason(record) {
+  const repair = String(record.correctDiagnosis.repair ?? '').toLowerCase();
+  if (repair.includes('/s/')) return 'Từ này có âm cuối /s/.';
+  if (repair.includes('/z/')) return 'Từ này có âm cuối /z/.';
+  return 'Phải nghe đúng âm cuối của từ.';
+}
+
+const CORRECT_REASON_BY_TRAP = freeze({
+  'V-CAT': () => 'Từ này khác nhóm với các từ còn lại.',
+  'V-CTX': () => 'Chỗ này cần đúng nghĩa của cả câu.',
+  'V-REL': () => 'Hai từ phải đi với nhau đúng nghĩa.',
+  'G-THERE': thereReason,
+  'G-HAVE-THERE': haveThereReason,
+  'G-PREP': () => 'Từ chỉ vị trí phải đúng với bài.',
+  'G-SUGGEST': suggestionReason,
+  'G-DESC': descriptionReason,
+  'R-TF': () => 'Chi tiết này bị gắn nhầm người hoặc phòng.',
+  'R-NUM-REL': () => 'Số hoặc chi tiết này thuộc chỗ khác.',
+  'R-WH': record => `Đề đang hỏi ${whMeaning(record)}.`,
+  'R-REF': () => 'Nhìn mạch câu để biết từ này nhắc lại gì.',
+  'W-ORDER': () => 'Tiếng Anh có thứ tự từ riêng.',
+  'W-ERROR': () => 'Phải sửa đúng chỗ sai, không sửa chỗ đang đúng.',
+  'W-REWRITE': () => 'Câu mới phải giữ đúng ý và đúng mẫu.',
+  'W-VI-EN': () => 'Tiếng Anh cần đúng mẫu và đúng thứ tự.',
+  'P-FINAL-S': pronunciationReason,
+  'C-FUNCTION': () => 'Đây là lời đề nghị nên cần câu đáp phù hợp.',
+  'M-EASY': () => 'Câu này có một lỗi rõ cần sửa.',
+  'M-MED': () => 'Thông tin đúng nhưng bị gắn nhầm chỗ.',
+  'M-HARD': () => 'Câu nghe đúng nhưng không đúng ý bài.'
+});
+
+function correctReason(record) {
+  const resolver = CORRECT_REASON_BY_TRAP[record.trapCode];
+  return resolver ? resolver(record) : 'Phải khớp đúng câu hỏi và đúng bài.';
 }
 
 function wrongReasonOne(record) {
-  switch (record.trapCode) {
-    case 'V-CAT': return 'Các từ đều nói về nhà nên cùng nhóm.';
-    case 'V-CTX': return 'Từ có trong Unit 2 là dùng được.';
-    case 'V-REL': return 'Hai từ cùng Unit 2 nên ghép được.';
-    case 'G-THERE': return 'Nhìn từ cuối câu để chọn is/are.';
-    case 'G-HAVE-THERE': return 'Thấy nghĩa “có” thì luôn dùng have.';
-    case 'G-PREP': return 'Từ nào chỉ nơi chốn cũng dùng được.';
-    case 'G-SUGGEST': return "How about và Let's dùng cùng dạng động từ.";
-    case 'G-DESC': return 'Chỉ cần có từ tả là câu đúng.';
-    case 'R-TF': return 'Có từ giống bài thì câu là đúng.';
-    case 'R-NUM-REL': return 'Con số có trong bài là dùng được.';
-    case 'R-WH': return 'Đáp án có trong bài là đủ.';
-    case 'R-REF': return 'Chọn danh từ đứng gần nhất.';
-    case 'W-ORDER': return 'Đủ từ là được, thứ tự không quan trọng.';
-    case 'W-ERROR': return 'Câu sai thì từ nào cũng có thể sửa.';
-    case 'W-REWRITE': return 'Chỉ cần nghĩa gần giống là được.';
-    case 'W-VI-EN': return 'Dịch đúng từng từ là đủ.';
-    case 'P-FINAL-S': return 'Chỉ nhìn chữ -s là biết âm.';
-    case 'C-FUNCTION': return 'Cùng chủ đề là trả lời được.';
-    case 'M-EASY': return 'Có từ đúng chủ đề thì không cần sửa.';
-    case 'M-MED': return 'Thông tin có trong bài thì dùng ở đâu cũng được.';
-    case 'M-HARD': return 'Câu đúng ngữ pháp thì luôn đúng đáp án.';
-    default: return 'Từ này có trong bài nên dùng được.';
-  }
+  return WRONG_REASON_ONE_BY_TRAP[record.trapCode] ?? 'Từ này có trong bài nên dùng được.';
 }
 
 function wrongReasonTwo(record) {
-  switch (record.trapCode) {
-    case 'V-CAT': return 'Từ quen nhất là từ khác nhóm.';
-    case 'V-CTX': return 'Chỉ cần câu đúng ngữ pháp là đủ.';
-    case 'V-REL': return 'Chỉ cần từng từ riêng đều đúng.';
-    case 'G-THERE': return 'Có số trong câu thì luôn dùng are.';
-    case 'G-HAVE-THERE': return 'Thấy nghĩa “có” thì luôn dùng There is.';
-    case 'G-PREP': return 'Từ có trong bài thì đổi cho nhau được.';
-    case 'G-SUGGEST': return 'Sau hai mẫu đều dùng to + V.';
-    case 'G-DESC': return 'because và but đổi cho nhau được.';
-    case 'R-TF': return 'Đúng một nửa câu là đủ.';
-    case 'R-NUM-REL': return 'Các số về phòng có thể đổi cho nhau.';
-    case 'R-WH': return 'Who/Where chỉ giúp tìm dòng trong bài.';
-    case 'R-REF': return 'Danh từ ở câu trước đều dùng được.';
-    case 'W-ORDER': return 'Đi theo thứ tự tiếng Việt là đúng.';
-    case 'W-ERROR': return 'Sửa từ đã khoanh là đủ.';
-    case 'W-REWRITE': return 'Giữ mẫu câu cũ cũng được.';
-    case 'W-VI-EN': return 'Giữ thứ tự tiếng Việt là đúng.';
-    case 'P-FINAL-S': return 'Từ có -s cuối đều đọc giống nhau.';
-    case 'C-FUNCTION': return 'Câu đúng ngữ pháp là trả lời được.';
-    case 'M-EASY': return 'Chỉ cần thấy một từ quen là chọn.';
-    case 'M-MED': return 'Đúng một chi tiết là đủ.';
-    case 'M-HARD': return 'Câu nghe tự nhiên thì luôn đúng.';
-    default: return 'Chỉ cần cùng chủ đề là được.';
-  }
+  return WRONG_REASON_TWO_BY_TRAP[record.trapCode] ?? 'Chỉ cần cùng chủ đề là được.';
 }
 
 function candidateFromQuestion(record) {
