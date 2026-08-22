@@ -1,6 +1,6 @@
 import { applyG6U3VerifiedAdaptations } from './g6-u3-workbook-verified-adaptations.js';
 import { applyG6U3WorkbookInteractionAdaptations } from './g6-u3-workbook-interaction-adaptations.js';
-import { applyG6WorkbookTranslationPreload, getG6WorkbookPreloadCount } from './g6-workbook-translation-preload.js';
+import { applyG6WorkbookTranslationPreload, getG6WorkbookPreloadCount } from './g6-workbook-preload-registry.js';
 
 const lessonSpecs = Object.freeze([
   Object.freeze({ key:'a2', order:1, title:'A2 · Luyện đọc âm /p/ và /b/', expectedTimeMinutes:7, itemCount:3, activityTypes:['typing'] }),

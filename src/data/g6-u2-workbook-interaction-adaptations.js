@@ -54,14 +54,6 @@ const C3 = freeze({
   'g6-u2-wb-c3-06': freeze({ correctOrder:["No, it isn't.",'There is','a living room,','two bedrooms,','a bathroom','and a kitchen.'], tokens:["No, it doesn't.","No, it isn't.",'There are','There is','a living room,','two bedroom,','two bedrooms,','a bathroom','and a kitchen.'] })
 });
 
-const E1 = freeze({
-  'g6-u2-wb-e1-01': freeze({ correctOrder:["There isn't",'a bookshelf','in my bedroom.'], tokens:["There aren't", "There isn't",'a bookshelf','bookshelf','in my bedroom.'] }),
-  'g6-u2-wb-e1-02': freeze({ correctOrder:['There is','a sink, a fridge, a cooker and a cupboard','in our kitchen.'], tokens:['There are','There is','There have','a sink, a fridge, a cooker and a cupboard','in our kitchen.','on our kitchen.'] }),
-  'g6-u2-wb-e1-03': freeze({ correctOrder:["Mai's notebook",'is','on the table.'], tokens:['Mai notebook',"Mai's notebook",'are','is','on the table.'] }),
-  'g6-u2-wb-e1-04': freeze({ correctOrder:['The microwave','is','behind','the dog.'], tokens:['The microwave','is','in front of','next to','behind','the dog.'] }),
-  'g6-u2-wb-e1-05': freeze({ correctOrder:['I like','the living room','best','in the house.'], tokens:['I like','the living room','good','more','best','in the house.'] })
-});
-
 function adaptBySpec(item, specs) {
   const spec = specs[item?.id];
   return spec ? sentenceOrder(item, spec) : item;
@@ -73,7 +65,8 @@ export function applyG6U2WorkbookInteractionAdaptations(key, content) {
 
   if (lessonKey === 'd1') items = items.map(bankMcq);
   if (lessonKey === 'c3') items = items.map(item => adaptBySpec(item, C3));
-  if (lessonKey === 'e1') items = items.map(item => adaptBySpec(item, E1));
 
+  // E1 stays typing: the rewrite task requires learners to supply new words/structures.
+  // Turning it into sentence_order would expose the very language the source task tests.
   return freeze({ ...content, items: freeze(items) });
 }

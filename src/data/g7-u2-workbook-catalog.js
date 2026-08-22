@@ -1,4 +1,5 @@
 import { g7U2WorkbookItemCounts } from './g7-u2-workbook-content.js';
+import { applyG7U2WorkbookSourceFidelity,getG7U2WorkbookFidelityItemCount } from './g7-u2-workbook-source-fidelity.js';
 
 const lessonSpecs = Object.freeze([
   {key:'a1',order:1,title:'A1 · Tìm từ có cách phát âm khác',expectedTimeMinutes:10,activityTypes:['mcq']},
@@ -16,17 +17,20 @@ const lessonSpecs = Object.freeze([
   {key:'d3',order:13,title:'D3 · Đọc về Spain và Mediterranean diet',expectedTimeMinutes:16,activityTypes:['mcq']},
   {key:'e1',order:14,title:'E1 · Viết câu từ prompts',expectedTimeMinutes:18,activityTypes:['mcq','typing']},
   {key:'e2',order:15,title:'E2 · Viết lý do cho health tips',expectedTimeMinutes:18,activityTypes:['mcq','typing']},
-  {key:'e3',order:16,title:'E3 · Healthy life khoảng 70 từ',expectedTimeMinutes:20,activityTypes:['mcq','typing']}
+  {key:'e3',order:16,title:'E3 · Chọn healthy habits rồi ghép đoạn khoảng 70 từ',expectedTimeMinutes:20,activityTypes:['mcq','sentence_order']}
 ].map(Object.freeze));
 
 export const g7U2WorkbookFolders = Object.freeze([
   Object.freeze({id:'global7-unit2-workbook',name:'Sách bài tập · Unit 2',description:'SBT Global Success 7 Unit 2 · Healthy Living. Mỗi link: Nhắc nhanh → từ vựng MCQ → cụm từ MCQ → bài SBT → giải thích tiếng Việt. B1 không production vì đáp án phụ thuộc trực tiếp vào hình.',parentId:'global7-unit2',order:2})
 ]);
 
-function descriptor(spec){return Object.freeze({
-  id:`g7-u2-wb-${spec.key}`,folderId:'global7-unit2-workbook',order:spec.order,version:1,course:'Global Success 7',unit:'Unit 2 · Healthy Living · Sách bài tập',title:spec.title,
-  subtitle:'Nhắc nhanh → Từ vựng MCQ → Cụm từ MCQ → Bài SBT → Giải thích',expectedTimeMinutes:spec.expectedTimeMinutes,lessonSlug:`g7-u2-wb-${spec.key}`,passThreshold:80,completionPolicy:'explain-and-accept',typingTolerance:true,teacher:'Thầy Thành MRT',
-  description:`${g7U2WorkbookItemCounts[spec.key]} lượt. Preload Anh → Việt giảm tải từ vựng trước bài; interaction giữ theo mục tiêu nguồn.`,activityTypes:Object.freeze(spec.activityTypes),itemCount:g7U2WorkbookItemCounts[spec.key],
-  loadContent:()=>import('./g7-u2-workbook-content.js').then(module=>module.getG7U2WorkbookContent(spec.key))
-});}
+function descriptor(spec){
+  const itemCount = getG7U2WorkbookFidelityItemCount(spec.key,g7U2WorkbookItemCounts[spec.key]);
+  return Object.freeze({
+    id:`g7-u2-wb-${spec.key}`,folderId:'global7-unit2-workbook',order:spec.order,version:2,course:'Global Success 7',unit:'Unit 2 · Healthy Living · Sách bài tập',title:spec.title,
+    subtitle:'Nhắc nhanh → Từ vựng MCQ → Cụm từ MCQ → Bài SBT → Giải thích',expectedTimeMinutes:spec.expectedTimeMinutes,lessonSlug:`g7-u2-wb-${spec.key}`,passThreshold:80,completionPolicy:'explain-and-accept',typingTolerance:true,teacher:'Thầy Thành MRT',
+    description:`${itemCount} lượt. Preload Anh → Việt giảm tải từ vựng trước bài; interaction giữ theo mục tiêu nguồn.`,activityTypes:Object.freeze(spec.activityTypes),itemCount,
+    loadContent:()=>import('./g7-u2-workbook-content.js').then(module=>applyG7U2WorkbookSourceFidelity(spec.key,module.getG7U2WorkbookContent(spec.key)))
+  });
+}
 export const g7U2WorkbookRegistry=Object.freeze(lessonSpecs.map(descriptor));

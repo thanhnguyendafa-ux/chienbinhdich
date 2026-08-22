@@ -31,14 +31,17 @@ test('Explorer keeps the top-level curriculum tree and nests new G7 workbook fol
   assert.equal(lessonIds('global7-unit3-workbook').length,17);
 });
 
-test('Explorer retains representative legacy folder contracts',()=>{
+test('Explorer retains representative legacy folder contracts and recovered G6 workbook counts',()=>{
   assert.deepEqual(folderChildren('global2'),['global2-unit6','global2-writing-typing']);
   assert.deepEqual(folderChildren('global3'),['global3-writing-typing']);
   assert.ok(folderChildren('global5').includes('global5-unit10'));
   assert.deepEqual(folderChildren('global6-unit3'),['global6-unit3-workbook']);
-  assert.equal(lessonIds('global6-unit1-workbook').length,14);
-  assert.equal(lessonIds('global6-unit2-workbook').length,12);
+  assert.equal(lessonIds('global6-unit1-workbook').length,15);
+  assert.equal(lessonIds('global6-unit2-workbook').length,14);
   assert.equal(lessonIds('global6-unit3-workbook').length,15);
+  assert.ok(lessonIds('global6-unit1-workbook').includes('g6-u1-wb-c2'));
+  assert.ok(lessonIds('global6-unit2-workbook').includes('g6-u2-wb-b2'));
+  assert.ok(lessonIds('global6-unit2-workbook').includes('g6-u2-wb-e3'));
   assert.deepEqual(lessonIds('global7-unit1').slice(0,3),['g7-u1-translation-01','g7-u1-translation-02','g7-u1-pronunciation-01']);
 });
 
@@ -49,11 +52,11 @@ test('Explorer breadcrumbs include all three G7 workbook units',()=>{
   assert.deepEqual(folderBreadcrumbs(tree,'global6-unit3-workbook').map(item=>item.label),['Bài tập','Global Success 6','Unit 3 · My Friends','Sách bài tập · Unit 3']);
 });
 
-test('Explorer recursive lesson counts include G7 U2 and U3 without changing other curriculum totals',()=>{
+test('Explorer recursive lesson counts include recovered G6 and existing G7 workbook lessons',()=>{
   assert.equal(folderLessonCount(findAdminTreeNode(tree,'global2')),57);
   assert.equal(folderLessonCount(findAdminTreeNode(tree,'global3')),88);
   assert.equal(folderLessonCount(findAdminTreeNode(tree,'global5')),301);
-  assert.equal(folderLessonCount(findAdminTreeNode(tree,'global6')),150);
+  assert.equal(folderLessonCount(findAdminTreeNode(tree,'global6')),153);
   assert.equal(folderLessonCount(findAdminTreeNode(tree,'global7-unit1')),59);
   assert.equal(folderLessonCount(findAdminTreeNode(tree,'global7-unit1-workbook')),12);
   assert.equal(folderLessonCount(findAdminTreeNode(tree,'global7-unit2')),32);
@@ -71,8 +74,9 @@ test('Explorer search finds legacy and new workbook lessons by title, slug, id a
   assert.deepEqual(searchLessonDescriptors(sets,'g7u2-writing-16').map(set=>set.id),['g7-u2-writing-16']);
   assert.deepEqual(searchLessonDescriptors(sets,'g7-u2-wb-d2').map(set=>set.id),['g7-u2-wb-d2']);
   assert.deepEqual(searchLessonDescriptors(sets,'g7-u3-wb-d3').map(set=>set.id),['g7-u3-wb-d3']);
+  assert.deepEqual(searchLessonDescriptors(sets,'g6-u1-wb-c2').map(set=>set.id),['g6-u1-wb-c2']);
   assert.ok(searchLessonDescriptors(sets,'typing').some(set=>set.id==='g7-u2-wb-b3'));
-  assert.ok(searchLessonDescriptors(sets,'classification').some(set=>set.id==='g7-u3-wb-c2'));
+  assert.ok(searchLessonDescriptors(sets,'classification').some(set=>set.id==='g6-u2-wb-b2'));
 });
 
 test('Explorer type filters still distinguish single-type and mixed lessons',()=>{

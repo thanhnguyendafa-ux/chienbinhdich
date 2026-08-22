@@ -13,11 +13,26 @@ async function load(key) {
 const sourceItems = content => content.items.filter(item => item.learningPhase === 'source');
 function correctChoiceText(item) { return item.choices?.find(choice => choice.id === item.correctChoiceId)?.text ?? ''; }
 
-test('Global 6 Unit 1 workbook publishes exactly the 14 retained SBT lessons', () => {
-  assert.equal(g6U1WorkbookRegistry.length, 14);
+test('Global 6 Unit 1 workbook publishes all 15 text-solvable lessons after PDF audit', () => {
+  assert.equal(g6U1WorkbookRegistry.length, 15);
   const keys = g6U1WorkbookRegistry.map(entry => entry.id);
-  assert.ok(!keys.some(id => /-a2$|-b1$|-c2$/.test(id)));
+  assert.ok(!keys.some(id => /-a2$|-b1$/.test(id)));
+  assert.ok(keys.includes('g6-u1-wb-c2'));
   assert.deepEqual(keys.slice(0, 3), ['g6-u1-wb-a1','g6-u1-wb-b2','g6-u1-wb-b3']);
+});
+
+test('recovered C2 keeps all five cue sets as five question + answer pairs', async () => {
+  const { descriptor,content } = await load('c2');
+  const items = sourceItems(content);
+  assert.equal(descriptor.sourceItemCount,10);
+  assert.equal(items.length,10);
+  assert.ok(items.every(item => item.type === 'sentence_order'));
+  assert.deepEqual(items[0].correctOrder,['When','does','your grandfather','usually','read','newspapers?']);
+  assert.deepEqual(items[1].correctOrder,['He','usually','reads newspapers','in the morning.']);
+  assert.deepEqual(items[8].correctOrder,['What time','does','David','often','listen to music?']);
+  assert.deepEqual(items[9].correctOrder,['He','often','listens to music','at 9 p.m.']);
+  assert.ok(items[0].tokens.includes('do'));
+  assert.ok(items[8].tokens.includes('listens to music?'));
 });
 
 test('typing accepts source-supported alternative answers', () => {
