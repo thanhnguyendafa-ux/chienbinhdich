@@ -59,7 +59,8 @@ export function submitAnswer({ session, set, response, answer, attemptMeta = {},
   const revealAfterAttempt = !result.correct && (explainAndAccept || hasSeenAnswer || failedAttemptsBefore + 1 >= 2);
   const scored = isScoredItem(set, item);
   const gradedTotal = scoredItemCount(set);
-  const masteryDeltaUnits = scored && attemptNumber === 1 ? (result.correct ? 1 : -1) : 0;
+  const masteryDeltaUnits = attemptNumber === 1 ? (result.correct ? 1 : -1) : 0;
+  const appliedMasteryDeltaUnits = scored ? masteryDeltaUnits : 0;
   const masteryBefore = masteryDisplayPercent(session.attempts, gradedTotal);
   const expectedDisplay = expectedResponseDisplay(item);
 
@@ -78,7 +79,7 @@ export function submitAnswer({ session, set, response, answer, attemptMeta = {},
     result: explainAndAccept && !result.correct
       ? 'explained_incorrect'
       : resolveAttemptResult({ correct: result.correct, hadWrongThisExposure, revealAfterAttempt }),
-    masteryDeltaUnits,
+    masteryDeltaUnits: appliedMasteryDeltaUnits,
     startedAt,
     submittedAt,
     responseDurationMs: Math.max(0, submittedAt - startedAt),
@@ -104,7 +105,7 @@ export function submitAnswer({ session, set, response, answer, attemptMeta = {},
         answer: expectedDisplay,
         assessmentMode: attempt.assessmentMode,
         attemptNumber,
-        masteryDeltaUnits,
+        masteryDeltaUnits: appliedMasteryDeltaUnits,
         masteryBefore,
         masteryDeltaPercent,
         mastery,
@@ -123,7 +124,7 @@ export function submitAnswer({ session, set, response, answer, attemptMeta = {},
         revealAnswer: revealAfterAttempt ? expectedDisplay : null,
         assessmentMode: attempt.assessmentMode,
         attemptNumber,
-        masteryDeltaUnits,
+        masteryDeltaUnits: appliedMasteryDeltaUnits,
         masteryBefore,
         masteryDeltaPercent,
         mastery
@@ -142,7 +143,7 @@ export function submitAnswer({ session, set, response, answer, attemptMeta = {},
       entered: result.displayResponse,
       answer: expectedDisplay,
       assessmentMode: attempt.assessmentMode,
-      masteryDeltaUnits,
+      masteryDeltaUnits: appliedMasteryDeltaUnits,
       masteryBefore,
       masteryDeltaPercent,
       mastery,
