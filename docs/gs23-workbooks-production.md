@@ -10,7 +10,7 @@
 
 Production descriptors use `passThreshold: 80`. At publication, both G2 and G3 workbook registries must pass through `withWorkbookAllItemsMastery`, the same contract used by G5/G6/G7. That yields `assessmentPolicy=workbook-all-items-v1`, `completionPolicy=all-items`, and `assessmentContractVersion=1`. Objective items count by accuracy; genuine open responses count by completion.
 
-There is no separate artificial 10-question Mastery quiz. Grade 2 Units contain their vocabulary support items plus 7 source activities; for the common 3-word Unit this is 10 Mastery units, so 8/10 is the 80% threshold. Unit 8 has 4 vocabulary words and therefore 11 Mastery units.
+There is no separate artificial 10-question Mastery quiz. Grade 2 Units contain their vocabulary support items plus 7 source activities; for the common 3-word Unit this is 10 Mastery units, so 8/10 is the 80% threshold. Unit 13 has 4 vocabulary words and therefore 11 Mastery units.
 
 ## Matching
 
