@@ -3,7 +3,6 @@ import {
   WORKBOOK_ALL_ITEMS_ASSESSMENT
 } from './assessmentPolicy.js';
 
-export const REVERSIBLE_MASTERY_CONTRACT_VERSION = 2;
 const HISTORICAL_WORKBOOK_EARNED_ONLY_VERSION = 1;
 
 export function masteryDeltaForAttempt({
