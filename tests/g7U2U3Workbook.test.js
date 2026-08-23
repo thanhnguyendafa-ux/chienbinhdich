@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
 import { validateSet } from '../src/data/contentValidator.js';
 import { g7U2WorkbookFolders,g7U2WorkbookRegistry } from '../src/data/g7-u2-workbook-catalog.js';
 import { g7U3WorkbookFolders,g7U3WorkbookRegistry } from '../src/data/g7-u3-workbook-catalog.js';
+import { renderQuestionInteraction } from '../src/features/drill/questionTypeRegistry.js';
 
 async function load(registry,key,prefix){const descriptor=registry.find(entry=>entry.id===`${prefix}-${key}`);assert.ok(descriptor,`missing ${prefix}-${key}`);return {descriptor,content:await descriptor.loadContent()};}
 const loadU2=key=>load(g7U2WorkbookRegistry,key,'g7-u2-wb');
@@ -11,6 +11,7 @@ const loadU3=key=>load(g7U3WorkbookRegistry,key,'g7-u3-wb');
 
 function sourceItems(content){return content.items.filter(item=>item.learningPhase==='source');}
 function phaseOrder(content){return content.items.map(item=>item.learningPhase);}
+const bankCount=html=>(html.match(/class="source-word-bank"/g)??[]).length;
 
 function assertPreloadBeforeSource(content,id){
   const phases=phaseOrder(content);const firstSource=phases.indexOf('source');
@@ -110,7 +111,14 @@ test('genuinely open discussion tasks stay open instead of inventing a single so
   }
 });
 
-test('source-word-bank enhancer includes new source banks and keeps earlier workbooks',async()=>{
-  const enhancer=await readFile(new URL('../src/features/drill/sourceWordBankEnhancer.js',import.meta.url),'utf8');
-  for(const term of ['g7U1WorkbookRegistry','g7U2WorkbookRegistry','g7U3WorkbookRegistry','g7-u2-wb-b3','g7-u2-wb-b4','g7-u3-wb-b3','g6-u3-wb-d1'])assert.match(enhancer,new RegExp(term));
+test('G7 U2/U3 source word banks render exactly once from their owner items and never leak to preload',async()=>{
+  for(const [loader,key] of [[loadU2,'b3'],[loadU2,'b4'],[loadU3,'b3']]){
+    const {content}=await loader(key);
+    const owner=sourceItems(content).find(item=>item.sourceWordBank?.length);
+    assert.ok(owner,`${key} owner`);
+    assert.equal(bankCount(renderQuestionInteraction(owner)),1,`${key} owner bank`);
+    const preload=content.items.find(item=>item.learningPhase!=='source'&&!item.sourceWordBank?.length);
+    assert.ok(preload,`${key} preload`);
+    assert.equal(bankCount(renderQuestionInteraction(preload)),0,`${key} preload leak`);
+  }
 });
