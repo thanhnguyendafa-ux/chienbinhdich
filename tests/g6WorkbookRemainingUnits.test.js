@@ -9,6 +9,7 @@ const expectedByUnit=Object.freeze({4:14,5:19,6:16,7:17,8:17,9:16,10:18,11:13,12
 const expectedQuestions=Object.freeze({4:62,5:90,6:76,7:78,8:93,9:87,10:79,11:70,12:78});
 const sourceItems = content => content.items.filter(item=>item.learningPhase==='source');
 const learnerPrompt = item => item.prompt ?? item.vi ?? item.statement ?? '';
+const unitFromLessonId = id => Number(/^g6-u(\d{2})-wb-/.exec(id)?.[1]);
 
 test('G6 U4-U12 is published through one SSOT registry with bounded lazy loaders', () => {
   assert.equal(g6WorkbookRemainingRegistry.length,148);
@@ -51,7 +52,9 @@ test('every G6 U4-U12 lesson has Grade-3 theory, exactly 4 vocab + 4 phrase MCQs
     assert.ok(phrases.every(item=>item.type==='mcq' && /^CỤM TỪ ·/.test(item.prompt)),`${descriptor.id} phrase MCQ contract`);
     const source=sourceItems(content);
     assert.equal(source.length,descriptor.sourceItemCount,descriptor.id);
-    const unit=Number(descriptor.id.slice(5,7)); counts[unit]=(counts[unit]??0)+source.length;
+    const unit=unitFromLessonId(descriptor.id);
+    assert.ok(Number.isInteger(unit) && unit>=4 && unit<=12,`invalid G6 workbook lesson id: ${descriptor.id}`);
+    counts[unit]=(counts[unit]??0)+source.length;
     for (const item of source) {
       assert.ok(item.teachingFeedback?.reason?.length>15,item.id);
       assert.ok(item.teachingFeedback?.theory?.length>15,item.id);
