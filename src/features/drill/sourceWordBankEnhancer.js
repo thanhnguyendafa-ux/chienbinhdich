@@ -1,3 +1,4 @@
+import { questionPromptDisplay } from '../../core/questionTypes.js';
 import { g5WorkbookRegistry } from '../../data/workbooks/g5/index.js';
 import { g6U1WorkbookRegistry } from '../../data/g6-u1-workbook-catalog.js';
 import { g6U2WorkbookRegistry } from '../../data/g6-u2-workbook-catalog.js';
@@ -29,7 +30,8 @@ export const SOURCE_WORD_BANK_REFERENCE_IDS = Object.freeze([
   'g7-u3-wb-b3'
 ]);
 
-const configCache = new Map();
+const contentCache = new Map();
+const inFlightPromptBlocks = new WeakSet();
 let scheduled = false;
 
 function currentLessonSlug() {
@@ -37,25 +39,45 @@ function currentLessonSlug() {
   return match ? decodeURIComponent(match[1]) : '';
 }
 
-async function sourceWordBankConfig(slug) {
-  if (configCache.has(slug)) return configCache.get(slug);
+function normalizedPrompt(value) {
+  return String(value ?? '').replace(/\s+/g, ' ').trim();
+}
+
+async function lessonContent(slug) {
+  if (contentCache.has(slug)) return contentCache.get(slug);
   const descriptor = WORKBOOK_REGISTRY.find(entry => entry.lessonSlug === slug);
   if (!descriptor) return null;
-  const content = await descriptor.loadContent();
-  const item = content.items?.find(candidate => Array.isArray(candidate.sourceWordBank) && candidate.sourceWordBank.length);
-  if (!item) return null;
-  const config = Object.freeze({
+  const pending = Promise.resolve(descriptor.loadContent()).catch(error => {
+    contentCache.delete(slug);
+    throw error;
+  });
+  contentCache.set(slug, pending);
+  return pending;
+}
+
+export function sourceWordBankConfigForPrompt(content, renderedPrompt) {
+  const prompt = normalizedPrompt(renderedPrompt);
+  if (!prompt) return null;
+  const matches = (content?.items ?? []).filter(item =>
+    Array.isArray(item?.sourceWordBank)
+    && item.sourceWordBank.length > 0
+    && normalizedPrompt(questionPromptDisplay(item)) === prompt
+  );
+  // Ambiguous prompts must never leak a bank onto the wrong item.
+  if (matches.length !== 1) return null;
+  const item = matches[0];
+  return Object.freeze({
+    itemId: String(item.id ?? ''),
     label: item.sourceWordBankLabel || 'Từ / cụm từ cho sẵn',
     words: Object.freeze([...item.sourceWordBank])
   });
-  configCache.set(slug, config);
-  return config;
 }
 
 function buildWordBank(slug, config) {
   const section = document.createElement('section');
   section.className = 'source-word-bank';
   section.dataset.sourceWordBankSlug = slug;
+  section.dataset.sourceWordBankItemId = config.itemId;
   section.setAttribute('aria-label', config.label);
 
   const label = document.createElement('p');
@@ -75,21 +97,53 @@ function buildWordBank(slug, config) {
   return section;
 }
 
+function reconcileWordBanks(promptBlock, config) {
+  const banks = [...promptBlock.querySelectorAll('.source-word-bank')];
+  let keptCurrent = false;
+  for (const bank of banks) {
+    const isCurrent = Boolean(config) && bank.dataset.sourceWordBankItemId === config.itemId;
+    if (isCurrent && !keptCurrent) {
+      keptCurrent = true;
+      continue;
+    }
+    bank.remove();
+  }
+  promptBlock.classList.toggle('has-source-word-bank', Boolean(config));
+  return keptCurrent;
+}
+
 async function applySourceWordBank() {
   const slug = currentLessonSlug();
   if (!slug) return;
 
   const promptBlock = document.querySelector('.question-card .prompt-block');
-  if (!promptBlock || promptBlock.querySelector('.source-word-bank')) return;
+  if (!promptBlock || inFlightPromptBlocks.has(promptBlock)) return;
+  const renderedPrompt = normalizedPrompt(promptBlock.querySelector('h1')?.textContent);
+  if (!renderedPrompt) {
+    reconcileWordBanks(promptBlock, null);
+    return;
+  }
 
-  const config = await sourceWordBankConfig(slug);
-  if (!config || currentLessonSlug() !== slug || !promptBlock.isConnected) return;
+  inFlightPromptBlocks.add(promptBlock);
+  try {
+    const content = await lessonContent(slug);
+    if (!content || currentLessonSlug() !== slug || !promptBlock.isConnected) return;
 
-  const bank = buildWordBank(slug, config);
-  const promptLabel = promptBlock.querySelector('.prompt-label');
-  if (promptLabel) promptLabel.insertAdjacentElement('afterend', bank);
-  else promptBlock.prepend(bank);
-  promptBlock.classList.add('has-source-word-bank');
+    // The DOM may have advanced to another question while the lazy lesson import was pending.
+    const currentPrompt = normalizedPrompt(promptBlock.querySelector('h1')?.textContent);
+    if (currentPrompt !== renderedPrompt) return;
+
+    const config = sourceWordBankConfigForPrompt(content, currentPrompt);
+    if (reconcileWordBanks(promptBlock, config) || !config) return;
+
+    const bank = buildWordBank(slug, config);
+    const promptLabel = promptBlock.querySelector('.prompt-label');
+    if (promptLabel) promptLabel.insertAdjacentElement('afterend', bank);
+    else promptBlock.prepend(bank);
+    promptBlock.classList.add('has-source-word-bank');
+  } finally {
+    inFlightPromptBlocks.delete(promptBlock);
+  }
 }
 
 function scheduleApply() {
