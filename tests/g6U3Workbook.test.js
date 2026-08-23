@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
 import { validateSet } from '../src/data/contentValidator.js';
 import { g6U3WorkbookFolders, g6U3WorkbookRegistry } from '../src/data/g6-u3-workbook-catalog.js';
+import { renderQuestionInteraction } from '../src/features/drill/questionTypeRegistry.js';
 
 const expectedKeys = ['a2','b1','b2','b3','b4','b5','b6','c1','c3','d1','d2','d3','e1','e2','e3'];
 const omittedSlugs = ['g6-u3-wb-a1','g6-u3-wb-c2'];
@@ -10,6 +10,7 @@ async function load(key) { const descriptor = g6U3WorkbookRegistry.find(entry =>
 const sourceItems = content => content.items.filter(item => item.learningPhase === 'source');
 function correctChoiceText(item) { return item.choices?.find(choice => choice.id === item.correctChoiceId)?.text ?? ''; }
 function yesWords(item) { return item.tokens.filter(token => token.correctGroupId === 'yes').map(token => token.text); }
+const bankCount = html => (html.match(/class="source-word-bank"/g) ?? []).length;
 
 test('G6 U3 workbook publishes exactly 15 approved text-based lessons under Unit 3', () => {
   assert.deepEqual(g6U3WorkbookFolders.map(folder => folder.id), ['global6-unit3','global6-unit3-workbook']);
@@ -108,7 +109,13 @@ test('no fixed long source typing answer remains where recognition or ordering i
   }
 });
 
-test('source word-bank enhancer retains Unit 3 support', async () => {
-  const enhancer = await readFile(new URL('../src/features/drill/sourceWordBankEnhancer.js', import.meta.url), 'utf8');
-  assert.match(enhancer, /g6U3WorkbookRegistry/); assert.match(enhancer, /g6-u3-wb-b3/); assert.match(enhancer, /g6-u3-wb-d1/);
+test('Unit 3 source word banks render from each owner item without lesson-level enhancer state', async () => {
+  for (const key of ['b3','d1']) {
+    const content = (await load(key)).content;
+    const owner = sourceItems(content)[0];
+    assert.equal(bankCount(renderQuestionInteraction(owner)),1,`${key} owner`);
+    const preload = content.items.find(item => item.learningPhase !== 'source' && !item.sourceWordBank?.length);
+    assert.ok(preload,`${key} preload`);
+    assert.equal(bankCount(renderQuestionInteraction(preload)),0,`${key} preload leak`);
+  }
 });
