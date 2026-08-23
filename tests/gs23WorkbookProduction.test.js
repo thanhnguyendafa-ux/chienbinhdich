@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { evaluateQuestion, questionTypeForItem, questionTypeLabel } from '../src/core/questionTypes.js';
 import { validateSet } from '../src/data/contentValidator.js';
 import { withWorkbookAllItemsMastery, WORKBOOK_ALL_ITEMS_ASSESSMENT } from '../src/core/assessmentPolicy.js';
@@ -56,6 +57,16 @@ test('Grade 2 interaction budget is enforced by produced content', async()=>{
     }
   }
   assert.equal(gs23WorkbookProductionAudit.ux.dragOnly,false);
+});
+
+test('primary-school interaction CSS is loaded and protects touch/mobile layouts',()=>{
+  const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');
+  const css=readFileSync(new URL('../styles/gs23-primary.css',import.meta.url),'utf8');
+  assert.ok(html.indexOf('/styles/gs23-primary.css')>html.indexOf('/styles/question-types.css'));
+  assert.match(css,/\.classification-token\{min-height:48px/);
+  assert.match(css,/\.classification-group-target\{min-height:48px/);
+  assert.match(css,/@media \(max-width:640px\)/);
+  assert.match(css,/orientation:landscape/);
 });
 
 test('published-style all-items mastery contract is identical to G5/G6/G7 policy', async()=>{
