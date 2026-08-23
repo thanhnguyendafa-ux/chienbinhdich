@@ -1,0 +1,69 @@
+name: Export production workbook PDFs
+
+on:
+  push:
+    branches:
+      - export/workbook-pdfs-20260823
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      PRODUCTION_SHA: 9d122b708f4519f9c54d0b384f6489d82dedd358
+      PRODUCTION_ORIGIN: https://chien-binh-dich.vercel.app
+      EXPORT_OUT: workbook-export-data
+      PDF_OUT: workbook-pdf-export
+    steps:
+      - name: Checkout export branch
+        uses: actions/checkout@v4
+      - name: Use Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Use Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Export live production workbook corpus from repository SSOT
+        run: node scripts/exportWorkbookCorpus.mjs
+      - name: Install PDF renderer dependencies
+        run: python -m pip install --disable-pip-version-check reportlab pypdf
+      - name: Render one PDF per workbook lesson plus five grade masters
+        run: python scripts/runWorkbookPdfExport.py
+      - name: Verify PDF corpus and package grade bundles
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          from pypdf import PdfReader
+          root=Path('workbook-pdf-export')
+          pdfs=sorted(root.rglob('*.pdf'))
+          assert len(pdfs)==424, f'expected 424 PDFs, got {len(pdfs)}'
+          bad=[]
+          for p in pdfs:
+              try:
+                  r=PdfReader(str(p))
+                  if len(r.pages)<1: bad.append(str(p))
+              except Exception as e:
+                  bad.append(f'{p}: {e}')
+          assert not bad, '\n'.join(bad[:20])
+          print(f'PDF validation PASS: {len(pdfs)} readable PDFs')
+          PY
+          for g in 2 3 5 6 7; do
+            (cd workbook-pdf-export && zip -qr "Global_Success_${g}_SBT_PDF_BUNDLE.zip" "Global_Success_${g}")
+          done
+          (cd workbook-pdf-export && sha256sum AUDIT_REPORT.pdf Global_Success_*_SBT_PDF_BUNDLE.zip Global_Success_*/Global_Success_*_SBT_FULL_CONTENT_ANSWERS.pdf > SHA256SUMS.txt)
+          cp workbook-export-data/audit.md workbook-pdf-export/CORPUS_AUDIT.md
+          cp workbook-export-data/index.csv workbook-pdf-export/CORPUS_INDEX.csv
+      - name: Upload complete audited export
+        uses: actions/upload-artifact@v4
+        with:
+          name: global-success-2-3-5-6-7-sbt-production-pdfs
+          path: workbook-pdf-export
+          if-no-files-found: error
+          retention-days: 7
