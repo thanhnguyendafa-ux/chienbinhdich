@@ -24,7 +24,7 @@ export function renderReport({ root, session, set, onRetry, onHome }) {
   const reading = deriveReadingDiagnostics(session, set);
   const writing = deriveSentenceOrderDiagnostics(session, set);
   const classification = deriveClassificationDiagnostics(session, set);
-  const transitions = getMasteryTransitions(session.attempts, set.items.length);
+  const transitions = getMasteryTransitions(session.attempts, metrics.masteryTotal);
   const itemById = new Map(set.items.map(item => [item.id, item]));
   const submitted = session.status === 'submitted';
   const abandoned = session.status === 'abandoned';
@@ -58,11 +58,16 @@ export function renderReport({ root, session, set, onRetry, onHome }) {
         ${writing.total ? renderWritingDiagnostics(writing) : ''}
         ${classification.total ? renderClassificationDiagnostics(classification) : ''}
 
+        ${metricSection('Chi tiết Mastery', [
+          [['Mastery units', `${metrics.masteryEarned}/${metrics.masteryTotal}`], ['Mastery %', `${formatPercent(metrics.mastery)}%`], ['Mục tiêu PASS', `${formatPercent(metrics.passThreshold)}%`]],
+          [['Accuracy', `${metrics.accuracyEarned}/${metrics.accuracyTotal}`], ['Completion', `${metrics.completionEarned}/${metrics.completionTotal}`], ['Không tính điểm', metrics.unscoredTotal]]
+        ])}
+
         ${metricSection('Chi tiết quá trình học', [
           [['Tổng lượt trả lời', metrics.totalAttempts], ['Retrieval đúng', metrics.retrievalSuccesses], ['Retrieval sai', metrics.retrievalErrors]],
-          [['Correction', metrics.corrections], ['Lượt gặp lại', metrics.retryCount], ['Đã hiện đáp án', metrics.revealedCount]],
-          [['Chuỗi chính', `${metrics.completedMainItems}/${metrics.total}`], ['Mastery lúc đạt', metrics.masteryAtQualification === null ? '—' : `${formatPercent(metrics.masteryAtQualification)}%`], ['Luyện thêm', metrics.extendedPractice ? 'Có' : 'Không']],
-          [['Lượt luyện thêm', metrics.extendedAttempts]]
+          [['Completion credit', metrics.completionCredits], ['Correction', metrics.corrections], ['Lượt gặp lại', metrics.retryCount]],
+          [['Đã hiện đáp án', metrics.revealedCount], ['Chuỗi chính', `${metrics.completedMainItems}/${metrics.total}`], ['Mastery lúc đạt', metrics.masteryAtQualification === null ? '—' : `${formatPercent(metrics.masteryAtQualification)}%`]],
+          [['Luyện thêm', metrics.extendedPractice ? 'Có' : 'Không'], ['Lượt luyện thêm', metrics.extendedAttempts]]
         ])}
 
         ${metricSection('Thời gian chi tiết', [
@@ -74,7 +79,7 @@ export function renderReport({ root, session, set, onRetry, onHome }) {
         ${renderIntegrityWarningMetrics(integrity)}
         ${renderOutcome({ submitted, abandoned, metrics, set })}
 
-        <section class="process-note"><strong>Lưu ý khi đọc dữ liệu</strong><p>Đúng/Sai ở phần đầu báo cáo được tính theo lần trả lời đầu tiên của từng câu trong chuỗi chính. Reading, Writing Select + Order và Classification diagnostic cũng chỉ tính lần đầu; retry và correction không làm tăng số lỗi. Với Classification, “token xếp nhầm” là số mục bị đặt sai nhóm trong các câu phân loại. Copy/Paste, chuyển tab và phản hồi rất nhanh chỉ là dữ liệu quá trình, không tự động bị coi là gian lận. “Chuyển tab” được tính khi trang học chuyển sang trạng thái hidden; hệ thống không biết học sinh đã mở trang hoặc ứng dụng nào. Với phiên có Integrity Warning, học sinh được hiện cảnh báo blocking và phải bấm “Tôi đã nắm thông tin” trước khi tiếp tục; việc xác nhận cũng được lưu vào báo cáo.</p></section>
+        <section class="process-note"><strong>Lưu ý khi đọc dữ liệu</strong><p>Mastery dùng toàn bộ câu thuộc contract của phiên làm bài. Với contract workbook mới, mỗi câu là 1 Mastery unit: câu có đáp án dùng Accuracy; bài mở hoặc tự luyện dùng Completion và được ghi “HOÀN THÀNH”, không giả thành đúng/sai nội dung hay phát âm. Accuracy ở phần đầu báo cáo tính theo lần trả lời đầu tiên của từng câu trong chuỗi chính; retry và correction không cộng thêm unit. Reading, Writing Select + Order và Classification diagnostic cũng chỉ tính lần đầu. Copy/Paste, chuyển tab và phản hồi rất nhanh chỉ là dữ liệu quá trình, không tự động bị coi là gian lận. “Chuyển tab” được tính khi trang học chuyển sang trạng thái hidden; hệ thống không biết học sinh đã mở trang hoặc ứng dụng nào.</p></section>
 
         <section class="timeline-section">
           <div class="timeline-heading"><div><p class="report-kicker">ACTIVITY TIMELINE</p><h2>Lịch sử làm bài và chuyển tab · cảnh báo</h2></div><span>${timelineCountLabel(session, integrity)}</span></div>
@@ -98,11 +103,11 @@ function renderAssignmentHero({ session, set, summary, analytics, integrity }) {
       ${keyResult('Trạng thái', statusLabel(summary.status), statusNote(summary), `status-${summary.status}`)}
       ${keyResult('Copy/Paste', copyPasteValue(integrity, analytics), copyPasteNote(integrity, analytics), integritySignalClass(integrity.trackingAvailable ? integrity.pasteCount + integrity.copyCount : analytics.pasteCount))}
       ${keyResult('Chuyển tab', tabSwitchValue(integrity), tabSwitchNote(integrity), integritySignalClass(integrity.tabSwitchCount))}
-      ${keyResult('Mastery', `${formatPercent(summary.mastery)}%`, `Mục tiêu ${set.passThreshold}%`)}
+      ${keyResult('Mastery', `${summary.masteryEarned}/${summary.masteryTotal} · ${formatPercent(summary.mastery)}%`, `Mục tiêu ${set.passThreshold}%`)}
       ${keyResult('Tổng thời gian', formatDuration(summary.durationMs), 'Thời gian làm bài')}
     </div>
     <div class="report-question-results" aria-label="Kết quả câu hỏi">
-      ${questionResult('Tổng số câu', summary.totalItems)}${questionResult('Đã làm', summary.attemptedItems)}${questionResult('Đúng', summary.correctFirstTry, 'Lần đầu')}${questionResult('Sai', summary.wrongFirstTry, 'Lần đầu')}
+      ${questionResult('Tổng số câu', summary.totalItems)}${questionResult('Đã làm', summary.attemptedItems)}${questionResult('Accuracy đúng', summary.correctFirstTry, 'Lần đầu')}${questionResult('Accuracy chưa đạt', summary.wrongFirstTry, 'Lần đầu')}${questionResult('Completion', summary.completedFirstTry, 'Hoàn thành')}
     </div>
   </section>`;
 }
@@ -206,16 +211,21 @@ function renderActivityTimeline({ analytics, integrity, itemById, transitions })
 }
 
 function renderAttempt(attempt, item, impact) {
+  const completion = attempt.masteryMode === 'completion';
   const correction = attempt.result === 'correction';
-  const status = correction ? 'SỬA ĐÚNG' : (attempt.correct ? 'ĐÚNG' : 'SAI');
+  const status = completion
+    ? (attempt.completed === true || attempt.masteryAchieved === true ? 'HOÀN THÀNH' : 'CHƯA HOÀN THÀNH')
+    : correction
+      ? 'SỬA ĐÚNG'
+      : (attempt.correct ? 'ĐÚNG' : 'SAI');
   const flags = (attempt.flags ?? []).map(flag => `<span class="attempt-flag">${flagLabel(flag)}</span>`).join('');
   const impactLabel = impact > 0 ? `+${formatPercent(impact)}%` : impact < 0 ? `−${formatPercent(Math.abs(impact))}%` : '0%';
   const typeLabel = item?.stage ? stageLabel(item.stage) : questionTypeLabel(attempt.questionType ?? item);
   const writingDiagnostic = diagnoseSentenceOrder(item, attempt.submittedResponse);
   const classificationSummary = classificationAttemptSummary(item, attempt.submittedResponse);
   return `<li class="attempt-row"><div class="attempt-time"><strong>${formatClockTime(attempt.submittedAt)}</strong><span>${formatResponseDuration(attempt.responseDurationMs)}</span></div><div class="attempt-body">
-    <div class="attempt-meta"><span>${esc(typeLabel)}</span><span>${promptKindLabel(attempt.promptKind)}</span><span>Lần ${attempt.attemptNumber}</span><strong class="attempt-status">${status}</strong><strong class="mastery-impact">Mastery ${impactLabel}</strong></div>
-    <p class="attempt-prompt">${esc(questionPromptDisplay(item) || attempt.itemId)}</p><div class="attempt-answer"><span>Trả lời:</span> <code>${esc(attempt.submittedAnswer || '(trống)')}</code></div>
+    <div class="attempt-meta"><span>${esc(typeLabel)}</span><span>${promptKindLabel(attempt.promptKind)}</span><span>${completion ? 'COMPLETION' : `Lần ${attempt.attemptNumber}`}</span><strong class="attempt-status">${status}</strong><strong class="mastery-impact">Mastery ${impactLabel}</strong></div>
+    <p class="attempt-prompt">${esc(questionPromptDisplay(item) || attempt.itemId)}</p><div class="attempt-answer"><span>${completion ? 'Nội dung/xác nhận:' : 'Trả lời:'}</span> <code>${esc(attempt.submittedAnswer || '(trống)')}</code></div>
     ${writingDiagnostic && writingDiagnostic.code !== 'correct' ? `<div class="attempt-flags"><span class="attempt-flag">WRITING · ${esc(sentenceOrderDiagnosticLabel(writingDiagnostic.code))}</span></div>` : ''}
     ${classificationSummary ? `<div class="attempt-flags"><span class="attempt-flag">PHÂN LOẠI · ${esc(classificationSummary)}</span></div>` : ''}
     ${flags ? `<div class="attempt-flags">${flags}</div>` : ''}</div></li>`;
@@ -266,9 +276,9 @@ function timelineCountLabel(session, integrity) {
 function renderOutcome({ submitted, abandoned, metrics, set }) {
   if (submitted) {
     const extra = metrics.extendedPractice ? `Học sinh đã chọn Làm tiếp sau khi đạt mục tiêu và luyện thêm ${metrics.extendedAttempts} lượt trước khi nộp.` : 'Học sinh đã nộp ngay sau khi đạt mục tiêu.';
-    return `<section class="report-outcome"><strong>Bài đã được đánh dấu là PASS và đã nộp</strong><p>Mastery cuối ${formatPercent(metrics.mastery)}%. Chuỗi chính ${metrics.completedMainItems}/${metrics.total}. ${extra} Có thể bấm In báo cáo ở thanh công cụ phía trên để in hoặc lưu PDF và gửi cho ${esc(set.teacher)}.</p></section>`;
+    return `<section class="report-outcome"><strong>Bài đã được đánh dấu là PASS và đã nộp</strong><p>Mastery cuối ${metrics.masteryEarned}/${metrics.masteryTotal} = ${formatPercent(metrics.mastery)}%. Accuracy ${metrics.accuracyEarned}/${metrics.accuracyTotal}; Completion ${metrics.completionEarned}/${metrics.completionTotal}. Chuỗi chính ${metrics.completedMainItems}/${metrics.total}. ${extra} Có thể bấm In báo cáo ở thanh công cụ phía trên để in hoặc lưu PDF và gửi cho ${esc(set.teacher)}.</p></section>`;
   }
-  if (abandoned) return `<section class="report-outcome"><strong>Trạng thái: BỎ CUỘC</strong><p>Học sinh đã chọn Bỏ cuộc ở Mastery ${formatPercent(metrics.mastery)}%. Báo cáo vẫn giữ tổng thời gian và toàn bộ lịch sử làm bài.</p></section>`;
+  if (abandoned) return `<section class="report-outcome"><strong>Trạng thái: BỎ CUỘC</strong><p>Học sinh đã chọn Bỏ cuộc ở Mastery ${metrics.masteryEarned}/${metrics.masteryTotal} = ${formatPercent(metrics.mastery)}%. Báo cáo vẫn giữ tổng thời gian và toàn bộ lịch sử làm bài.</p></section>`;
   return '';
 }
 
