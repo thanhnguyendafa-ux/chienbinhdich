@@ -34,3 +34,12 @@ test('ImageKit workflow uses GitHub secret and cannot publish canonical paths fr
   assert.match(smoke,/mediaManifest/);
   assert.match(smoke,/mediaAssetUrl/);
 });
+
+test('production CSP permits only the ImageKit origin required by image and audio media',()=>{
+  const vercel=JSON.parse(readFileSync(new URL('../vercel.json',import.meta.url),'utf8'));
+  const csp=vercel.headers.flatMap(entry=>entry.headers).find(header=>header.key==='Content-Security-Policy')?.value??'';
+  assert.match(csp,/img-src 'self' data: https:\/\/ik\.imagekit\.io;/);
+  assert.match(csp,/media-src 'self' https:\/\/ik\.imagekit\.io;/);
+  assert.doesNotMatch(csp,/img-src[^;]*\*/);
+  assert.doesNotMatch(csp,/media-src[^;]*\*/);
+});
