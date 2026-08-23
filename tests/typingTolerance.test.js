@@ -71,7 +71,7 @@ test('session snapshots typing tolerance so later Admin changes do not change gr
   };
   const startedLesson = applyLessonMasterySetting(staticLesson, null);
   const session = createSession({ studentName: 'Lan', set: startedLesson, now: 1 });
-  assert.equal(session.schemaVersion, 7);
+  assert.equal(session.schemaVersion, 8);
   assert.equal(session.typingToleranceAtStart, true);
 
   const adminChangedLesson = applyLessonMasterySetting(staticLesson, { typingTolerance: false });
