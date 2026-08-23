@@ -22,12 +22,16 @@ test('media manifest is immutable, local, hashed, and valid for image plus audio
   assert.ok(mediaManifest.assets.every(asset=>!asset.remotePath.includes('://')));
 });
 
-test('ImageKit workflow uses GitHub secret and cannot publish canonical paths from feature branches',()=>{
+test('ImageKit workflow uses GitHub secret, isolates feature branches, and publishes an auditable main status',()=>{
   const workflow=readFileSync(new URL('../.github/workflows/imagekit-media-sync.yml',import.meta.url),'utf8');
   const sync=readFileSync(new URL('../scripts/syncImageKitMedia.mjs',import.meta.url),'utf8');
   const smoke=readFileSync(new URL('../media-smoke.html',import.meta.url),'utf8');
   assert.match(workflow,/secrets\.IMAGEKIT_PRIVATE_KEY/);
   assert.match(workflow,/refs\/heads\/main/);
+  assert.match(workflow,/statuses:\s*write/);
+  assert.match(workflow,/ImageKit media/);
+  assert.match(workflow,/Canonical ImageKit image\/audio sync verified/);
+  assert.match(workflow,/statuses\/\$GITHUB_SHA/);
   assert.match(sync,/mode === 'production'/);
   assert.match(sync,/__pipeline-smoke/);
   assert.doesNotMatch(sync,/private_[A-Za-z0-9]/);
