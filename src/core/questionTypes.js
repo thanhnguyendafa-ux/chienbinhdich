@@ -17,7 +17,7 @@ const DEFAULT_TYPING_UI = Object.freeze({
   placeholder: 'Type English here...'
 });
 
-export const SUPPORTED_QUESTION_TYPES = Object.freeze([...Object.keys(evaluators), 'matching']);
+export const SUPPORTED_QUESTION_TYPES = Object.freeze(Object.keys(evaluators));
 
 export function questionTypeForItem(item) {
   // Matching is a first-class semantic content type. It deliberately reuses the
