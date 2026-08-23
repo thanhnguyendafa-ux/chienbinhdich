@@ -1,3 +1,4 @@
+import { assessmentSetForSession, scoredItemCount, MASTERY_MODE_COMPLETION } from './assessmentPolicy.js';
 import { masteryDisplayPercent } from './masteryEngine.js';
 
 export function deriveAssignmentSummary(session = {}, set = {}, now = Date.now()) {
@@ -15,11 +16,21 @@ export function deriveAssignmentSummary(session = {}, set = {}, now = Date.now()
   }
 
   const firstMainAttempts = [...firstMainAttemptByItem.values()];
-  const correctFirstTry = firstMainAttempts.filter(attempt => attempt.correct === true).length;
-  const wrongFirstTry = firstMainAttempts.filter(attempt => attempt.correct !== true).length;
+  const accuracyAttempts = firstMainAttempts.filter(attempt => attempt.masteryMode !== MASTERY_MODE_COMPLETION);
+  const completionAttempts = firstMainAttempts.filter(attempt => attempt.masteryMode === MASTERY_MODE_COMPLETION);
+  const correctFirstTry = accuracyAttempts.filter(attempt => attempt.correct === true).length;
+  const wrongFirstTry = accuracyAttempts.filter(attempt => attempt.correct === false).length;
+  const completedFirstTry = completionAttempts.filter(attempt => attempt.completed === true || attempt.masteryAchieved === true).length;
+  const incompleteFirstTry = completionAttempts.filter(attempt => attempt.completed === false || attempt.masteryAchieved === false).length;
   const attemptedItems = firstMainAttempts.length;
   const totalItems = items.length;
   const unansweredItems = Math.max(0, totalItems - attemptedItems);
+  const assessmentSet = assessmentSetForSession(session, set);
+  const masteryTotal = scoredItemCount(assessmentSet);
+  const masteryEarned = Math.min(
+    masteryTotal,
+    Math.max(0, attempts.reduce((total, attempt) => total + Number(attempt.masteryDeltaUnits ?? 0), 0))
+  );
   const startedAt = finiteTimestamp(session?.startedAt) ?? finiteTimestamp(now) ?? 0;
   const endedAt = finiteTimestamp(session?.completedAt)
     ?? finiteTimestamp(session?.submittedAt)
@@ -31,8 +42,12 @@ export function deriveAssignmentSummary(session = {}, set = {}, now = Date.now()
     attemptedItems,
     correctFirstTry,
     wrongFirstTry,
+    completedFirstTry,
+    incompleteFirstTry,
     unansweredItems,
-    mastery: masteryDisplayPercent(attempts, totalItems),
+    masteryTotal,
+    masteryEarned,
+    mastery: masteryDisplayPercent(attempts, masteryTotal),
     durationMs: Math.max(0, endedAt - startedAt),
     status: assignmentStatus(session?.status)
   };

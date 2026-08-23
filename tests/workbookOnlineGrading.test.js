@@ -1,17 +1,29 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { isScoredItem, scoredItemCount } from '../src/core/assessmentPolicy.js';
+import {
+  assessmentSetForSession,
+  isScoredItem,
+  masteryModeForItem,
+  scoredItemCount,
+  MASTERY_MODE_ACCURACY,
+  MASTERY_MODE_COMPLETION,
+  SOURCE_ONLY_ASSESSMENT,
+  WORKBOOK_ALL_ITEMS_ASSESSMENT
+} from '../src/core/assessmentPolicy.js';
 import { expectedResponseDisplay } from '../src/core/questionTypes.js';
-import { createSession, getSessionMetrics, submitAnswer } from '../src/core/sessionMachine.js';
+import { createSession, getSessionMetrics, qualifySessionIfEligible, submitAnswer } from '../src/core/sessionMachine.js';
 import { lessonRegistry } from '../src/data/publishedLessonCatalog.js';
 import { g5WorkbookRegistry } from '../src/data/workbooks/g5/index.js';
 import { g6U1WorkbookRegistry } from '../src/data/g6-u1-workbook-catalog.js';
 import { g6U2WorkbookRegistry } from '../src/data/g6-u2-workbook-catalog.js';
 import { g6U3WorkbookRegistry } from '../src/data/g6-u3-workbook-catalog.js';
 import { g6WorkbookRemainingRegistry } from '../src/data/workbooks/g6/index.js';
+import { g7U1WorkbookRegistry } from '../src/data/g7-u1-workbook-catalog.js';
+import { g7U2WorkbookRegistry } from '../src/data/g7-u2-workbook-catalog.js';
+import { g7U3WorkbookRegistry } from '../src/data/g7-u3-workbook-catalog.js';
 
 const sourceItems = content => content.items.filter(item => item.learningPhase === 'source');
-const publishedWorkbook = lessonRegistry.filter(entry => /^g[56]-u\d{1,2}-wb-/.test(entry.id));
+const publishedWorkbook = lessonRegistry.filter(entry => /^g[567]-u\d{1,2}-wb-/.test(entry.id));
 
 function byId(registry,id) {
   const descriptor=registry.find(entry=>entry.id===id);
@@ -19,109 +31,192 @@ function byId(registry,id) {
   return descriptor;
 }
 
-test('published G5/G6 workbooks use source-only graded assessment with real 80% qualification', () => {
+function publishedById(id) {
+  return byId(publishedWorkbook,id);
+}
+
+test('all 378 published G5/G6/G7 workbook lessons use one all-items mastery contract', () => {
   const g5=publishedWorkbook.filter(entry=>entry.id.startsWith('g5-'));
   const g6=publishedWorkbook.filter(entry=>entry.id.startsWith('g6-'));
+  const g7=publishedWorkbook.filter(entry=>entry.id.startsWith('g7-'));
   assert.equal(g5.length,141);
   assert.equal(g6.length,192);
+  assert.equal(g7.length,45);
+  assert.equal(publishedWorkbook.length,378);
   for(const descriptor of publishedWorkbook) {
-    assert.equal(descriptor.assessmentPolicy,'source-only',descriptor.id);
+    assert.equal(descriptor.assessmentPolicy,WORKBOOK_ALL_ITEMS_ASSESSMENT,descriptor.id);
+    assert.equal(descriptor.assessmentContractVersion,1,descriptor.id);
     assert.equal(descriptor.completionPolicy,'all-items',descriptor.id);
     assert.equal(descriptor.passThreshold,80,descriptor.id);
-    assert.match(descriptor.assessmentLabel,/Điểm SBT chỉ tính câu nguồn/);
+    assert.match(descriptor.assessmentLabel,/Mastery tính tất cả câu/);
   }
 });
 
-test('all 333 G5/G6 workbook lessons score only deterministic source interactions', async () => {
-  let unscoredOpen=0;
-  let scoredSource=0;
-  let completionOnlyLessons=0;
-  let objectivelyGradedLessons=0;
+test('378/378 workbook lessons put every visible item in the Mastery denominator', async () => {
+  const census={
+    g5:{lessons:0,items:0,accuracy:0,completion:0},
+    g6:{lessons:0,items:0,accuracy:0,completion:0},
+    g7:{lessons:0,items:0,accuracy:0,completion:0}
+  };
+
   for(const descriptor of publishedWorkbook) {
     const content=await descriptor.loadContent();
     const set={...descriptor,...content};
-    const graded=scoredItemCount(set);
-    if(graded===0) completionOnlyLessons+=1;
-    else objectivelyGradedLessons+=1;
+    const grade=descriptor.id.slice(0,2);
+    census[grade].lessons+=1;
+    census[grade].items+=content.items.length;
+    assert.equal(scoredItemCount(set),content.items.length,`${descriptor.id}: mastery denominator must equal items.length`);
+
     for(const item of content.items) {
-      if(item.learningPhase==='vocab'||item.learningPhase==='phrase') {
-        assert.equal(isScoredItem(set,item),false,`${item.id} preload must be unscored`);
+      assert.equal(isScoredItem(set,item),true,`${item.id}: every workbook item must count`);
+      assert.equal(item.assessmentMode,'scored',`${item.id}: published item must not remain unscored`);
+      const mode=masteryModeForItem(set,item);
+      assert.ok([MASTERY_MODE_ACCURACY,MASTERY_MODE_COMPLETION].includes(mode),`${item.id}: invalid masteryMode`);
+      assert.equal(item.masteryMode,mode,`${item.id}: published content must carry explicit masteryMode`);
+      census[grade][mode]+=1;
+      if(mode===MASTERY_MODE_ACCURACY) {
+        assert.ok(expectedResponseDisplay(item).length>0,`${item.id}: accuracy item needs deterministic expected response`);
       }
-      if(item.responseMode==='open'||item.assessmentMode==='unscored') {
-        unscoredOpen+=1;
-        assert.equal(isScoredItem(set,item),false,`${item.id} open/practice must be unscored`);
-      }
-      if(item.learningPhase==='source' && isScoredItem(set,item)) {
-        scoredSource+=1;
-        assert.notEqual(item.responseMode,'open',item.id);
-        assert.ok(expectedResponseDisplay(item).length>0,`${item.id} needs deterministic expected response`);
-      }
-    }
-    if(graded===0) {
-      assert.ok(sourceItems(content).length>0,`${descriptor.id} completion-only lesson still needs source practice`);
-      assert.ok(sourceItems(content).every(item=>!isScoredItem(set,item)),`${descriptor.id} must not hide a gradable source item`);
     }
   }
-  assert.equal(objectivelyGradedLessons,284,'audited lessons with at least one objectively gradable source interaction');
-  assert.equal(completionOnlyLessons,49,'audited open/pronunciation-only lessons');
-  assert.equal(objectivelyGradedLessons+completionOnlyLessons,333);
-  assert.ok(unscoredOpen>0,'expected real open workbook tasks to remain available but unscored');
-  assert.ok(scoredSource>500,`expected broad graded source coverage, got ${scoredSource}`);
+
+  assert.equal(census.g5.completion,0,'G5 controlled adaptations should remain objective');
+  assert.equal(census.g7.completion,33,'audited G7 open/pronunciation source interactions');
+  assert.ok(census.g6.completion>0,'G6 must include real completion-mode open/pronunciation practice');
+  assert.equal(census.g5.lessons+census.g6.lessons+census.g7.lessons,378);
+  console.log('WORKBOOK_MASTERY_CENSUS',JSON.stringify(census));
 });
 
-test('preload and open practice complete without changing Mastery; source answer alone earns the score', () => {
+test('Mastery is earned units divided by all questions, including completion items', () => {
   const set={
-    id:'grading-contract',version:1,passThreshold:80,typingTolerance:true,
-    completionPolicy:'all-items',assessmentPolicy:'source-only',
+    id:'g6-u99-wb-contract',version:1,passThreshold:80,typingTolerance:true,
+    completionPolicy:'all-items',assessmentPolicy:WORKBOOK_ALL_ITEMS_ASSESSMENT,assessmentContractVersion:1,
     items:[
-      {id:'vocab',type:'mcq',learningPhase:'vocab',choices:[{id:'A',text:'x'}],correctChoiceId:'A'},
-      {id:'open',type:'typing',learningPhase:'source',responseMode:'open',vi:'Write about you',en:'personal answer'},
-      {id:'source',type:'mcq',learningPhase:'source',choices:[{id:'A',text:'wrong'},{id:'B',text:'right'}],correctChoiceId:'B'}
+      {id:'v1',type:'mcq',learningPhase:'vocab',masteryMode:'accuracy',choices:[{id:'A',text:'right'},{id:'B',text:'wrong'}],correctChoiceId:'A'},
+      {id:'p1',type:'mcq',learningPhase:'phrase',masteryMode:'accuracy',choices:[{id:'A',text:'right'},{id:'B',text:'wrong'}],correctChoiceId:'A'},
+      {id:'s1',type:'mcq',learningPhase:'source',masteryMode:'accuracy',choices:[{id:'A',text:'right'},{id:'B',text:'wrong'}],correctChoiceId:'A'},
+      {id:'open',type:'typing',learningPhase:'source',masteryMode:'completion',responseMode:'open',vi:'Write about you',en:'sample'},
+      {id:'s2',type:'mcq',learningPhase:'source',masteryMode:'accuracy',choices:[{id:'A',text:'right'},{id:'B',text:'wrong'}],correctChoiceId:'A'}
     ]
   };
   let session=createSession({studentName:'Lan',set,now:1});
-  let result=submitAnswer({session,set,response:'A',now:2});
-  session=result.session;
-  assert.equal(result.event.mastery,0);
-  assert.equal(result.event.assessmentMode,'unscored');
-  result=submitAnswer({session,set,response:'My own answer',now:3});
-  session=result.session;
-  assert.equal(result.event.mastery,0);
-  assert.equal(result.event.assessmentMode,'unscored');
-  result=submitAnswer({session,set,response:'B',now:4});
-  session=result.session;
-  assert.equal(result.event.mastery,100);
-  assert.equal(result.event.assessmentMode,'scored');
-  assert.equal(session.status,'passed');
-  const metrics=getSessionMetrics(session,set,5);
-  assert.equal(metrics.gradedTotal,1);
-  assert.equal(metrics.unscoredTotal,2);
-  assert.equal(metrics.mastery,100);
-  assert.deepEqual(session.attempts.map(attempt=>attempt.masteryDeltaUnits),[0,0,1]);
+  for(const response of ['A','A','A','My answer','B']) {
+    const result=submitAnswer({session,set,response,now:(session.attempts.length+2)});
+    session=result.session;
+  }
+  const metrics=getSessionMetrics(session,set,20);
+  assert.equal(metrics.masteryTotal,5);
+  assert.equal(metrics.masteryEarned,4);
+  assert.equal(metrics.mastery,80);
+  assert.equal(metrics.accuracyEarned,3);
+  assert.equal(metrics.accuracyTotal,4);
+  assert.equal(metrics.completionEarned,1);
+  assert.equal(metrics.completionTotal,1);
+  assert.equal(metrics.unscoredTotal,0);
+  assert.equal(session.attempts[3].masteryMode,'completion');
+  assert.equal(session.attempts[3].correct,null,'completion must not fake correctness');
+  assert.equal(session.attempts[3].completed,true);
+  assert.equal(session.attempts[3].result,'completion_success');
+  session=qualifySessionIfEligible(session,set);
+  assert.equal(session.status,'passed','4/5 = 80% after all five questions were attempted');
 });
 
-test('graded workbook cannot pass below 80 percent even after all items were attempted', () => {
+test('below 80 percent cannot PASS even after every question was attempted', () => {
   const items=Array.from({length:5},(_,index)=>({
-    id:`q${index+1}`,type:'mcq',learningPhase:'source',choices:[{id:'A',text:'wrong'},{id:'B',text:'right'}],correctChoiceId:'B'
+    id:`q${index+1}`,type:'mcq',learningPhase:'source',masteryMode:'accuracy',choices:[{id:'A',text:'wrong'},{id:'B',text:'right'}],correctChoiceId:'B'
   }));
-  const set={id:'threshold-contract',version:1,passThreshold:80,completionPolicy:'all-items',assessmentPolicy:'source-only',items};
+  const set={id:'g5-u99-wb-threshold',version:1,passThreshold:80,completionPolicy:'all-items',assessmentPolicy:WORKBOOK_ALL_ITEMS_ASSESSMENT,items};
   let session=createSession({studentName:'Minh',set,now:1});
   for(let index=0;index<5;index+=1) {
-    const response=index<2?'A':'B';
-    const result=submitAnswer({session,set,response,now:index+2});
+    const result=submitAnswer({session,set,response:index<2?'A':'B',now:index+2});
     session=result.session;
-    if(index<4 && !result.event.passed) {
-      while(session.currentPromptKind==='retry') {
-        const retry=submitAnswer({session,set,response:'B',now:index+20});
-        session=retry.session;
-      }
+    if(index<4 && result.event.type==='incorrect_retry') {
+      const retry=submitAnswer({session,set,response:'B',now:index+20});
+      session=retry.session;
     }
   }
-  assert.ok(getSessionMetrics(session,set,50).mastery<80);
+  const metrics=getSessionMetrics(session,set,50);
+  assert.equal(metrics.masteryEarned,3);
+  assert.equal(metrics.masteryTotal,5);
+  assert.equal(metrics.mastery,60);
+  session=qualifySessionIfEligible(session,set);
   assert.notEqual(session.status,'passed');
 });
 
-test('G5 source word bank stays visible in item metadata and known U4 ambiguities are corrected', async () => {
+test('completion failure does not reveal a fake answer and completion success earns one unit', () => {
+  const set={
+    id:'g7-u99-wb-open',version:1,passThreshold:80,typingTolerance:true,
+    completionPolicy:'all-items',assessmentPolicy:WORKBOOK_ALL_ITEMS_ASSESSMENT,
+    items:[{id:'open',type:'typing',learningPhase:'source',masteryMode:'completion',responseMode:'open',vi:'Write one idea',en:'sample answer'}]
+  };
+  let session=createSession({studentName:'An',set,now:1});
+  let result=submitAnswer({session,set,response:'',now:2});
+  session=result.session;
+  assert.equal(result.event.type,'completion_retry');
+  assert.equal(result.event.mastery,0);
+  assert.equal(session.attempts[0].correct,null);
+  assert.equal(session.attempts[0].completed,false);
+  assert.equal(session.attempts[0].answerRevealedAfterAttempt,false);
+  result=submitAnswer({session,set,response:'My own idea',now:3});
+  session=result.session;
+  assert.equal(result.event.type,'completion_success');
+  assert.equal(result.event.mastery,100);
+  assert.equal(session.attempts[1].correct,null);
+  assert.equal(session.attempts[1].completed,true);
+  assert.equal(session.attempts[1].masteryDeltaUnits,1);
+});
+
+test('session schema 8 snapshots the contract while schema 7 sessions keep their historical grading law', () => {
+  const newSet={
+    id:'g5-u01-wb-demo',version:1,passThreshold:80,completionPolicy:'all-items',assessmentPolicy:WORKBOOK_ALL_ITEMS_ASSESSMENT,
+    items:[{id:'vocab',type:'mcq',learningPhase:'vocab',assessmentMode:'scored',masteryMode:'accuracy',choices:[{id:'A',text:'x'}],correctChoiceId:'A'}]
+  };
+  const fresh=createSession({studentName:'Mai',set:newSet,now:1});
+  assert.equal(fresh.schemaVersion,8);
+  assert.equal(fresh.assessmentPolicyAtStart,WORKBOOK_ALL_ITEMS_ASSESSMENT);
+  assert.equal(fresh.completionPolicyAtStart,'all-items');
+
+  const legacyG5={schemaVersion:7,setId:'g5-u01-wb-demo',attempts:[]};
+  const historicalG5=assessmentSetForSession(legacyG5,newSet);
+  assert.equal(historicalG5.assessmentPolicy,SOURCE_ONLY_ASSESSMENT);
+  assert.equal(isScoredItem(historicalG5,newSet.items[0]),false,'legacy G5 preload stays outside its historical denominator');
+
+  const legacyG7={schemaVersion:7,setId:'g7-u01-wb-demo',attempts:[]};
+  const historicalG7=assessmentSetForSession(legacyG7,{...newSet,id:'g7-u01-wb-demo'});
+  assert.equal(historicalG7.completionPolicy,'explain-and-accept');
+});
+
+test('published G6 pronunciation and open production count as completion Mastery, not unscored correctness', async () => {
+  const practice=publishedById('g6-u05-wb-a1');
+  const practiceContent=await practice.loadContent();
+  for(const item of sourceItems(practiceContent)) {
+    assert.equal(item.assessmentMode,'scored');
+    assert.equal(item.masteryMode,'completion');
+    assert.doesNotMatch(item.typingUi?.instruction??'',/không tính/i);
+    assert.match(item.teachingFeedback?.correctLabel??'',/Hoàn thành/);
+  }
+
+  const open=publishedById('g6-u04-wb-c2');
+  const openContent=await open.loadContent();
+  for(const item of sourceItems(openContent)) {
+    assert.equal(item.responseMode,'open');
+    assert.equal(item.assessmentMode,'scored');
+    assert.equal(item.masteryMode,'completion');
+  }
+});
+
+test('published G7 open tasks are completion Mastery while objective items stay accuracy Mastery', async () => {
+  const c1=publishedById('g7-u3-wb-c1');
+  const c1Content=await c1.loadContent();
+  assert.ok(sourceItems(c1Content).every(item=>item.masteryMode==='completion'));
+  assert.ok(sourceItems(c1Content).every(item=>item.assessmentMode==='scored'));
+
+  const d1=publishedById('g7-u3-wb-d1');
+  const d1Content=await d1.loadContent();
+  assert.ok(sourceItems(d1Content).every(item=>item.masteryMode==='accuracy'));
+});
+
+test('G5 source word bank stays visible and known U4 source corrections remain intact', async () => {
   const e1=await byId(g5WorkbookRegistry,'g5-u04-wb-e1').loadContent();
   const e1Source=sourceItems(e1);
   assert.deepEqual(e1Source[0].sourceWordBank,['comic','do','pictures','riding','usually']);
@@ -138,7 +233,7 @@ test('G5 source word bank stays visible in item metadata and known U4 ambiguitie
   assert.ok(phrasePrompts.every(prompt=>!prompt.includes('play the flowers')));
 });
 
-test('G5 F2 tells learners why open writing became auto-graded sentence order', async () => {
+test('G5 F2 controlled writing remains deterministic and learner-visible', async () => {
   let count=0;
   for(const descriptor of g5WorkbookRegistry.filter(entry=>/-wb-f2$/.test(entry.id))) {
     const content=await descriptor.loadContent();
@@ -153,7 +248,7 @@ test('G5 F2 tells learners why open writing became auto-graded sentence order', 
   assert.ok(count>20);
 });
 
-test('G6 crossword clues without their original grid use constrained MCQ instead of synonym-fragile typing', async () => {
+test('G6 crossword clues without their original grid remain constrained MCQ', async () => {
   const descriptor=byId(g6WorkbookRemainingRegistry,'g6-u05-wb-b3');
   const content=await descriptor.loadContent();
   const items=sourceItems(content);
@@ -166,22 +261,13 @@ test('G6 crossword clues without their original grid use constrained MCQ instead
   ]);
 });
 
-test('G6 self-confirmed pronunciation and genuine open production remain unscored in published assessment', async () => {
-  const published=new Map(publishedWorkbook.map(entry=>[entry.id,entry]));
-  const practice=published.get('g6-u05-wb-a1');
-  const practiceContent=await practice.loadContent();
-  assert.ok(sourceItems(practiceContent).every(item=>item.assessmentMode==='unscored'));
-  assert.ok(sourceItems(practiceContent).every(item=>!isScoredItem({...practice,...practiceContent},item)));
-
-  const open=published.get('g6-u04-wb-c2');
-  const openContent=await open.loadContent();
-  assert.ok(sourceItems(openContent).every(item=>item.responseMode==='open'));
-  assert.ok(sourceItems(openContent).every(item=>!isScoredItem({...open,...openContent},item)));
-});
-
-test('raw G6 workbook coverage used by published grading remains 192 lessons', () => {
+test('raw workbook coverage remains 141 G5 + 192 G6 + 45 G7 lessons', () => {
+  assert.equal(g5WorkbookRegistry.length,141);
   assert.equal(g6U1WorkbookRegistry.length,15);
   assert.equal(g6U2WorkbookRegistry.length,14);
   assert.equal(g6U3WorkbookRegistry.length,15);
   assert.equal(g6WorkbookRemainingRegistry.length,148);
+  assert.equal(g7U1WorkbookRegistry.length,12);
+  assert.equal(g7U2WorkbookRegistry.length,16);
+  assert.equal(g7U3WorkbookRegistry.length,17);
 });

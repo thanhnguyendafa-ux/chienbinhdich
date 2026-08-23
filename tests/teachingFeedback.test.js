@@ -85,10 +85,19 @@ test('generic question context has safe fallbacks for typing and sentence order'
 });
 
 test('teaching feedback is learner-paced and resolved feedback includes derived question context', () => {
-  assert.match(renderSource, /if \(teachingFeedback\)/);
+  const feedbackStart = renderSource.indexOf('if (teachingFeedback)');
+  const firstInteraction = renderSource.indexOf('interaction.innerHTML', feedbackStart);
+  const automaticFeedbackStart = renderSource.indexOf('interaction.innerHTML', firstInteraction + 1);
+  const teachingBranch = renderSource.slice(feedbackStart, automaticFeedbackStart);
+
+  assert.ok(feedbackStart >= 0 && firstInteraction >= 0 && automaticFeedbackStart > firstInteraction);
+  assert.match(teachingBranch, /renderTeachingFeedback\(\{ item, entered, answer, teachingFeedback, includeContinue: true \}\)/);
+  assert.match(teachingBranch, /querySelector\('#teaching-continue-btn'\)/);
+  assert.match(teachingBranch, /addEventListener\('click', event =>/);
+  assert.match(teachingBranch, /event\.currentTarget\.disabled = true;[\s\S]*onContinue\(\);/);
+  assert.match(teachingBranch, /focus\(\{ preventScroll: true \}\);[\s\S]*return;/);
+  assert.doesNotMatch(teachingBranch, /window\.setTimeout/);
   assert.match(renderSource, /id="teaching-continue-btn"/);
-  assert.match(renderSource, /addEventListener\('click', event =>/);
-  assert.match(renderSource, /window\.setTimeout\(onContinue, explainedIncorrect \? 1200 : 430\)/);
   assert.match(renderSource, /renderQuestionContext\(item\)/);
   assert.match(renderSource, /Con chọn/);
   assert.match(renderSource, /Đáp án đúng là/);

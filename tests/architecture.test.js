@@ -8,6 +8,7 @@ const lessonCatalog = readFileSync(new URL('../src/data/lessonCatalog.js', impor
 const set1Content = readFileSync(new URL('../src/data/global7-unit1-set1.js', import.meta.url), 'utf8');
 const mixedContent = readFileSync(new URL('../src/data/global7-unit1-mixed-demo.js', import.meta.url), 'utf8');
 const localSessionRepository = readFileSync(new URL('../src/repositories/localSessionRepository.js', import.meta.url), 'utf8');
+const browserSessionStore = readFileSync(new URL('../src/repositories/browserSessionStore.js', import.meta.url), 'utf8');
 const sessionMachine = readFileSync(new URL('../src/core/sessionMachine.js', import.meta.url), 'utf8');
 const questionTypes = readFileSync(new URL('../src/core/questionTypes.js', import.meta.url), 'utf8');
 const attemptAnalytics = readFileSync(new URL('../src/core/attemptAnalytics.js', import.meta.url), 'utf8');
@@ -115,8 +116,12 @@ test('question-specific correctness is normalized before shared session scoring'
   for (const type of ['typing', 'mcq', 'true_false', 'sentence_order']) assert.match(questionTypes, new RegExp(`${type}:`));
 });
 
-test('only the first attempt in each exposure can change mastery', () => {
-  assert.match(sessionMachine, /masteryDeltaUnits = attemptNumber === 1 \? \(result\.correct \? 1 : -1\) : 0/);
+test('mastery delta stays centralized and distinguishes legacy, accuracy and completion semantics', () => {
+  assert.match(sessionMachine, /masteryDeltaForAttempt/);
+  assert.match(sessionMachine, /masteryMode === MASTERY_MODE_COMPLETION/);
+  assert.match(sessionMachine, /attemptNumber === 1 \? \(result\.correct \? 1 : -1\) : 0/);
+  assert.match(sessionMachine, /attemptNumber === 1 && result\.correct \? 1 : 0/);
+  assert.match(sessionMachine, /alreadyEarned/);
 });
 
 test('retry timing lives in scheduler domain rather than question renderers', () => {
@@ -212,10 +217,15 @@ test('student feedback distinguishes mastery loss, floor and neutral correction 
   assert.match(drill, /delta < 0/);
 });
 
-test('session persistence key remains V7 for unchanged learning semantics', () => {
-  assert.match(sessionMachine, /SESSION_SCHEMA_VERSION = 7/);
-  assert.match(localSessionRepository, /cbd\.activeSession\.v7/);
-  assert.match(localSessionRepository, /cbd\.report\.v7\./);
+test('Session V8 snapshots changed grading semantics while V7 sessions remain resumable', () => {
+  assert.match(sessionMachine, /SESSION_SCHEMA_VERSION = 8/);
+  assert.match(sessionMachine, /assessmentPolicyAtStart/);
+  assert.match(sessionMachine, /completionPolicyAtStart/);
+  assert.match(browserSessionStore, /SUPPORTED_SESSION_SCHEMAS = Object\.freeze\(\[7, SESSION_SCHEMA_VERSION\]\)/);
+  assert.match(browserSessionStore, /cbd\.activeSession\.v7/);
+  assert.match(browserSessionStore, /cbd\.activeSession\.v8\./);
+  assert.match(browserSessionStore, /cbd\.report\.v7\./);
+  assert.match(localSessionRepository, /schema V7 and V8/);
   assert.match(app, /entryMode: 'fixed-link'/);
   assert.match(app, /accessSlug:/);
 });

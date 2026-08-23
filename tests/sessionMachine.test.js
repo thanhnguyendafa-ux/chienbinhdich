@@ -32,9 +32,12 @@ function passCleanly() {
   return session;
 }
 
-test('session keeps attempts as mastery evidence SSOT and scheduler state operational', () => {
+test('session keeps attempts as mastery evidence SSOT and snapshots grading contract at start', () => {
   const session = createSession({ studentName: 'Test', set, now: 1 });
-  assert.equal(session.schemaVersion, 7);
+  assert.equal(session.schemaVersion, 8);
+  assert.equal(session.assessmentPolicyAtStart, null);
+  assert.equal(session.assessmentContractVersionAtStart, null);
+  assert.equal(session.completionPolicyAtStart, null);
   assert.equal('mastery' in session, false);
   assert.equal('itemStates' in session, false);
   assert.equal(session.currentItemId, 'a');
@@ -200,7 +203,7 @@ test('qualified learner continues from preserved scheduler state before generic 
   assert.equal(metrics.completedMainItems, 5);
 });
 
-test('persisted active V7 session already above threshold reconciles to passed using first crossing time', () => {
+test('persisted active session already above threshold reconciles to passed using first crossing time', () => {
   const active = {
     ...createSession({ studentName: 'Legacy', set, now: 1 }),
     currentItemId: 'e',

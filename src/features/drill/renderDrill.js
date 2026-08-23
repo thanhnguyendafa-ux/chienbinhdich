@@ -27,6 +27,7 @@ export function renderDrill({ root, session, set, feedback = null, onSubmit, onE
   const reviewMode = session.currentPromptKind !== 'main';
   const extendedMode = session.status === 'extended';
   const explainAndAccept = set?.completionPolicy === EXPLAIN_ACCEPT_POLICY;
+  const completionMode = item.masteryMode === 'completion';
   const mainPosition = Math.max(1, set.items.findIndex(candidate => candidate.id === item.id) + 1);
   const badge = item.stage ? stageLabel(item.stage) : questionTypeLabel(item);
   const exposureKey = `${session.id}:${item.id}:${session.promptIndex}`;
@@ -43,6 +44,7 @@ export function renderDrill({ root, session, set, feedback = null, onSubmit, onE
 
       <section class="shell metrics-row" aria-label="Tiến độ bài học và Mastery">
         <div class="metric sequence-metric"><span>${extendedMode ? 'Luyện thêm' : 'Chuỗi chính'}</span><strong>${extendedMode ? metrics.extendedAttempts : `${metrics.completedMainItems}/${metrics.total}`}</strong></div>
+        <div class="metric mastery-count-metric"><span>Mastery units</span><strong>${metrics.masteryEarned}/${metrics.masteryTotal}</strong></div>
         ${renderMasteryProgress({ value: masteryTransition.to, previous: masteryTransition.from, threshold: masteryTarget, delta: masteryTransition.delta })}
       </section>
 
@@ -62,15 +64,17 @@ export function renderDrill({ root, session, set, feedback = null, onSubmit, onE
             ? `Con đã vượt ${formatMasteryPercent(set.passThreshold)}%. Làm tiếp để củng cố; khi muốn dừng, bấm Nộp bài.`
             : explainAndAccept
               ? 'Tự gõ tiếng Anh. Sau khi Submit, đọc đáp án và giải thích rồi bấm Chấp nhận. Không có gợi ý trước.'
-              : revealAnswer
-                ? 'Xem đáp án chuẩn rồi tự sửa lại. Correction trong cùng lượt không cộng hoặc trừ Mastery.'
-                : item.passageId
-                  ? 'Chọn phương án mà cả True/False và lý do đều khớp bài đọc.'
-                  : questionTypeForItem(item) === 'classification'
-                    ? 'Phân loại hết các mục trước khi kiểm tra. Click mục đã xếp để đưa về kho và sửa lại.'
-                    : questionTypeForItem(item) === 'sentence_order' && item.orderDiagnostics
-                      ? 'Không nhất thiết phải dùng hết các khối. Chọn đúng thành phần và đúng thứ tự.'
-                      : 'Chỉ lần trả lời đầu tiên của mỗi lượt xuất hiện mới làm Mastery tăng hoặc giảm.'}</p>
+              : completionMode
+                ? 'Câu này tính 1 Mastery unit khi con hoàn thành yêu cầu. Hệ thống ghi nhận HOÀN THÀNH, không giả chấm nội dung mở hoặc giọng nói là đúng/sai.'
+                : revealAnswer
+                  ? 'Xem đáp án chuẩn rồi tự sửa lại. Correction trong cùng lượt không cộng hoặc trừ Mastery.'
+                  : item.passageId
+                    ? 'Chọn phương án mà cả True/False và lý do đều khớp bài đọc.'
+                    : questionTypeForItem(item) === 'classification'
+                      ? 'Phân loại hết các mục trước khi kiểm tra. Click mục đã xếp để đưa về kho và sửa lại.'
+                      : questionTypeForItem(item) === 'sentence_order' && item.orderDiagnostics
+                        ? 'Không nhất thiết phải dùng hết các khối. Chọn đúng thành phần và đúng thứ tự.'
+                        : 'Câu có đáp án nhận 1 Mastery unit khi đúng ngay lần đầu; correction giúp học lại nhưng không cộng thêm unit.'}</p>
         </article>
       </section>
 
@@ -79,7 +83,7 @@ export function renderDrill({ root, session, set, feedback = null, onSubmit, onE
           ? `Con đã vượt ${formatMasteryPercent(set.passThreshold)}%. Có thể tiếp tục luyện hoặc nộp bài để xem báo cáo.`
           : explainAndAccept
             ? 'Bài này hoàn thành bằng cách đi qua toàn bộ prompt: Submit → đọc giải thích → Chấp nhận.'
-            : `Chưa đạt ${formatMasteryPercent(set.passThreshold)}% thì chưa thể nộp bài. Nếu cần dừng, báo cáo vẫn giữ thời gian và lịch sử làm bài.`}</p></div>
+            : `Chưa đạt ${formatMasteryPercent(set.passThreshold)}% thì chưa thể nộp bài. Mastery dùng toàn bộ ${metrics.masteryTotal} câu của bài làm mẫu số.`}</p></div>
         <div class="dialog-actions"><button class="primary-btn" id="keep-learning-btn" type="button">Tiếp tục học</button>${extendedMode
           ? '<button class="secondary-btn" id="dialog-submit-btn" type="button">Nộp bài & xem báo cáo</button>'
           : '<button class="danger-text-btn" id="abandon-btn" type="button">Bỏ cuộc và xem báo cáo</button>'}</div>
@@ -110,28 +114,47 @@ export function showSuccess({ root, type, item = null, entered, answer, teaching
   animateMasteryProgress(root, { from: masteryBefore, to: mastery, delta: masteryDeltaPercent });
   card.classList.remove('has-error', 'is-reveal');
   const explainedIncorrect = type === 'explained_incorrect';
-  card.classList.add(explainedIncorrect ? 'has-error' : 'has-success');
+  const completionSuccess = type === 'completion_success';
+  const completionRetry = type === 'completion_retry';
+  const failed = explainedIncorrect || completionRetry;
+  card.classList.add(failed ? 'has-error' : 'has-success');
   const correction = type === 'correction';
   const actualGain = Number(masteryDeltaPercent ?? 0);
-  const masteryMessage = explainedIncorrect
-    ? `Đã ghi nhận lượt trả lời · Mastery ${actualGain < 0 ? `−${formatMasteryPercent(Math.abs(actualGain))}%` : 'không đổi'}`
-    : correction
-      ? `Correction: Mastery không đổi · ${formatMasteryPercent(mastery)}%`
-      : actualGain > 0
-        ? `Mastery +${formatMasteryPercent(actualGain)}% → ${formatMasteryPercent(mastery)}%`
-        : `Mastery giữ ở ${formatMasteryPercent(mastery)}%`;
+  const masteryMessage = completionRetry
+    ? `Chưa hoàn thành · Mastery giữ ở ${formatMasteryPercent(mastery)}%`
+    : completionSuccess
+      ? actualGain > 0
+        ? `Hoàn thành · Mastery +${formatMasteryPercent(actualGain)}% → ${formatMasteryPercent(mastery)}%`
+        : `Đã hoàn thành · Mastery giữ ở ${formatMasteryPercent(mastery)}%`
+      : explainedIncorrect
+        ? `Đã ghi nhận lượt trả lời · Mastery ${actualGain < 0 ? `−${formatMasteryPercent(Math.abs(actualGain))}%` : 'không đổi'}`
+        : correction
+          ? `Correction: Mastery không đổi · ${formatMasteryPercent(mastery)}%`
+          : actualGain > 0
+            ? `Mastery +${formatMasteryPercent(actualGain)}% → ${formatMasteryPercent(mastery)}%`
+            : `Mastery giữ ở ${formatMasteryPercent(mastery)}%`;
+  const mark = completionRetry ? 'CHƯA HOÀN THÀNH' : completionSuccess ? 'HOÀN THÀNH' : explainedIncorrect ? 'CHƯA ĐÚNG' : 'ĐÚNG';
+  const heading = completionRetry
+    ? 'Hãy hoàn thành yêu cầu rồi thử lại'
+    : completionSuccess
+      ? 'Đã ghi nhận completion credit'
+      : explainedIncorrect
+        ? 'Đọc đáp án và giải thích'
+        : correction
+          ? 'Đã sửa chính xác'
+          : 'Retrieval chính xác';
 
   if (teachingFeedback) {
     interaction.innerHTML = `
-      <div class="${explainedIncorrect ? 'feedback reveal-feedback' : 'success-panel teaching-success-heading'}" role="status">
-        <span class="success-mark">${explainedIncorrect ? 'CHƯA ĐÚNG' : 'ĐÚNG'}</span>
-        <strong>${explainedIncorrect ? 'Đọc đáp án và giải thích' : correction ? 'Đã sửa chính xác' : 'Retrieval chính xác'}</strong>
+      <div class="${failed ? 'feedback reveal-feedback' : 'success-panel teaching-success-heading'}" role="status">
+        <span class="success-mark">${mark}</span>
+        <strong>${heading}</strong>
         <small>${masteryMessage}</small>
       </div>
       ${renderTeachingFeedback({ item, entered, answer, teachingFeedback, includeContinue: true })}`;
     root.querySelector('#teaching-continue-btn')?.addEventListener('click', event => {
       event.currentTarget.disabled = true;
-      event.currentTarget.textContent = 'Đang sang câu tiếp...';
+      event.currentTarget.textContent = completionRetry ? 'Đang mở lại câu...' : 'Đang sang câu tiếp...';
       onContinue();
     });
     root.querySelector('#teaching-continue-btn')?.focus({ preventScroll: true });
@@ -139,13 +162,13 @@ export function showSuccess({ root, type, item = null, entered, answer, teaching
   }
 
   interaction.innerHTML = `
-    <div class="success-panel" role="status">
-      <span class="success-mark">${explainedIncorrect ? 'CHƯA ĐÚNG' : 'ĐÚNG'}</span>
-      <strong>${explainedIncorrect ? 'Đọc đáp án rồi tiếp tục' : correction ? 'Đã sửa chính xác' : 'Retrieval chính xác'}</strong>
-      <span class="answer-reveal">${esc(answer)}</span>
+    <div class="${failed ? 'feedback error-feedback' : 'success-panel'}" role="status">
+      <span class="success-mark">${mark}</span>
+      <strong>${heading}</strong>
+      ${completionSuccess || completionRetry ? '' : `<span class="answer-reveal">${esc(answer)}</span>`}
       <small>${masteryMessage}</small>
     </div>`;
-  window.setTimeout(onContinue, explainedIncorrect ? 1200 : 430);
+  window.setTimeout(onContinue, failed ? 1200 : 430);
 }
 
 export function renderPassed({ root, session, set, onSubmit, onContinue }) {
@@ -156,18 +179,18 @@ export function renderPassed({ root, session, set, onSubmit, onContinue }) {
       <section class="passed-card qualification-card">
         <div class="brand-lockup centered"><span class="brand-seal">MRT</span><span>Chiến Binh Dịch</span></div>
         <p class="eyebrow">${explainAndAccept ? '✅ ĐÃ HOÀN THÀNH' : '🎉 ĐÃ VƯỢT MỤC TIÊU'}</p>
-        <h1>${explainAndAccept ? `${metrics.completedMainItems}/${metrics.total} lượt đã học` : `${formatMasteryPercent(metrics.mastery)}% Mastery`}</h1>
+        <h1>${explainAndAccept ? `${metrics.completedMainItems}/${metrics.total} lượt đã học` : `${metrics.masteryEarned}/${metrics.masteryTotal} · ${formatMasteryPercent(metrics.mastery)}% Mastery`}</h1>
         <p>${explainAndAccept
           ? 'Con đã đi qua toàn bộ prompt Việt → Anh, đọc đáp án/giải thích sau mỗi lần Submit và Chấp nhận để tiếp tục.'
-          : `Con đã vượt mục tiêu ${formatMasteryPercent(set.passThreshold)}%. Con có thể nộp bài ngay hoặc làm tiếp để củng cố và nâng Mastery.`}</p>
-        <div class="passed-stats"><span>${metrics.totalAttempts} lượt trả lời</span><span>${metrics.retrievalErrors} lượt cần xem giải thích</span></div>
+          : `Con đã hoàn thành toàn bộ ${metrics.masteryTotal} câu và vượt mục tiêu ${formatMasteryPercent(set.passThreshold)}%. Accuracy và completion đều nằm trong cùng Mastery.`}</p>
+        <div class="passed-stats"><span>Accuracy ${metrics.accuracyEarned}/${metrics.accuracyTotal}</span><span>Completion ${metrics.completionEarned}/${metrics.completionTotal}</span><span>${metrics.totalAttempts} lượt trả lời</span></div>
         <div class="qualification-actions">
           <button class="primary-btn submit-assignment-btn" id="submit-assignment-btn" type="button">Nộp bài</button>
           ${explainAndAccept ? '' : '<button class="secondary-btn continue-learning-btn" id="continue-learning-btn" type="button">Làm tiếp</button>'}
         </div>
         <small>${explainAndAccept
           ? 'Bài này không bắt sửa lại sau khi sai; mục tiêu là production → noticing → chấp nhận đáp án cục bộ.'
-          : 'Cả hai lựa chọn đều giữ toàn bộ lịch sử. Nếu làm tiếp, con có thể nộp bài bất cứ lúc nào.'}</small>
+          : 'Mỗi câu là 1 Mastery unit. Bài mở/tự luyện nhận unit khi hoàn thành; câu có đáp án nhận unit khi đúng ngay lần đầu.'}</small>
       </section>
     </main>`;
   root.querySelector('#submit-assignment-btn')?.addEventListener('click', async event => {
@@ -222,11 +245,12 @@ function renderFeedback(feedback, item) {
 
 function renderTeachingFeedback({ item = null, entered, answer, teachingFeedback, includeContinue = false }) {
   const type = questionTypeForItem(item);
+  const completion = item?.masteryMode === 'completion';
   const sentenceOrder = type === 'sentence_order';
   const classification = type === 'classification';
   const acceptedDisplays = sentenceOrder ? acceptedSentenceOrderDisplays(item) : [];
-  const alternatives = acceptedDisplays.filter(candidate => !sameText(candidate, answer));
-  const conceptLine = sentenceOrder || classification || sameText(answer, teachingFeedback.correctLabel)
+  const alternatives = completion ? [] : acceptedDisplays.filter(candidate => !sameText(candidate, answer));
+  const conceptLine = completion || sentenceOrder || classification || sameText(answer, teachingFeedback.correctLabel)
     ? ''
     : `<div class="teaching-row"><span>Loại đúng</span><strong>${esc(teachingFeedback.correctLabel)}</strong></div>`;
   const workedExample = teachingFeedback.workedExample;
@@ -236,13 +260,14 @@ function renderTeachingFeedback({ item = null, entered, answer, teachingFeedback
   const alternativesLine = alternatives.length
     ? `<div class="teaching-copy teaching-alternatives"><span>Cách đúng khác</span><p>${alternatives.map(esc).join(' · ')}</p></div>`
     : '';
-  const answerLabel = sentenceOrder ? 'Câu chuẩn' : classification ? 'Phân loại đúng' : 'Đáp án đúng là';
+  const answerLabel = completion ? 'Mastery' : sentenceOrder ? 'Câu chuẩn' : classification ? 'Phân loại đúng' : 'Đáp án đúng là';
+  const answerValue = completion ? teachingFeedback.correctLabel : answer;
   const continueLabel = item?.acceptAfterSubmit ? 'Chấp nhận' : 'Tiếp tục';
   return `
     <section class="teaching-feedback" aria-label="Giải thích đáp án">
       ${item ? renderQuestionContext(item) : ''}
       <div class="teaching-row"><span>${esc(learnerResponseLabel(item))}</span><strong>${esc(entered || '(trống)')}</strong></div>
-      <div class="teaching-row"><span>${answerLabel}</span><strong>${esc(answer)}</strong></div>
+      <div class="teaching-row"><span>${answerLabel}</span><strong>${esc(answerValue)}</strong></div>
       ${alternativesLine}
       ${conceptLine}
       <div class="teaching-copy"><span>Vì</span><p>${esc(teachingFeedback.reason)}</p></div>
@@ -268,6 +293,7 @@ function renderQuestionContext(item) {
 }
 
 function learnerResponseLabel(item) {
+  if (item?.masteryMode === 'completion') return 'Con hoàn thành';
   const type = questionTypeForItem(item);
   if (type === 'typing') return 'Con gõ';
   if (type === 'sentence_order') return 'Câu của con';

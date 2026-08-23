@@ -10,6 +10,7 @@ const FIXED_LINK = 'fixed-link';
 const LEGACY_ASSIGNMENT = 'legacy-assignment';
 const LINK_SCOPE = 'link:';
 const ASSIGNMENT_SCOPE = 'assignment:';
+const SUPPORTED_SESSION_SCHEMAS = Object.freeze([7, SESSION_SCHEMA_VERSION]);
 
 export const browserSessionStore = Object.freeze({
   saveActive(session, accessContext = null) {
@@ -24,12 +25,12 @@ export const browserSessionStore = Object.freeze({
     const scope = currentLinkScope() ?? scopeForAccess(accessContext);
     if (!scope) {
       const legacy = safeParse(storage.getItem(LEGACY_ACTIVE_KEY));
-      return isCurrentSession(legacy) ? legacy : null;
+      return isSupportedSession(legacy) ? legacy : null;
     }
 
     const scopedKey = activeKey(scope);
     const scoped = safeParse(storage.getItem(scopedKey));
-    if (isCurrentSession(scoped) && sessionMatchesAccess(scoped, accessContext)) return scoped;
+    if (isSupportedSession(scoped) && sessionMatchesAccess(scoped, accessContext)) return scoped;
 
     const legacy = safeParse(storage.getItem(LEGACY_ACTIVE_KEY));
     if (!canSafelyMigrateLegacy(legacy, scope, accessContext)) return null;
@@ -40,7 +41,7 @@ export const browserSessionStore = Object.freeze({
   clearActive(sessionOrAccess = null) {
     const storage = requireStorage();
     const scope = currentLinkScope()
-      ?? (isCurrentSession(sessionOrAccess) ? scopeForSession(sessionOrAccess) : scopeForAccess(sessionOrAccess));
+      ?? (isSupportedSession(sessionOrAccess) ? scopeForSession(sessionOrAccess) : scopeForAccess(sessionOrAccess));
     storage.removeItem(scope ? activeKey(scope) : LEGACY_ACTIVE_KEY);
     if (sessionOrAccess) removeMatchingLegacyActive(storage, sessionOrAccess, null);
   },
@@ -51,7 +52,7 @@ export const browserSessionStore = Object.freeze({
   },
   loadReport(sessionId) {
     const session = safeParse(requireStorage().getItem(`${REPORT_PREFIX}${sessionId}`));
-    return isCurrentSession(session) ? session : null;
+    return isSupportedSession(session) ? session : null;
   },
   getLastStudentName() {
     return requireStorage().getItem(LAST_NAME_KEY) ?? '';
@@ -61,13 +62,13 @@ export const browserSessionStore = Object.freeze({
     const byId = new Map();
 
     const legacy = safeParse(storage.getItem(LEGACY_ACTIVE_KEY));
-    if (isCurrentSession(legacy) && legacy.id) byId.set(legacy.id, legacy);
+    if (isSupportedSession(legacy) && legacy.id) byId.set(legacy.id, legacy);
 
     for (let index = 0; index < storage.length; index += 1) {
       const key = storage.key(index);
       if (!key?.startsWith(ACTIVE_PREFIX) && !key?.startsWith(REPORT_PREFIX)) continue;
       const session = safeParse(storage.getItem(key));
-      if (isCurrentSession(session) && session.id) byId.set(session.id, session);
+      if (isSupportedSession(session) && session.id) byId.set(session.id, session);
     }
 
     return [...byId.values()];
@@ -140,7 +141,7 @@ function scopeForAccess(accessContext) {
 }
 
 function sessionMatchesAccess(session, accessContext) {
-  if (!isCurrentSession(session)) return false;
+  if (!isSupportedSession(session)) return false;
   if (!accessContext) return true;
   if (accessContext.setId && session.setId !== accessContext.setId) return false;
   if (accessContext.kind === FIXED_LINK) {
@@ -153,7 +154,7 @@ function sessionMatchesAccess(session, accessContext) {
 }
 
 function canSafelyMigrateLegacy(session, targetScope, accessContext) {
-  if (!isCurrentSession(session)) return false;
+  if (!isSupportedSession(session)) return false;
   if (accessContext && !sessionMatchesAccess(session, accessContext)) return false;
   if (targetScope.startsWith(LINK_SCOPE) && !targetScope.match(/-[A-HJ-NP-Z2-9]{6}$/i)) {
     return session.entryMode === FIXED_LINK && targetScope === linkScope(session.accessSlug);
@@ -166,15 +167,15 @@ function canSafelyMigrateLegacy(session, targetScope, accessContext) {
 
 function removeMatchingLegacyActive(storage, session, accessContext) {
   const legacy = safeParse(storage.getItem(LEGACY_ACTIVE_KEY));
-  if (!isCurrentSession(legacy)) return;
+  if (!isSupportedSession(legacy)) return;
   const scope = currentLinkScope() ?? scopeForAccess(accessContext) ?? scopeForSession(session);
   if (canSafelyMigrateLegacy(legacy, scope ?? '', accessContext) || legacy.id === session?.id) {
     storage.removeItem(LEGACY_ACTIVE_KEY);
   }
 }
 
-function isCurrentSession(session) {
-  return session?.schemaVersion === SESSION_SCHEMA_VERSION;
+function isSupportedSession(session) {
+  return SUPPORTED_SESSION_SCHEMAS.includes(Number(session?.schemaVersion));
 }
 
 function safeParse(raw) {
