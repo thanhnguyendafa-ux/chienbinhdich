@@ -85,11 +85,32 @@ function normalizeWorkbookContent(content) {
       || item.assessmentMode === UNSCORED
       ? MASTERY_MODE_COMPLETION
       : MASTERY_MODE_ACCURACY;
+    const completion = masteryMode === MASTERY_MODE_COMPLETION;
+    const open = item.responseMode === 'open';
+    const typingUi = completion && item.typingUi
+      ? Object.freeze({
+          ...item.typingUi,
+          instruction: open
+            ? 'Tự viết câu trả lời của con. Bài mở có nhiều cách hợp lý; khi con gửi câu trả lời không trống, câu này được ghi nhận hoàn thành và tính 1 Mastery unit.'
+            : 'Đọc/luyện theo hướng dẫn rồi xác nhận hoàn thành. Hệ thống không chấm giọng nói; câu này tính 1 Mastery unit khi con hoàn thành.'
+        })
+      : item.typingUi;
+    const teachingFeedback = completion && item.teachingFeedback
+      ? Object.freeze({
+          ...item.teachingFeedback,
+          correctLabel: 'Hoàn thành · +1 Mastery',
+          reason: open
+            ? 'Đây là bài mở nên có nhiều cách trả lời hợp lý. Hệ thống không giả chấm đúng/sai nội dung tự do; câu này nhận 1 Mastery unit khi con hoàn thành câu trả lời.'
+            : 'Đây là bài tự luyện. Hệ thống không chấm âm thanh; xác nhận hoàn thành giúp câu này nhận 1 Mastery unit.'
+        })
+      : item.teachingFeedback;
     return Object.freeze({
       ...item,
       ...(item.assessmentMode === UNSCORED ? { legacyAssessmentMode: UNSCORED } : {}),
       assessmentMode: 'scored',
-      masteryMode
+      masteryMode,
+      ...(typingUi ? { typingUi } : {}),
+      ...(teachingFeedback ? { teachingFeedback } : {})
     });
   });
   return Object.freeze({ ...content, items: Object.freeze(items) });
