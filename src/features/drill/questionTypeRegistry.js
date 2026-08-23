@@ -6,6 +6,7 @@ import {
   sentenceOrderMinimumLength,
   typingUiForItem
 } from '../../core/questionTypes.js';
+import { renderSourceWordBank } from './sourceWordBankRenderer.js';
 
 const registry = Object.freeze({
   typing: { render: renderTyping, bind: bindTyping },
@@ -44,6 +45,7 @@ function renderTyping(item, { reviewMode = false } = {}) {
   return `
     <div class="prompt-block">
       <p class="prompt-label">${esc(promptLabel)}</p>
+      ${renderSourceWordBank(item)}
       <h1>${esc(questionPromptDisplay(item))}</h1>
     </div>
     <form id="question-form" class="answer-form typing-question" novalidate>
@@ -81,6 +83,7 @@ function renderMcq(item, { exposureKey = item.id, passages = [] } = {}) {
     ${readingBlock ? renderReadingPassage(readingBlock) : ''}
     <div class="prompt-block mixed-prompt-block ${readingBlock ? 'reading-question-prompt' : ''}">
       <p class="prompt-label">${esc(promptLabel)}</p>
+      ${renderSourceWordBank(item)}
       <h1>${esc(questionPromptDisplay(item))}</h1>
     </div>
     <div class="choice-grid mcq-grid ${readingBlock ? 'reading-choice-grid' : ''}" role="group" aria-label="Các lựa chọn">
@@ -113,6 +116,7 @@ function renderTrueFalse(item, { exposureKey = item.id } = {}) {
   return `
     <div class="prompt-block mixed-prompt-block">
       <p class="prompt-label">Đúng hay sai?</p>
+      ${renderSourceWordBank(item)}
       <h1>${esc(questionPromptDisplay(item))}</h1>
     </div>
     <div class="choice-grid true-false-grid" role="group" aria-label="Chọn True hoặc False">
@@ -135,6 +139,7 @@ function renderSentenceOrder(item, { exposureKey = item.id } = {}) {
   return `
     <div class="prompt-block mixed-prompt-block order-prompt">
       <p class="prompt-label">${selectMode ? 'Chọn khối đúng rồi sắp xếp' : 'Chạm vào các từ để tạo câu đúng'}</p>
+      ${renderSourceWordBank(item)}
       <h1>${esc(questionPromptDisplay(item) || 'Sắp xếp thành câu đúng')}</h1>
       ${selectMode ? '<p class="order-helper">Không nhất thiết phải dùng hết các khối. Hãy chọn đúng trước, rồi xếp đúng thứ tự.</p>' : ''}
     </div>
@@ -199,6 +204,7 @@ function renderSequenceNumber(item) {
   return `
     <div class="prompt-block mixed-prompt-block sequence-number-prompt">
       <p class="prompt-label">Sắp xếp thứ tự / Đánh số</p>
+      ${renderSourceWordBank(item)}
       <h1>${esc(questionPromptDisplay(item) || 'Đánh số các dòng theo đúng thứ tự')}</h1>
       <p class="sequence-number-helper">Chọn một số rồi bấm vào cả câu phù hợp. Con cũng có thể kéo số sang câu. Số có khóa là số đề đã cho sẵn.</p>
     </div>
@@ -368,6 +374,7 @@ function renderClassification(item, { exposureKey = item.id } = {}) {
   return `
     <div class="prompt-block mixed-prompt-block classification-prompt">
       <p class="prompt-label">Phân loại vào đúng nhóm</p>
+      ${renderSourceWordBank(item)}
       <h1>${esc(questionPromptDisplay(item) || 'Phân loại các từ')}</h1>
       <p class="classification-helper">Chọn một từ, sau đó chọn nhóm phù hợp. Hãy phân loại hết trước khi kiểm tra.</p>
     </div>
