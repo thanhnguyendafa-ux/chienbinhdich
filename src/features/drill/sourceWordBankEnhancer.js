@@ -17,6 +17,18 @@ const WORKBOOK_REGISTRY = Object.freeze([
   ...g7U2WorkbookRegistry,
   ...g7U3WorkbookRegistry
 ]);
+
+// Audited examples retained as public regression anchors; runtime discovery is registry-driven,
+// so new sourceWordBank lessons need no slug allow-list change.
+export const SOURCE_WORD_BANK_REFERENCE_IDS = Object.freeze([
+  'g6-u1-wb-b5','g6-u1-wb-d1',
+  'g6-u2-wb-d1',
+  'g6-u3-wb-b3','g6-u3-wb-d1',
+  'g7-u1-wb-d1',
+  'g7-u2-wb-b3','g7-u2-wb-b4',
+  'g7-u3-wb-b3'
+]);
+
 const configCache = new Map();
 let scheduled = false;
 
