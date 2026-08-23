@@ -1,0 +1,54 @@
+name: ImageKit media sync
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'media-staging/**'
+      - 'media/**'
+      - 'scripts/mediaManifest.mjs'
+      - 'scripts/validateMediaManifest.mjs'
+      - 'scripts/syncImageKitMedia.mjs'
+      - 'src/config/mediaConfig.js'
+      - 'src/core/mediaAsset.js'
+      - 'media-smoke.html'
+      - '.github/workflows/imagekit-media-sync.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: imagekit-media-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate-and-sync:
+    name: Validate and sync ImageKit media
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Validate immutable media manifest
+        run: node scripts/validateMediaManifest.mjs
+
+      - name: Choose isolated smoke or canonical production namespace
+        id: mode
+        shell: bash
+        run: |
+          if [[ "$GITHUB_REF" == "refs/heads/main" ]]; then
+            echo "mode=production" >> "$GITHUB_OUTPUT"
+          else
+            echo "mode=smoke" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Upload and verify ImageKit assets
+        env:
+          IMAGEKIT_PRIVATE_KEY: ${{ secrets.IMAGEKIT_PRIVATE_KEY }}
+        run: node scripts/syncImageKitMedia.mjs --mode "${{ steps.mode.outputs.mode }}" --ref "$GITHUB_SHA"

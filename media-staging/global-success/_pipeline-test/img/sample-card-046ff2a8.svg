@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="500" viewBox="0 0 800 500" role="img" aria-labelledby="title desc">
+  <title id="title">Chiến Binh Dịch ImageKit media test</title>
+  <desc id="desc">A simple test card with a book, headphones, and the words Media pipeline OK.</desc>
+  <rect width="800" height="500" rx="36" fill="#f4f7fb"/>
+  <rect x="70" y="75" width="660" height="350" rx="28" fill="#ffffff" stroke="#315B7D" stroke-width="8"/>
+  <path d="M210 180h150c35 0 55 20 55 55v120H265c-35 0-55-20-55-55z" fill="#dce9f4" stroke="#315B7D" stroke-width="7"/>
+  <path d="M590 180H440c-35 0-55 20-55 55v120h150c35 0 55-20 55-55z" fill="#e9f1df" stroke="#315B7D" stroke-width="7"/>
+  <path d="M300 230c-38 0-70 31-70 70v35h35v-35c0-19 16-35 35-35s35 16 35 35v35h35v-35c0-39-32-70-70-70z" fill="#315B7D"/>
+  <text x="400" y="125" text-anchor="middle" font-family="Arial, sans-serif" font-size="34" font-weight="700" fill="#315B7D">MEDIA PIPELINE TEST</text>
+  <text x="400" y="395" text-anchor="middle" font-family="Arial, sans-serif" font-size="28" fill="#243746">ImageKit image + local audio</text>
+</svg>
