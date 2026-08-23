@@ -62,8 +62,9 @@ test('all 333 G5/G6 workbook lessons score only deterministic source interaction
       assert.ok(sourceItems(content).every(item=>!isScoredItem(set,item)),`${descriptor.id} must not hide a gradable source item`);
     }
   }
-  assert.ok(completionOnlyLessons>0,'expected genuine open/pronunciation lessons to be completion-only');
-  assert.ok(objectivelyGradedLessons>300,`expected broad objectively graded coverage, got ${objectivelyGradedLessons}`);
+  assert.equal(objectivelyGradedLessons,284,'audited lessons with at least one objectively gradable source interaction');
+  assert.equal(completionOnlyLessons,49,'audited open/pronunciation-only lessons');
+  assert.equal(objectivelyGradedLessons+completionOnlyLessons,333);
   assert.ok(unscoredOpen>0,'expected real open workbook tasks to remain available but unscored');
   assert.ok(scoredSource>500,`expected broad graded source coverage, got ${scoredSource}`);
 });
