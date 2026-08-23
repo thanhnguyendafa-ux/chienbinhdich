@@ -10,6 +10,7 @@ import { bindQuestionInteraction, renderQuestionInteraction } from './questionTy
 import { getQuestionContext } from './questionContext.js';
 import { bindTheorySupport, renderTheorySupport } from './theorySupportRenderer.js';
 import { renderAnswerAnalysis } from './answerAnalysisRenderer.js';
+import { renderQuestionWithMedia } from './questionMediaRenderer.js';
 
 const EXPLAIN_ACCEPT_POLICY = 'explain-and-accept';
 
@@ -55,7 +56,7 @@ export function renderDrill({ root, session, set, feedback = null, onSubmit, onE
           ${renderFeedback(feedback, item)}
 
           <div class="question-interaction">
-            ${renderQuestionInteraction(item, { reviewMode, exposureKey, passages: set.passages ?? [] })}
+            ${renderQuestionWithMedia(item, renderQuestionInteraction(item, { reviewMode, exposureKey, passages: set.passages ?? [] }))}
           </div>
 
           ${explainAndAccept ? '' : renderTheorySupport({ item, session, esc, escAttr })}

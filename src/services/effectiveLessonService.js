@@ -1,5 +1,6 @@
 import { resolveMasteryPolicy, sessionPassThreshold } from '../core/masteryPolicy.js';
 import { resolveTypingPolicy, sessionTypingTolerance } from '../core/typingPolicy.js';
+import { applyLessonMedia } from './lessonMediaService.js';
 
 export function applyLessonContentOverride(lesson, content = null) {
   if (!lesson) throw new Error('Lesson is required.');
@@ -12,7 +13,7 @@ export function applyLessonContentOverride(lesson, content = null) {
     updatedBy: null
   });
   if (!content) {
-    return Object.freeze({ ...lesson, contentPolicy: defaultPolicy });
+    return applyLessonMedia(Object.freeze({ ...lesson, contentPolicy: defaultPolicy }));
   }
   const overridden = {
     ...lesson,
@@ -34,7 +35,7 @@ export function applyLessonContentOverride(lesson, content = null) {
   if (content.printGroups !== undefined) {
     overridden.printGroups = Object.freeze(content.printGroups.map(value => Object.freeze(structuredClone(value))));
   }
-  return Object.freeze(overridden);
+  return applyLessonMedia(Object.freeze(overridden));
 }
 
 export function applyLessonMasterySetting(lesson, setting = null) {

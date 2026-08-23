@@ -14,29 +14,40 @@ test('ImageKit has one public endpoint owner and lesson media paths stay relativ
   assert.throws(()=>normalizeMediaPath('../secret'),/Invalid media path/);
 });
 
-test('media manifest is immutable, local, hashed, and valid for image plus audio',async()=>{
+test('media manifest validates 35 G2 production images plus image/audio pipeline smoke assets',async()=>{
   const summary=await validateMediaManifest();
-  assert.equal(summary.assets,2);
+  assert.equal(summary.assets,37);
   assert.ok(summary.totalBytes>0);
-  assert.deepEqual(mediaManifest.assets.map(asset=>asset.kind).sort(),['audio','image']);
+  assert.equal(mediaManifest.assets.filter(asset=>asset.kind==='image').length,36);
+  assert.equal(mediaManifest.assets.filter(asset=>asset.kind==='audio').length,1);
+  assert.equal(mediaManifest.assets.filter(asset=>asset.id.startsWith('g2-u0')).length,35);
   assert.ok(mediaManifest.assets.every(asset=>!asset.remotePath.includes('://')));
 });
 
-test('ImageKit workflow uses GitHub secret, isolates feature branches, and publishes an auditable main status',()=>{
+test('ImageKit workflow pre-stages immutable same-repo preview assets and publishes auditable main status',()=>{
   const workflow=readFileSync(new URL('../.github/workflows/imagekit-media-sync.yml',import.meta.url),'utf8');
   const sync=readFileSync(new URL('../scripts/syncImageKitMedia.mjs',import.meta.url),'utf8');
   const smoke=readFileSync(new URL('../media-smoke.html',import.meta.url),'utf8');
+  const prepare=readFileSync(new URL('../scripts/prepareMediaBundles.mjs',import.meta.url),'utf8');
   assert.match(workflow,/secrets\.IMAGEKIT_PRIVATE_KEY/);
+  assert.match(workflow,/media-bundles\/\*\*/);
+  assert.match(workflow,/prepareMediaBundles\.mjs/);
   assert.match(workflow,/refs\/heads\/main/);
+  assert.match(workflow,/mode=preview/);
+  assert.match(workflow,/head\.repo\.full_name/);
   assert.match(workflow,/statuses:\s*write/);
   assert.match(workflow,/ImageKit media/);
   assert.match(workflow,/Canonical ImageKit image\/audio sync verified/);
   assert.match(workflow,/statuses\/\$GITHUB_SHA/);
-  assert.match(sync,/mode === 'production'/);
-  assert.match(sync,/__pipeline-smoke/);
+  assert.match(sync,/\['smoke', 'preview', 'production'\]/);
+  assert.match(sync,/mode === 'smoke' \? `__pipeline-smoke/);
+  assert.match(sync,/overwriteFile', mode === 'smoke' \? 'true' : 'false'/);
   assert.doesNotMatch(sync,/private_[A-Za-z0-9]/);
   assert.match(smoke,/mediaManifest/);
   assert.match(smoke,/mediaAssetUrl/);
+  assert.match(prepare,/940a8b63c2ce6324ced80a8bbb98de05b502d63d6ce9ca0e3406690e7c8dab82/);
+  assert.match(prepare,/expectedFiles:\s*35/);
+  assert.match(prepare,/unsafe or unexpected entry/);
 });
 
 test('production CSP permits only the ImageKit origin required by image and audio media',()=>{

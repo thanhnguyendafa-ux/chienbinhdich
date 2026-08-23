@@ -2,11 +2,13 @@ import { createHash } from 'node:crypto';
 import { readFile, stat } from 'node:fs/promises';
 import { extname } from 'node:path';
 import { mediaManifest } from '../media/manifest.js';
+import { prepareMediaBundles } from './prepareMediaBundles.mjs';
 
 const LIMITS = Object.freeze({ image: 200 * 1024, audio: 1024 * 1024 });
 const EXTENSIONS = Object.freeze({ image: new Set(['.svg', '.webp', '.png', '.jpg', '.jpeg', '.avif']), audio: new Set(['.wav', '.m4a', '.mp3', '.opus', '.ogg']) });
 
 export async function validateMediaManifest() {
+  await prepareMediaBundles();
   if (mediaManifest.version !== 1 || !Array.isArray(mediaManifest.assets)) throw new Error('Unsupported media manifest.');
   const ids = new Set();
   const sources = new Set();

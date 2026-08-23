@@ -2,3 +2,4 @@
 *.log
 node_modules/
 .vercel/
+media-staging/global-success/g2/u0[1-5]/img/*.webp
