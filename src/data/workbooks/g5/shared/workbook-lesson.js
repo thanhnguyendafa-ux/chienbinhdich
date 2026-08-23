@@ -1,4 +1,5 @@
 import { freeze, preTheory, mcq, typing, classification, theorySupport } from '../../../workbook-content-helpers.js';
+import { correctedG5PreloadEntry, correctedG5SourceItem } from '../source-corrections.js';
 
 const LETTERS = freeze(['A','B','C','D']);
 const FALLBACK_VI = freeze(['một hoạt động khác','một nơi khác','một ý khác']);
@@ -11,7 +12,9 @@ function distinctDistractors(correct, pool) {
 }
 
 function preloadItems(prefix, vocab, phrases) {
-  const source = [...vocab.map(entry => ({...entry, phase:'vocab'})), ...phrases.map(entry => ({...entry, phase:'phrase'}))];
+  const correctedVocab=vocab.map((entry,index)=>correctedG5PreloadEntry(prefix,'vocab',entry,index));
+  const correctedPhrases=phrases.map((entry,index)=>correctedG5PreloadEntry(prefix,'phrase',entry,index));
+  const source = [...correctedVocab.map(entry => ({...entry, phase:'vocab'})), ...correctedPhrases.map(entry => ({...entry, phase:'phrase'}))];
   return source.map((entry,index) => {
     const phasePool = source.filter(candidate => candidate.phase === entry.phase).map(candidate => candidate.vi);
     const wrongs = distinctDistractors(entry.vi, phasePool);
@@ -23,7 +26,7 @@ function preloadItems(prefix, vocab, phrases) {
       prompt:`${entry.phase==='vocab' ? 'TỪ VỰNG' : 'CỤM TỪ'} · “${entry.en}” có nghĩa là gì?`,
       options,
       correct:LETTERS[correctIndex],
-      reason:`“${entry.en}” = “${entry.vi}”.`,
+      reason:entry.reason ?? `“${entry.en}” = “${entry.vi}”.`,
       theory:entry.phase==='vocab' ? 'Nhìn từ tiếng Anh rồi gọi nghĩa tiếng Việt.' : 'Đọc cả cụm như một khối nghĩa.',
       example:`${entry.en} → ${entry.vi}`,
       phase:entry.phase
@@ -54,7 +57,9 @@ function makeSequence(id, raw, theory) {
 
 function makeSentenceOrder(id, raw, theory, adaptation) {
   return freeze({
-    id,type:'sentence_order',prompt:'Sắp xếp các mảnh thành câu đúng.',learningPhase:'source',
+    id,type:'sentence_order',prompt:adaptation
+      ? 'Bản online: sắp xếp câu mẫu theo đúng trọng tâm để hệ thống chấm được. Bài viết tự do gốc không được chấm tự động.'
+      : 'Sắp xếp các mảnh thành câu đúng.',learningPhase:'source',
     tokens:freeze(raw.tokens),correctOrder:freeze(raw.correctOrder),acceptedOrders:freeze([freeze(raw.correctOrder)]),
     ...(adaptation ? {digitalAdaptation:freeze(adaptation)} : {}), theorySupport,
     teachingFeedback:freeze({correctLabel:raw.sentence,reason:raw.explanation,theory,example:raw.trap || 'Đọc lại cả câu sau khi sắp xếp.'})
@@ -69,42 +74,52 @@ function withReadingStimulus(item, stimulus) {
   return stimulus ? freeze({...item,stimulus}) : item;
 }
 
+function sourceWordBank(spec) {
+  const instruction=String(spec?.source?.instruction ?? '');
+  const match=instruction.match(/Word bank:\s*([^.]*)/i);
+  if (!match) return null;
+  const words=match[1].split(',').map(value=>value.trim()).filter(Boolean);
+  return words.length ? freeze(words) : null;
+}
+
 function sourceItems(spec) {
   const theory = spec.theory.join(' ');
   const prefix = spec.id;
   const stimulus = readingStimulus(spec);
-  if (spec.type === 'MCQ') return spec.items.map((raw,index) => {
+  const bank = sourceWordBank(spec);
+  const correctedItems=spec.items.map((raw,index)=>correctedG5SourceItem(spec.id,raw,index));
+  if (spec.type === 'MCQ') return correctedItems.map((raw,index) => {
     const options = raw.options.map(([id,text]) => [id,text]);
     const answerPair = options.find(([,text]) => text === raw.answer);
     if (!answerPair) throw new Error(`${spec.id}: MCQ answer not found: ${raw.answer}`);
     return mcq({id:`${prefix}-source-${String(index+1).padStart(2,'0')}`,prompt:raw.prompt,options,correct:answerPair[0],reason:raw.explanation,theory,example:raw.trap,stimulus});
   });
-  if (spec.type === 'TYPE') return spec.items.map((raw,index) => withReadingStimulus(
-    typing({id:`${prefix}-source-${String(index+1).padStart(2,'0')}`,prompt:raw.prompt,answer:raw.answer,reason:raw.explanation,theory,example:raw.trap}),
+  if (spec.type === 'TYPE') return correctedItems.map((raw,index) => withReadingStimulus(
+    typing({id:`${prefix}-source-${String(index+1).padStart(2,'0')}`,prompt:raw.prompt,answer:raw.answer,acceptedAnswers:raw.accepted??[],reason:raw.explanation,theory,example:raw.trap,sourceWordBank:bank}),
     stimulus
   ));
-  if (spec.type === 'TF') return spec.items.map((raw,index) => withReadingStimulus(
+  if (spec.type === 'TF') return correctedItems.map((raw,index) => withReadingStimulus(
     makeTrueFalse(`${prefix}-source-${String(index+1).padStart(2,'0')}`,raw,theory),
     stimulus
   ));
   if (spec.type === 'SO') {
-    const adaptation = spec.source.exercise === 'F2' ? {kind:'controlled_open_writing_to_sentence_order',reason:'F2 gốc là open writing; bản online khóa câu theo trọng tâm Unit để auto-score.'} : null;
-    return spec.items.map((raw,index) => withReadingStimulus(
+    const adaptation = spec.source.exercise === 'F2' ? {kind:'controlled_open_writing_to_sentence_order',reason:'F2 gốc là open writing; bản online khóa câu theo trọng tâm Unit để auto-score, còn phần viết cá nhân không được giả chấm đúng/sai.'} : null;
+    return correctedItems.map((raw,index) => withReadingStimulus(
       makeSentenceOrder(`${prefix}-source-${String(index+1).padStart(2,'0')}`,raw,theory,adaptation),
       stimulus
     ));
   }
-  if (spec.type === 'SEQ') return spec.items.map((raw,index) => withReadingStimulus(
+  if (spec.type === 'SEQ') return correctedItems.map((raw,index) => withReadingStimulus(
     makeSequence(`${prefix}-source-${String(index+1).padStart(2,'0')}`,raw,theory),
     stimulus
   ));
   if (spec.type === 'MATCH') {
-    const groups = spec.items.map((pair,index) => freeze({id:`g${index+1}`,label:pair.right}));
-    const tokens = spec.items.map((pair,index) => freeze({id:`t${index+1}`,text:pair.left,correctGroupId:`g${index+1}`,preserveOrder:true}));
+    const groups = correctedItems.map((pair,index) => freeze({id:`g${index+1}`,label:pair.right}));
+    const tokens = correctedItems.map((pair,index) => freeze({id:`t${index+1}`,text:pair.left,correctGroupId:`g${index+1}`,preserveOrder:true}));
     return [withReadingStimulus(classification({
       id:`${prefix}-source-01`,prompt:'Ghép mỗi phần bên trái với phần bên phải phù hợp.',groups,tokens,
-      correctLabel:spec.items.map(pair => `${pair.left} → ${pair.right}`).join(' | '),
-      reason:spec.items.map(pair => `${pair.left} + ${pair.right}: ${pair.why}`).join(' · '),
+      correctLabel:correctedItems.map(pair => `${pair.left} → ${pair.right}`).join(' | '),
+      reason:correctedItems.map(pair => `${pair.left} + ${pair.right}: ${pair.why}`).join(' · '),
       theory,example:'Đọc cả hai vế sau khi ghép để kiểm tra nghĩa.'
     }), stimulus)];
   }

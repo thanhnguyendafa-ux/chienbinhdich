@@ -1,22 +1,34 @@
+import { g5WorkbookRegistry } from '../../data/workbooks/g5/index.js';
 import { g6U1WorkbookRegistry } from '../../data/g6-u1-workbook-catalog.js';
 import { g6U2WorkbookRegistry } from '../../data/g6-u2-workbook-catalog.js';
 import { g6U3WorkbookRegistry } from '../../data/g6-u3-workbook-catalog.js';
+import { g6WorkbookRemainingRegistry } from '../../data/workbooks/g6/index.js';
 import { g7U1WorkbookRegistry } from '../../data/g7-u1-workbook-catalog.js';
 import { g7U2WorkbookRegistry } from '../../data/g7-u2-workbook-catalog.js';
 import { g7U3WorkbookRegistry } from '../../data/g7-u3-workbook-catalog.js';
 
 const WORKBOOK_REGISTRY = Object.freeze([
+  ...g5WorkbookRegistry,
   ...g6U1WorkbookRegistry,
   ...g6U2WorkbookRegistry,
   ...g6U3WorkbookRegistry,
+  ...g6WorkbookRemainingRegistry,
   ...g7U1WorkbookRegistry,
   ...g7U2WorkbookRegistry,
   ...g7U3WorkbookRegistry
 ]);
-const SUPPORTED_SLUGS = new Set([
-  'g6-u1-wb-b5','g6-u1-wb-d1','g6-u2-wb-d1','g6-u3-wb-b3','g6-u3-wb-d1',
-  'g7-u1-wb-d1','g7-u2-wb-b3','g7-u2-wb-b4','g7-u3-wb-b3'
+
+// Audited examples retained as public regression anchors; runtime discovery is registry-driven,
+// so new sourceWordBank lessons need no slug allow-list change.
+export const SOURCE_WORD_BANK_REFERENCE_IDS = Object.freeze([
+  'g6-u1-wb-b5','g6-u1-wb-d1',
+  'g6-u2-wb-d1',
+  'g6-u3-wb-b3','g6-u3-wb-d1',
+  'g7-u1-wb-d1',
+  'g7-u2-wb-b3','g7-u2-wb-b4',
+  'g7-u3-wb-b3'
 ]);
+
 const configCache = new Map();
 let scheduled = false;
 
@@ -65,16 +77,14 @@ function buildWordBank(slug, config) {
 
 async function applySourceWordBank() {
   const slug = currentLessonSlug();
-  if (!SUPPORTED_SLUGS.has(slug)) return;
+  if (!slug) return;
 
   const promptBlock = document.querySelector('.question-card .prompt-block');
-  if (!promptBlock) return;
-  if (promptBlock.querySelector(`.source-word-bank[data-source-word-bank-slug="${slug}"]`)) return;
+  if (!promptBlock || promptBlock.querySelector('.source-word-bank')) return;
 
   const config = await sourceWordBankConfig(slug);
   if (!config || currentLessonSlug() !== slug || !promptBlock.isConnected) return;
 
-  promptBlock.querySelector('.source-word-bank')?.remove();
   const bank = buildWordBank(slug, config);
   const promptLabel = promptBlock.querySelector('.prompt-label');
   if (promptLabel) promptLabel.insertAdjacentElement('afterend', bank);
