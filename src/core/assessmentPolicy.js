@@ -1,5 +1,6 @@
 export const SOURCE_ONLY_ASSESSMENT = 'source-only';
 export const WORKBOOK_ALL_ITEMS_ASSESSMENT = 'workbook-all-items-v1';
+export const CURRENT_WORKBOOK_MASTERY_CONTRACT_VERSION = 2;
 export const MASTERY_MODE_ACCURACY = 'accuracy';
 export const MASTERY_MODE_COMPLETION = 'completion';
 const UNSCORED = 'unscored';
@@ -48,19 +49,21 @@ export function withWorkbookAllItemsMastery(descriptor) {
     ...descriptor,
     completionPolicy: 'all-items',
     assessmentPolicy: WORKBOOK_ALL_ITEMS_ASSESSMENT,
-    assessmentContractVersion: 1,
-    assessmentLabel: 'Mastery tính tất cả câu trong bài: câu có đáp án tính theo độ chính xác; bài mở/tự luyện tính khi hoàn thành.',
+    assessmentContractVersion: CURRENT_WORKBOOK_MASTERY_CONTRACT_VERSION,
+    assessmentLabel: 'Mastery tính tất cả câu trong bài: câu accuracy đúng lần đầu +1 unit, sai lần đầu -1 unit; bài mở/tự luyện nhận +1 unit khi hoàn thành.',
     loadContent: async () => normalizeWorkbookContent(await baseLoadContent())
   });
 }
 
 export function assessmentSetForSession(session, set) {
   const snapshotPolicy = session?.assessmentPolicyAtStart;
+  const snapshotContractVersion = session?.assessmentContractVersionAtStart;
   const snapshotCompletion = session?.completionPolicyAtStart;
-  if (snapshotPolicy || snapshotCompletion) {
+  if (snapshotPolicy || snapshotCompletion || snapshotContractVersion != null) {
     return {
       ...set,
       assessmentPolicy: snapshotPolicy ?? set?.assessmentPolicy,
+      assessmentContractVersion: snapshotContractVersion ?? set?.assessmentContractVersion,
       completionPolicy: snapshotCompletion ?? set?.completionPolicy
     };
   }
