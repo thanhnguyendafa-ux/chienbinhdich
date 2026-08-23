@@ -13,12 +13,23 @@ on:
       - 'src/core/mediaAsset.js'
       - 'media-smoke.html'
       - '.github/workflows/imagekit-media-sync.yml'
+  pull_request:
+    paths:
+      - 'media-staging/**'
+      - 'media/**'
+      - 'scripts/mediaManifest.mjs'
+      - 'scripts/validateMediaManifest.mjs'
+      - 'scripts/syncImageKitMedia.mjs'
+      - 'src/config/mediaConfig.js'
+      - 'src/core/mediaAsset.js'
+      - 'media-smoke.html'
+      - '.github/workflows/imagekit-media-sync.yml'
 
 permissions:
   contents: read
 
 concurrency:
-  group: imagekit-media-${{ github.ref }}
+  group: imagekit-media-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
