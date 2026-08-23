@@ -88,7 +88,8 @@ test('teaching feedback is learner-paced and resolved feedback includes derived 
   assert.match(renderSource, /if \(teachingFeedback\)/);
   assert.match(renderSource, /id="teaching-continue-btn"/);
   assert.match(renderSource, /addEventListener\('click', event =>/);
-  assert.match(renderSource, /window\.setTimeout\(onContinue, explainedIncorrect \? 1200 : 430\)/);
+  assert.match(renderSource, /event\.currentTarget\.disabled = true;[\s\S]*onContinue\(\);/);
+  assert.doesNotMatch(renderSource, /window\.setTimeout\(onContinue/);
   assert.match(renderSource, /renderQuestionContext\(item\)/);
   assert.match(renderSource, /Con chọn/);
   assert.match(renderSource, /Đáp án đúng là/);
