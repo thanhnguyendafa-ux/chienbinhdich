@@ -7,6 +7,8 @@ import { renderQuestionInteraction } from '../src/features/drill/questionTypeReg
 
 const expectedByUnit=Object.freeze({4:14,5:19,6:16,7:17,8:17,9:16,10:18,11:13,12:18});
 const expectedQuestions=Object.freeze({4:62,5:90,6:76,7:78,8:93,9:87,10:79,11:70,12:78});
+const sourceItems = content => content.items.filter(item=>item.learningPhase==='source');
+const learnerPrompt = item => item.prompt ?? item.vi ?? item.statement ?? '';
 
 test('G6 U4-U12 is published through one SSOT registry with bounded lazy loaders', () => {
   assert.equal(g6WorkbookRemainingRegistry.length,148);
@@ -41,14 +43,16 @@ test('every G6 U4-U12 lesson has Grade-3 theory, exactly 4 vocab + 4 phrase MCQs
     assert.match(content.preLessonTheory?.title??'',/lớp 3/i,descriptor.id);
     assert.match(content.preLessonTheory?.intro??'',/lớp 3/i,descriptor.id);
     assert.equal(content.sourceTrace?.mediaPolicy,'TEXT-ONLY · no image · no audio',descriptor.id);
-    const preload=content.items.filter(item=>item.learningPhase==='preload');
-    assert.equal(preload.length,8,descriptor.id);
-    assert.equal(preload.filter(item=>item.type==='mcq' && /^TỪ VỰNG ·/.test(item.prompt)).length,4,`${descriptor.id} vocab preload`);
-    assert.equal(preload.filter(item=>item.type==='mcq' && /^CỤM TỪ ·/.test(item.prompt)).length,4,`${descriptor.id} phrase preload`);
-    const sourceItems=content.items.filter(item=>item.learningPhase==='source');
-    assert.equal(sourceItems.length,descriptor.sourceItemCount,descriptor.id);
-    const unit=Number(descriptor.id.slice(5,7)); counts[unit]=(counts[unit]??0)+sourceItems.length;
-    for (const item of sourceItems) {
+    const vocab=content.items.filter(item=>item.learningPhase==='vocab');
+    const phrases=content.items.filter(item=>item.learningPhase==='phrase');
+    assert.equal(vocab.length,4,`${descriptor.id} vocab preload`);
+    assert.equal(phrases.length,4,`${descriptor.id} phrase preload`);
+    assert.ok(vocab.every(item=>item.type==='mcq' && /^TỪ VỰNG ·/.test(item.prompt)),`${descriptor.id} vocab MCQ contract`);
+    assert.ok(phrases.every(item=>item.type==='mcq' && /^CỤM TỪ ·/.test(item.prompt)),`${descriptor.id} phrase MCQ contract`);
+    const source=sourceItems(content);
+    assert.equal(source.length,descriptor.sourceItemCount,descriptor.id);
+    const unit=Number(descriptor.id.slice(5,7)); counts[unit]=(counts[unit]??0)+source.length;
+    for (const item of source) {
       assert.ok(item.teachingFeedback?.reason?.length>15,item.id);
       assert.ok(item.teachingFeedback?.theory?.length>15,item.id);
       assert.ok(item.teachingFeedback?.example?.length>2,item.id);
@@ -62,7 +66,7 @@ test('every G6 U4-U12 Reading question carries passage context at answer time', 
   let readingItems=0;
   for (const descriptor of g6WorkbookRemainingRegistry) {
     const content=await descriptor.loadContent();
-    for (const item of content.items.filter(item=>item.learningPhase==='source' && item.stimulus)) {
+    for (const item of sourceItems(content).filter(item=>item.stimulus)) {
       readingItems+=1;
       assert.ok(item.stimulus.title?.length>0,item.id);
       assert.ok(item.stimulus.text?.length>40,item.id);
@@ -77,19 +81,19 @@ test('every G6 U4-U12 Reading question carries passage context at answer time', 
 test('source-fidelity regressions: U10 keeps source clues/dialogues and U12 D2 is Reading MCQ', async () => {
   const byId=new Map(g6WorkbookRemainingRegistry.map(x=>[x.id,x]));
   const u10b3=await byId.get('g6-u10-wb-b3').loadContent();
-  const b3=u10b3.items.filter(x=>x.learningPhase==='source');
-  assert.match(b3[0].prompt,/to learn English/);
-  assert.match(b3[4].prompt,/buy food from the supermarket/);
+  const b3=sourceItems(u10b3);
+  assert.match(learnerPrompt(b3[0]),/to learn English/);
+  assert.match(learnerPrompt(b3[4]),/buy food from the supermarket/);
   const u10b7=await byId.get('g6-u10-wb-b7').loadContent();
-  assert.equal(u10b7.items.filter(x=>x.learningPhase==='source')[0].type,'mcq');
+  assert.equal(sourceItems(u10b7)[0].type,'mcq');
   const u10c2=await byId.get('g6-u10-wb-c2').loadContent();
-  const c2=u10c2.items.filter(x=>x.learningPhase==='source').map(x=>x.prompt);
+  const c2=sourceItems(u10c2).map(learnerPrompt);
   assert.ok(c2.includes('What will it look like?'));
   assert.ok(c2.includes('What will there be around the house?'));
   const u10d1=await byId.get('g6-u10-wb-d1').loadContent();
-  assert.match(u10d1.items.filter(x=>x.learningPhase==='source')[4].prompt,/any neighbours/);
+  assert.match(learnerPrompt(sourceItems(u10d1)[4]),/any neighbours/);
   const u12d2=await byId.get('g6-u12-wb-d2').loadContent();
-  const d2=u12d2.items.filter(x=>x.learningPhase==='source');
+  const d2=sourceItems(u12d2);
   assert.equal(d2.length,5);
   assert.ok(d2.every(x=>x.type==='mcq' && x.stimulus?.text?.includes('Scientists have worked')));
 });
