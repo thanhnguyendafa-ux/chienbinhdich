@@ -4,6 +4,7 @@ import { evaluateQuestion, expectedResponseDisplay } from '../src/core/questionT
 import { orderForExposure } from '../src/core/exposureOrder.js';
 import { g6U1WorkbookRegistry } from '../src/data/g6-u1-workbook-catalog.js';
 import { getG6U1WorkbookContent } from '../src/data/g6-u1-workbook-content.js';
+import { renderQuestionInteraction } from '../src/features/drill/questionTypeRegistry.js';
 
 async function load(key) {
   const descriptor = g6U1WorkbookRegistry.find(entry => entry.id === `g6-u1-wb-${key}`);
@@ -12,6 +13,7 @@ async function load(key) {
 }
 const sourceItems = content => content.items.filter(item => item.learningPhase === 'source');
 function correctChoiceText(item) { return item.choices?.find(choice => choice.id === item.correctChoiceId)?.text ?? ''; }
+const bankCount = html => (html.match(/class="source-word-bank"/g) ?? []).length;
 
 test('Global 6 Unit 1 workbook publishes all 15 text-solvable lessons after PDF audit', () => {
   assert.equal(g6U1WorkbookRegistry.length, 15);
@@ -92,8 +94,12 @@ test('D2 keeps short recall typing but moves long fixed reading answers to MCQ',
   assert.match(correctChoiceText(items[4]), /good first day/);
 });
 
-test('source word-bank enhancer module is importable without a browser DOM', async () => {
-  await assert.doesNotReject(import('../src/features/drill/sourceWordBankEnhancer.js'));
+test('direct word-bank rendering is browser-DOM independent and scoped to its owner item', async () => {
+  const b5 = sourceItems((await load('b5')).content);
+  assert.equal(bankCount(renderQuestionInteraction(b5[0])), 1);
+  const preload = (await load('b5')).content.items.find(item => item.learningPhase !== 'source' && !item.sourceWordBank?.length);
+  assert.ok(preload);
+  assert.equal(bankCount(renderQuestionInteraction(preload)), 0);
 });
 
 test('D3 final source answer remains B before as in the SBT solution', async () => {
