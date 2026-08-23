@@ -3,12 +3,14 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { validateSet } from '../src/data/contentValidator.js';
 import { g6U2WorkbookFolders, g6U2WorkbookRegistry } from '../src/data/g6-u2-workbook-catalog.js';
+import { renderQuestionInteraction } from '../src/features/drill/questionTypeRegistry.js';
 
 const expectedKeys = ['a1','a2','b2','b3','b4','c1','c2','c3','d1','d2','d3b','e1','e2','e3'];
 const omittedSlugs = ['g6-u2-wb-b1','g6-u2-wb-b5','g6-u2-wb-d3a'];
 async function load(key) { const descriptor = g6U2WorkbookRegistry.find(entry => entry.id === `g6-u2-wb-${key}`); assert.ok(descriptor); return { descriptor, content:await descriptor.loadContent() }; }
 const sourceItems = content => content.items.filter(item => item.learningPhase === 'source');
 function choiceText(item, id = item.correctChoiceId) { return item.choices?.find(choice => choice.id === id)?.text ?? ''; }
+const bankCount = html => (html.match(/class="source-word-bank"/g) ?? []).length;
 
 test('G6 U2 workbook publishes all 14 text-solvable source lessons after PDF audit', () => {
   assert.equal(g6U2WorkbookFolders.length,1);
@@ -111,9 +113,13 @@ test('fixed long typing is allowed only for rewrite tasks that require added lan
   }
 });
 
-test('source word-bank enhancer includes Unit 2 D1 without changing earlier support', async () => {
-  const enhancer = await readFile(new URL('../src/features/drill/sourceWordBankEnhancer.js', import.meta.url), 'utf8');
-  assert.match(enhancer, /g6U2WorkbookRegistry/); assert.match(enhancer, /g6-u2-wb-d1/); assert.match(enhancer, /g6-u1-wb-b5/);
+test('Unit 2 D1 word bank renders exactly once from the current item and never from lesson-wide registry state', async () => {
+  const content = (await load('d1')).content;
+  const owner = sourceItems(content)[0];
+  assert.equal(bankCount(renderQuestionInteraction(owner)),1);
+  const preload = content.items.find(item => item.learningPhase !== 'source' && !item.sourceWordBank?.length);
+  assert.ok(preload);
+  assert.equal(bankCount(renderQuestionInteraction(preload)),0);
 });
 
 test('required micro-theory can unlock immediately when its content fits without scrolling', async () => {

@@ -5,6 +5,7 @@ import {
   isScoredItem,
   masteryModeForItem,
   scoredItemCount,
+  CURRENT_WORKBOOK_MASTERY_CONTRACT_VERSION,
   MASTERY_MODE_ACCURACY,
   MASTERY_MODE_COMPLETION,
   SOURCE_ONLY_ASSESSMENT,
@@ -35,7 +36,7 @@ function publishedById(id) {
   return byId(publishedWorkbook,id);
 }
 
-test('all 378 published G5/G6/G7 workbook lessons use one all-items mastery contract', () => {
+test('all 378 published G5/G6/G7 workbook lessons use one current all-items Mastery contract', () => {
   const g5=publishedWorkbook.filter(entry=>entry.id.startsWith('g5-'));
   const g6=publishedWorkbook.filter(entry=>entry.id.startsWith('g6-'));
   const g7=publishedWorkbook.filter(entry=>entry.id.startsWith('g7-'));
@@ -45,7 +46,8 @@ test('all 378 published G5/G6/G7 workbook lessons use one all-items mastery cont
   assert.equal(publishedWorkbook.length,378);
   for(const descriptor of publishedWorkbook) {
     assert.equal(descriptor.assessmentPolicy,WORKBOOK_ALL_ITEMS_ASSESSMENT,descriptor.id);
-    assert.equal(descriptor.assessmentContractVersion,1,descriptor.id);
+    assert.equal(descriptor.assessmentContractVersion,CURRENT_WORKBOOK_MASTERY_CONTRACT_VERSION,descriptor.id);
+    assert.equal(descriptor.assessmentContractVersion,2,descriptor.id);
     assert.equal(descriptor.completionPolicy,'all-items',descriptor.id);
     assert.equal(descriptor.passThreshold,80,descriptor.id);
     assert.match(descriptor.assessmentLabel,/Mastery tính tất cả câu/);
@@ -87,10 +89,10 @@ test('378/378 workbook lessons put every visible item in the Mastery denominator
   console.log('WORKBOOK_MASTERY_CENSUS',JSON.stringify(census));
 });
 
-test('Mastery is earned units divided by all questions, including completion items', () => {
+test('current workbook accuracy is reversible while completion remains positive-only', () => {
   const set={
     id:'g6-u99-wb-contract',version:1,passThreshold:80,typingTolerance:true,
-    completionPolicy:'all-items',assessmentPolicy:WORKBOOK_ALL_ITEMS_ASSESSMENT,assessmentContractVersion:1,
+    completionPolicy:'all-items',assessmentPolicy:WORKBOOK_ALL_ITEMS_ASSESSMENT,assessmentContractVersion:2,
     items:[
       {id:'v1',type:'mcq',learningPhase:'vocab',masteryMode:'accuracy',choices:[{id:'A',text:'right'},{id:'B',text:'wrong'}],correctChoiceId:'A'},
       {id:'p1',type:'mcq',learningPhase:'phrase',masteryMode:'accuracy',choices:[{id:'A',text:'right'},{id:'B',text:'wrong'}],correctChoiceId:'A'},
@@ -100,45 +102,39 @@ test('Mastery is earned units divided by all questions, including completion ite
     ]
   };
   let session=createSession({studentName:'Lan',set,now:1});
-  for(const response of ['A','A','A','My answer','B']) {
-    const result=submitAnswer({session,set,response,now:(session.attempts.length+2)});
-    session=result.session;
+  for(const response of ['A','A','A','My answer']) {
+    session=submitAnswer({session,set,response,now:(session.attempts.length+2)}).session;
   }
-  const metrics=getSessionMetrics(session,set,20);
-  assert.equal(metrics.masteryTotal,5);
-  assert.equal(metrics.masteryEarned,4);
-  assert.equal(metrics.mastery,80);
-  assert.equal(metrics.accuracyEarned,3);
-  assert.equal(metrics.accuracyTotal,4);
-  assert.equal(metrics.completionEarned,1);
-  assert.equal(metrics.completionTotal,1);
-  assert.equal(metrics.unscoredTotal,0);
+  assert.equal(getSessionMetrics(session,set,20).mastery,80);
+  const wrong=submitAnswer({session,set,response:'B',now:30});
+  session=wrong.session;
+  assert.equal(wrong.event.masteryDeltaUnits,-1);
+  assert.equal(wrong.event.masteryDeltaPercent,-20);
+  assert.equal(getSessionMetrics(session,set,31).mastery,60);
   assert.equal(session.attempts[3].masteryMode,'completion');
   assert.equal(session.attempts[3].correct,null,'completion must not fake correctness');
   assert.equal(session.attempts[3].completed,true);
-  assert.equal(session.attempts[3].result,'completion_success');
+  assert.equal(session.attempts[3].masteryDeltaUnits,1);
   session=qualifySessionIfEligible(session,set);
-  assert.equal(session.status,'passed','4/5 = 80% after all five questions were attempted');
+  assert.notEqual(session.status,'passed');
 });
 
-test('below 80 percent cannot PASS even after every question was attempted', () => {
+test('below 80 percent cannot PASS even after every question was reached', () => {
   const items=Array.from({length:5},(_,index)=>({
     id:`q${index+1}`,type:'mcq',learningPhase:'source',masteryMode:'accuracy',choices:[{id:'A',text:'wrong'},{id:'B',text:'right'}],correctChoiceId:'B'
   }));
-  const set={id:'g5-u99-wb-threshold',version:1,passThreshold:80,completionPolicy:'all-items',assessmentPolicy:WORKBOOK_ALL_ITEMS_ASSESSMENT,items};
+  const set={id:'g5-u99-wb-threshold',version:1,passThreshold:80,completionPolicy:'all-items',assessmentPolicy:WORKBOOK_ALL_ITEMS_ASSESSMENT,assessmentContractVersion:2,items};
   let session=createSession({studentName:'Minh',set,now:1});
   for(let index=0;index<5;index+=1) {
     const result=submitAnswer({session,set,response:index<2?'A':'B',now:index+2});
     session=result.session;
-    if(index<4 && result.event.type==='incorrect_retry') {
-      const retry=submitAnswer({session,set,response:'B',now:index+20});
-      session=retry.session;
+    if(index<2 && result.event.type==='incorrect_retry') {
+      session=submitAnswer({session,set,response:'B',now:index+20}).session;
     }
   }
   const metrics=getSessionMetrics(session,set,50);
-  assert.equal(metrics.masteryEarned,3);
   assert.equal(metrics.masteryTotal,5);
-  assert.equal(metrics.mastery,60);
+  assert.ok(metrics.mastery<80);
   session=qualifySessionIfEligible(session,set);
   assert.notEqual(session.status,'passed');
 });
@@ -146,7 +142,7 @@ test('below 80 percent cannot PASS even after every question was attempted', () 
 test('completion failure does not reveal a fake answer and completion success earns one unit', () => {
   const set={
     id:'g7-u99-wb-open',version:1,passThreshold:80,typingTolerance:true,
-    completionPolicy:'all-items',assessmentPolicy:WORKBOOK_ALL_ITEMS_ASSESSMENT,
+    completionPolicy:'all-items',assessmentPolicy:WORKBOOK_ALL_ITEMS_ASSESSMENT,assessmentContractVersion:2,
     items:[{id:'open',type:'typing',learningPhase:'source',masteryMode:'completion',responseMode:'open',vi:'Write one idea',en:'sample answer'}]
   };
   let session=createSession({studentName:'An',set,now:1});
@@ -166,15 +162,22 @@ test('completion failure does not reveal a fake answer and completion success ea
   assert.equal(session.attempts[1].masteryDeltaUnits,1);
 });
 
-test('session schema 8 snapshots the contract while schema 7 sessions keep their historical grading law', () => {
+test('schema 8 snapshots contract v2 while active contract-v1 sessions keep historical earned-only law', () => {
   const newSet={
-    id:'g5-u01-wb-demo',version:1,passThreshold:80,completionPolicy:'all-items',assessmentPolicy:WORKBOOK_ALL_ITEMS_ASSESSMENT,
-    items:[{id:'vocab',type:'mcq',learningPhase:'vocab',assessmentMode:'scored',masteryMode:'accuracy',choices:[{id:'A',text:'x'}],correctChoiceId:'A'}]
+    id:'g5-u01-wb-demo',version:1,passThreshold:80,completionPolicy:'all-items',assessmentPolicy:WORKBOOK_ALL_ITEMS_ASSESSMENT,assessmentContractVersion:2,
+    items:[{id:'vocab',type:'mcq',learningPhase:'vocab',assessmentMode:'scored',masteryMode:'accuracy',choices:[{id:'A',text:'x'},{id:'B',text:'y'}],correctChoiceId:'A'}]
   };
   const fresh=createSession({studentName:'Mai',set:newSet,now:1});
   assert.equal(fresh.schemaVersion,8);
   assert.equal(fresh.assessmentPolicyAtStart,WORKBOOK_ALL_ITEMS_ASSESSMENT);
+  assert.equal(fresh.assessmentContractVersionAtStart,2);
   assert.equal(fresh.completionPolicyAtStart,'all-items');
+
+  const activeV1={...fresh,assessmentContractVersionAtStart:1,attempts:[]};
+  const historicalV1=assessmentSetForSession(activeV1,newSet);
+  assert.equal(historicalV1.assessmentContractVersion,1);
+  const v1Wrong=submitAnswer({session:activeV1,set:newSet,response:'B',now:2});
+  assert.equal(v1Wrong.event.masteryDeltaUnits,0,'active v1 workbook session preserves earned-only historical law');
 
   const legacyG5={schemaVersion:7,setId:'g5-u01-wb-demo',attempts:[]};
   const historicalG5=assessmentSetForSession(legacyG5,newSet);

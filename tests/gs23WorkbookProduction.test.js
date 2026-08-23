@@ -69,13 +69,13 @@ test('primary-school interaction CSS is loaded and protects touch/mobile layouts
   assert.match(css,/orientation:landscape/);
 });
 
-test('published-style all-items mastery contract is identical to G5/G6/G7 policy', async()=>{
+test('published-style all-items mastery contract is identical across G2/G3/G5/G6/G7 policy', async()=>{
   for(const base of [g2WorkbookRegistry[0],g3WorkbookRegistry[0]]){
     const descriptor=withWorkbookAllItemsMastery(base);
     assert.equal(descriptor.passThreshold,80);
     assert.equal(descriptor.assessmentPolicy,WORKBOOK_ALL_ITEMS_ASSESSMENT);
     assert.equal(descriptor.completionPolicy,'all-items');
-    assert.equal(descriptor.assessmentContractVersion,1);
+    assert.equal(descriptor.assessmentContractVersion,2);
     const set=await descriptor.loadContent();
     assert.ok(set.items.every(item=>item.assessmentMode==='scored'));
     const open=set.items.find(item=>item.responseMode==='open');

@@ -36,7 +36,7 @@
   text-align:center;
   overflow-wrap:anywhere;
 }
-.prompt-block.has-source-word-bank h1{
+.prompt-block .source-word-bank + h1{
   margin-bottom:var(--s5);
   font-size:clamp(24px,3.2vw,34px);
   line-height:1.2;
@@ -46,12 +46,12 @@
   .source-word-bank{margin-bottom:18px;padding:11px}
   .source-word-bank-grid{gap:8px}
   .source-word-bank-item{min-height:40px;padding:7px 9px;font-size:13px}
-  .prompt-block.has-source-word-bank h1{font-size:24px;line-height:1.24}
+  .prompt-block .source-word-bank + h1{font-size:24px;line-height:1.24}
 }
 @media (max-height:500px) and (orientation:landscape){
   .source-word-bank{margin-bottom:10px;padding:8px}
   .source-word-bank-label{margin-bottom:6px;font-size:10px}
   .source-word-bank-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
   .source-word-bank-item{min-height:32px;padding:5px 7px;font-size:11px}
-  .prompt-block.has-source-word-bank h1{font-size:20px;line-height:1.18;margin-bottom:10px}
+  .prompt-block .source-word-bank + h1{font-size:20px;line-height:1.18;margin-bottom:10px}
 }
