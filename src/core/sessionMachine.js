@@ -1,3 +1,4 @@
+import { assessmentModeForItem, isScoredItem, scoredItemCount } from './assessmentPolicy.js';
 import { evaluateQuestion, expectedResponseDisplay, questionTypeForItem } from './questionTypes.js';
 import { getMasteryCounts, getMasteryTransitions, masteryDisplayPercent, masteryPercentFromAttempts, masteryUnitPercent } from './masteryEngine.js';
 import { sessionPassThreshold } from './masteryPolicy.js';
@@ -56,14 +57,17 @@ export function submitAnswer({ session, set, response, answer, attemptMeta = {},
   const startedAt = finiteTime(attemptMeta.startedAt, submittedAt);
   const explainAndAccept = set?.completionPolicy === EXPLAIN_ACCEPT_POLICY;
   const revealAfterAttempt = !result.correct && (explainAndAccept || hasSeenAnswer || failedAttemptsBefore + 1 >= 2);
-  const masteryDeltaUnits = attemptNumber === 1 ? (result.correct ? 1 : -1) : 0;
-  const masteryBefore = masteryDisplayPercent(session.attempts, set.items.length);
+  const scored = isScoredItem(set, item);
+  const gradedTotal = scoredItemCount(set);
+  const masteryDeltaUnits = scored && attemptNumber === 1 ? (result.correct ? 1 : -1) : 0;
+  const masteryBefore = masteryDisplayPercent(session.attempts, gradedTotal);
   const expectedDisplay = expectedResponseDisplay(item);
 
   const attempt = {
     id: `${session.id}-p${session.promptIndex}-a${attemptNumber}`,
     itemId: item.id,
     questionType: questionTypeForItem(item),
+    assessmentMode: assessmentModeForItem(set, item),
     promptIndex: session.promptIndex,
     promptKind: session.currentPromptKind,
     attemptNumber,
@@ -86,7 +90,7 @@ export function submitAnswer({ session, set, response, answer, attemptMeta = {},
 
   let nextSession = structuredClone(session);
   nextSession.attempts.push(attempt);
-  const mastery = masteryDisplayPercent(nextSession.attempts, set.items.length);
+  const mastery = masteryDisplayPercent(nextSession.attempts, gradedTotal);
   const masteryDeltaPercent = round2(mastery - masteryBefore);
 
   if (!result.correct && explainAndAccept) {
@@ -98,6 +102,7 @@ export function submitAnswer({ session, set, response, answer, attemptMeta = {},
         type: 'explained_incorrect',
         entered: result.displayResponse,
         answer: expectedDisplay,
+        assessmentMode: attempt.assessmentMode,
         attemptNumber,
         masteryDeltaUnits,
         masteryBefore,
@@ -116,6 +121,7 @@ export function submitAnswer({ session, set, response, answer, attemptMeta = {},
         type: revealAfterAttempt ? 'incorrect_reveal' : 'incorrect_retry',
         entered: result.displayResponse,
         revealAnswer: revealAfterAttempt ? expectedDisplay : null,
+        assessmentMode: attempt.assessmentMode,
         attemptNumber,
         masteryDeltaUnits,
         masteryBefore,
@@ -135,6 +141,7 @@ export function submitAnswer({ session, set, response, answer, attemptMeta = {},
       type: wasCorrection ? 'correction' : 'retrieval_success',
       entered: result.displayResponse,
       answer: expectedDisplay,
+      assessmentMode: attempt.assessmentMode,
       masteryDeltaUnits,
       masteryBefore,
       masteryDeltaPercent,
@@ -148,16 +155,18 @@ export function qualifySessionIfEligible(session, set) {
   if (session?.status !== 'active') return session;
   if (!completionPolicySatisfied(session, set)) return session;
   const threshold = sessionPassThreshold(session, set);
-  if (set?.completionPolicy !== EXPLAIN_ACCEPT_POLICY
-    && masteryPercentFromAttempts(session.attempts, set.items.length) < threshold) return session;
+  const gradedTotal = scoredItemCount(set);
+  if (gradedTotal > 0
+    && set?.completionPolicy !== EXPLAIN_ACCEPT_POLICY
+    && masteryPercentFromAttempts(session.attempts, gradedTotal) < threshold) return session;
 
   return {
     ...session,
     status: 'passed',
     qualifiedAt: session.qualifiedAt ?? (
-      set?.completionPolicy === EXPLAIN_ACCEPT_POLICY
+      set?.completionPolicy === EXPLAIN_ACCEPT_POLICY || gradedTotal === 0
         ? lastAttemptTimestamp(session.attempts)
-        : firstQualificationTimestamp(session.attempts, set.items.length, threshold)
+        : firstQualificationTimestamp(session.attempts, gradedTotal, threshold)
     )
   };
 }
@@ -197,9 +206,10 @@ export function getCurrentItem(session, set) {
 
 export function getSessionMetrics(session, set, now = Date.now()) {
   const attempts = session.attempts ?? [];
-  const masteryExact = masteryPercentFromAttempts(attempts, set.items.length);
-  const mastery = masteryDisplayPercent(attempts, set.items.length);
-  const counts = getMasteryCounts(attempts);
+  const gradedTotal = scoredItemCount(set);
+  const masteryExact = masteryPercentFromAttempts(attempts, gradedTotal);
+  const mastery = masteryDisplayPercent(attempts, gradedTotal);
+  const counts = getMasteryCounts(attempts.filter(attempt => attempt.assessmentMode !== 'unscored'));
   const completedMainIds = new Set(
     attempts.filter(attempt => attempt.promptKind === 'main' && (
       attempt.correct || (set?.completionPolicy === EXPLAIN_ACCEPT_POLICY && attempt.answerRevealedAfterAttempt)
@@ -224,6 +234,8 @@ export function getSessionMetrics(session, set, now = Date.now()) {
 
   return {
     total: set.items.length,
+    gradedTotal,
+    unscoredTotal: Math.max(0, set.items.length - gradedTotal),
     completedMainItems: completedMainIds.size,
     mainComplete: completedMainIds.size >= set.items.length,
     totalAttempts: attempts.length,
@@ -234,11 +246,11 @@ export function getSessionMetrics(session, set, now = Date.now()) {
     retryCount: retryPromptIds.size,
     mastery,
     masteryExact,
-    masteryUnit: masteryUnitPercent(set.items.length),
+    masteryUnit: masteryUnitPercent(gradedTotal),
     passThreshold,
-    thresholdReached: Boolean(qualifiedAt) || masteryExact >= passThreshold,
+    thresholdReached: gradedTotal === 0 || Boolean(qualifiedAt) || masteryExact >= passThreshold,
     qualifiedAt,
-    masteryAtQualification: qualifiedAt ? masteryPercentFromAttempts(attemptsAtQualification, set.items.length) : null,
+    masteryAtQualification: qualifiedAt ? masteryPercentFromAttempts(attemptsAtQualification, gradedTotal) : null,
     extendedPractice,
     extendedPracticeStartedAt: session.extendedPracticeStartedAt ?? null,
     extendedPracticeDurationMs: extendedPractice && extraPracticeEnd ? Math.max(0, extraPracticeEnd - session.extendedPracticeStartedAt) : 0,
@@ -258,10 +270,15 @@ function completionPolicySatisfied(session, set) {
 
 function firstQualificationTimestamp(attempts, totalItems, threshold) {
   const transitions = getMasteryTransitions(attempts, totalItems);
-  const crossingIndex = transitions.findIndex(transition => transition.after >= threshold);
-  if (crossingIndex < 0) return null;
-  const timestamp = Number(attempts[crossingIndex]?.submittedAt);
-  return Number.isFinite(timestamp) ? timestamp : null;
+  let mastery = 0;
+  for (let index = 0; index < transitions.length; index += 1) {
+    mastery = transitions[index].after;
+    if (mastery >= threshold) {
+      const timestamp = Number(attempts[index]?.submittedAt);
+      return Number.isFinite(timestamp) ? timestamp : null;
+    }
+  }
+  return null;
 }
 
 function lastAttemptTimestamp(attempts) {
