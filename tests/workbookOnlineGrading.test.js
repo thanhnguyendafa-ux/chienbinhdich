@@ -35,17 +35,21 @@ test('published G5/G6 workbooks use source-only graded assessment with real 80% 
 test('all 333 G5/G6 workbook lessons score only deterministic source interactions', async () => {
   let unscoredOpen=0;
   let scoredSource=0;
+  let completionOnlyLessons=0;
+  let objectivelyGradedLessons=0;
   for(const descriptor of publishedWorkbook) {
     const content=await descriptor.loadContent();
     const set={...descriptor,...content};
-    assert.ok(scoredItemCount(set)>0,`${descriptor.id} needs at least one graded source interaction`);
+    const graded=scoredItemCount(set);
+    if(graded===0) completionOnlyLessons+=1;
+    else objectivelyGradedLessons+=1;
     for(const item of content.items) {
       if(item.learningPhase==='vocab'||item.learningPhase==='phrase') {
         assert.equal(isScoredItem(set,item),false,`${item.id} preload must be unscored`);
       }
-      if(item.responseMode==='open') {
+      if(item.responseMode==='open'||item.assessmentMode==='unscored') {
         unscoredOpen+=1;
-        assert.equal(isScoredItem(set,item),false,`${item.id} open response must be unscored`);
+        assert.equal(isScoredItem(set,item),false,`${item.id} open/practice must be unscored`);
       }
       if(item.learningPhase==='source' && isScoredItem(set,item)) {
         scoredSource+=1;
@@ -53,7 +57,13 @@ test('all 333 G5/G6 workbook lessons score only deterministic source interaction
         assert.ok(expectedResponseDisplay(item).length>0,`${item.id} needs deterministic expected response`);
       }
     }
+    if(graded===0) {
+      assert.ok(sourceItems(content).length>0,`${descriptor.id} completion-only lesson still needs source practice`);
+      assert.ok(sourceItems(content).every(item=>!isScoredItem(set,item)),`${descriptor.id} must not hide a gradable source item`);
+    }
   }
+  assert.ok(completionOnlyLessons>0,'expected genuine open/pronunciation lessons to be completion-only');
+  assert.ok(objectivelyGradedLessons>300,`expected broad objectively graded coverage, got ${objectivelyGradedLessons}`);
   assert.ok(unscoredOpen>0,'expected real open workbook tasks to remain available but unscored');
   assert.ok(scoredSource>500,`expected broad graded source coverage, got ${scoredSource}`);
 });
@@ -87,6 +97,27 @@ test('preload and open practice complete without changing Mastery; source answer
   assert.equal(metrics.unscoredTotal,2);
   assert.equal(metrics.mastery,100);
   assert.deepEqual(session.attempts.map(attempt=>attempt.masteryDeltaUnits),[0,0,1]);
+});
+
+test('graded workbook cannot pass below 80 percent even after all items were attempted', () => {
+  const items=Array.from({length:5},(_,index)=>({
+    id:`q${index+1}`,type:'mcq',learningPhase:'source',choices:[{id:'A',text:'wrong'},{id:'B',text:'right'}],correctChoiceId:'B'
+  }));
+  const set={id:'threshold-contract',version:1,passThreshold:80,completionPolicy:'all-items',assessmentPolicy:'source-only',items};
+  let session=createSession({studentName:'Minh',set,now:1});
+  for(let index=0;index<5;index+=1) {
+    const response=index<2?'A':'B';
+    const result=submitAnswer({session,set,response,now:index+2});
+    session=result.session;
+    if(index<4 && !result.event.passed) {
+      while(session.currentPromptKind==='retry') {
+        const retry=submitAnswer({session,set,response:'B',now:index+20});
+        session=retry.session;
+      }
+    }
+  }
+  assert.ok(getSessionMetrics(session,set,50).mastery<80);
+  assert.notEqual(session.status,'passed');
 });
 
 test('G5 source word bank stays visible in item metadata and known U4 ambiguities are corrected', async () => {
