@@ -18,10 +18,10 @@ const tree = buildAdminLessonTree(lessonFolders, sets);
 const folderChildren = id => findAdminTreeNode(tree,id).children.filter(node=>node.type==='folder').map(node=>node.id);
 const lessonIds = id => folderEntries(tree,id).filter(node=>node.type==='lesson').map(node=>node.setId);
 
-test('Explorer keeps the top-level curriculum tree and nests new G7 workbook folders',()=>{
+test('Explorer keeps the top-level curriculum tree and nests workbook folders',()=>{
   assert.equal(tree.id,rootFolderId());
   assert.deepEqual(folderChildren(rootFolderId()),['samples','global2','global3','global5','global6','global7','mrt-lessons']);
-  assert.deepEqual(folderChildren('global6'),['global6-unit1','global6-unit2','global6-unit3','global6-unit-review']);
+  assert.deepEqual(folderChildren('global6'),['global6-unit1','global6-unit2','global6-unit3','global6-unit4','global6-unit5','global6-unit6','global6-unit7','global6-unit8','global6-unit9','global6-unit10','global6-unit11','global6-unit12','global6-unit-review']);
   assert.deepEqual(folderChildren('global7'),['global7-unit1','global7-unit2','global7-unit3','global7-unit-review']);
   assert.deepEqual(folderChildren('global7-unit1').includes('global7-unit1-workbook'),true);
   assert.deepEqual(folderChildren('global7-unit2'),['global7-unit2-writing-sentence-builder','global7-unit2-workbook']);
@@ -39,24 +39,35 @@ test('Explorer retains representative legacy folder contracts and recovered G6 w
   assert.equal(lessonIds('global6-unit1-workbook').length,15);
   assert.equal(lessonIds('global6-unit2-workbook').length,14);
   assert.equal(lessonIds('global6-unit3-workbook').length,15);
+  assert.equal(lessonIds('global6-unit4-workbook').length,14);
+  assert.equal(lessonIds('global6-unit5-workbook').length,19);
+  assert.equal(lessonIds('global6-unit6-workbook').length,16);
+  assert.equal(lessonIds('global6-unit7-workbook').length,17);
+  assert.equal(lessonIds('global6-unit8-workbook').length,17);
+  assert.equal(lessonIds('global6-unit9-workbook').length,16);
+  assert.equal(lessonIds('global6-unit10-workbook').length,18);
+  assert.equal(lessonIds('global6-unit11-workbook').length,13);
+  assert.equal(lessonIds('global6-unit12-workbook').length,18);
   assert.ok(lessonIds('global6-unit1-workbook').includes('g6-u1-wb-c2'));
   assert.ok(lessonIds('global6-unit2-workbook').includes('g6-u2-wb-b2'));
   assert.ok(lessonIds('global6-unit2-workbook').includes('g6-u2-wb-e3'));
+  assert.ok(lessonIds('global6-unit12-workbook').includes('g6-u12-wb-d2'));
   assert.deepEqual(lessonIds('global7-unit1').slice(0,3),['g7-u1-translation-01','g7-u1-translation-02','g7-u1-pronunciation-01']);
 });
 
-test('Explorer breadcrumbs include all three G7 workbook units',()=>{
+test('Explorer breadcrumbs include G6 U4-U12 and all three G7 workbook units',()=>{
   assert.deepEqual(folderBreadcrumbs(tree,'global7-unit1-workbook').map(item=>item.label),['Bài tập','Global Success 7','Unit 1 · Hobbies','Sách bài tập · Unit 1']);
   assert.deepEqual(folderBreadcrumbs(tree,'global7-unit2-workbook').map(item=>item.label),['Bài tập','Global Success 7','Unit 2 · Healthy Living','Sách bài tập · Unit 2']);
   assert.deepEqual(folderBreadcrumbs(tree,'global7-unit3-workbook').map(item=>item.label),['Bài tập','Global Success 7','Unit 3 · Community Service','Sách bài tập · Unit 3']);
   assert.deepEqual(folderBreadcrumbs(tree,'global6-unit3-workbook').map(item=>item.label),['Bài tập','Global Success 6','Unit 3 · My Friends','Sách bài tập · Unit 3']);
+  assert.deepEqual(folderBreadcrumbs(tree,'global6-unit12-workbook').map(item=>item.label),['Bài tập','Global Success 6','Unit 12 · Robots','Sách bài tập · Unit 12']);
 });
 
-test('Explorer recursive lesson counts include G5 workbook plus existing G6/G7 workbook lessons',()=>{
+test('Explorer recursive lesson counts include G5 workbook plus complete G6/G7 workbook lessons',()=>{
   assert.equal(folderLessonCount(findAdminTreeNode(tree,'global2')),57);
   assert.equal(folderLessonCount(findAdminTreeNode(tree,'global3')),88);
   assert.equal(folderLessonCount(findAdminTreeNode(tree,'global5')),442);
-  assert.equal(folderLessonCount(findAdminTreeNode(tree,'global6')),153);
+  assert.equal(folderLessonCount(findAdminTreeNode(tree,'global6')),301);
   assert.equal(folderLessonCount(findAdminTreeNode(tree,'global7-unit1')),59);
   assert.equal(folderLessonCount(findAdminTreeNode(tree,'global7-unit1-workbook')),12);
   assert.equal(folderLessonCount(findAdminTreeNode(tree,'global7-unit2')),32);
@@ -75,6 +86,7 @@ test('Explorer search finds legacy and new workbook lessons by title, slug, id a
   assert.deepEqual(searchLessonDescriptors(sets,'g7-u2-wb-d2').map(set=>set.id),['g7-u2-wb-d2']);
   assert.deepEqual(searchLessonDescriptors(sets,'g7-u3-wb-d3').map(set=>set.id),['g7-u3-wb-d3']);
   assert.deepEqual(searchLessonDescriptors(sets,'g6-u1-wb-c2').map(set=>set.id),['g6-u1-wb-c2']);
+  assert.deepEqual(searchLessonDescriptors(sets,'g6-u12-wb-d2').map(set=>set.id),['g6-u12-wb-d2']);
   assert.ok(searchLessonDescriptors(sets,'typing').some(set=>set.id==='g7-u2-wb-b3'));
   assert.ok(searchLessonDescriptors(sets,'classification').some(set=>set.id==='g6-u2-wb-b2'));
 });
