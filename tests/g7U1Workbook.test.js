@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
 import { validateSet } from '../src/data/contentValidator.js';
 import { g7U1WorkbookFolders, g7U1WorkbookRegistry } from '../src/data/g7-u1-workbook-catalog.js';
+import { renderQuestionInteraction } from '../src/features/drill/questionTypeRegistry.js';
 
 const keys = ['a2','b4','b5','c1','c2','c3','d1','d2','d3a','d3b','e1','e3'];
 const omitted = ['a1','b1','b2','b3','e2'];
@@ -17,6 +17,7 @@ function sourceItems(content) { return content.items.filter(item => item.learnin
 function vocabItems(content) { return content.items.filter(item => item.learningPhase === 'vocab'); }
 function phraseItems(content) { return content.items.filter(item => item.learningPhase === 'phrase'); }
 function correctText(item) { return item.choices?.find(choice => choice.id === item.correctChoiceId)?.text ?? ''; }
+const bankCount = html => (html.match(/class="source-word-bank"/g) ?? []).length;
 
 test('G7 U1 workbook publishes exactly 12 text-based lessons under Unit 1', () => {
   assert.deepEqual(g7U1WorkbookFolders.map(folder => folder.id), ['global7-unit1-workbook']);
@@ -141,11 +142,11 @@ test('E1 preserves five source cue-writing sentences with accepted variants', as
   assert.ok(source.slice(1).every(item => item.acceptedAnswers?.length > 0));
 });
 
-test('source word-bank enhancer adds G7 U1 D1 while retaining all prior workbook registries', async () => {
-  const enhancer = await readFile(new URL('../src/features/drill/sourceWordBankEnhancer.js', import.meta.url), 'utf8');
-  assert.match(enhancer, /g6U1WorkbookRegistry/);
-  assert.match(enhancer, /g6U2WorkbookRegistry/);
-  assert.match(enhancer, /g6U3WorkbookRegistry/);
-  assert.match(enhancer, /g7U1WorkbookRegistry/);
-  assert.match(enhancer, /g7-u1-wb-d1/);
+test('G7 U1 D1 word bank is rendered exactly once by the current item, with no registry-wide enhancer', async () => {
+  const content = (await load('d1')).content;
+  const owner = sourceItems(content)[0];
+  assert.equal(bankCount(renderQuestionInteraction(owner)),1);
+  const preload = content.items.find(item => item.learningPhase !== 'source' && !item.sourceWordBank?.length);
+  assert.ok(preload);
+  assert.equal(bankCount(renderQuestionInteraction(preload)),0);
 });
