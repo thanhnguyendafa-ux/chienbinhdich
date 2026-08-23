@@ -14,7 +14,7 @@ const LOADERS=Object.freeze({
   7:()=>Promise.all([import('./units/u07/ab.js'),import('./units/u07/cde.js')]).then(([ab,cde])=>Object.freeze({...ab.default,...cde.default})),
   8:()=>Promise.all([import('./units/u08/ab.js'),import('./units/u08/cde.js')]).then(([ab,cde])=>Object.freeze({...ab.default,...cde.default})),
   9:()=>Promise.all([import('./units/u09/ab.js'),import('./units/u09/cde.js')]).then(([ab,cde])=>Object.freeze({...ab.default,...cde.default})),
-  10:()=>Promise.all([import('./units/u10/ab.js'),import('./units/u10/cde.js')]).then(([ab,cde])=>Object.freeze({...ab.default,...cde.default})),
+  10:()=>Promise.all([import('./units/u10/ab.js'),import('./units/u10/c.js'),import('./units/u10/d.js'),import('./units/u10/e.js')]).then(([ab,c,d,e])=>Object.freeze({...ab.default,...c.default,...d.default,...e.default})),
   11:()=>Promise.all([import('./units/u11/ab.js'),import('./units/u11/cde.js')]).then(([ab,cde])=>Object.freeze({...ab.default,...cde.default})),
   12:()=>Promise.all([import('./units/u12/ab.js'),import('./units/u12/cde.js')]).then(([ab,cde])=>Object.freeze({...ab.default,...cde.default}))
 });
