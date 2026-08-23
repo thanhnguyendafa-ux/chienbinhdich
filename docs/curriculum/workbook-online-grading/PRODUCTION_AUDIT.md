@@ -29,8 +29,10 @@ The end-to-end regression loads all **333 published G5/G6 workbook lessons**:
 
 - Global Success 5: **141** workbook lessons.
 - Global Success 6: **192** workbook lessons.
+- **284** lessons contain at least one objectively auto-gradable source interaction and therefore have an SBT Mastery score.
+- **49** lessons are completion-only because their retained source work is genuinely open/personal or self-confirmed pronunciation/practice. They remain available for learning but do not manufacture a numeric mastery gain.
 
-For each lesson the gate verifies preload is excluded from SBT score, open/practice interactions are unscored, and every scored source item exposes a deterministic expected response. Additional regression covers the 80% threshold, source word-bank preservation, G5 corrections, G5 F2 adaptation labeling, G6 crossword constraint restoration, and unscored pronunciation/open practice.
+`284 + 49 = 333` is locked by regression. For every lesson the gate verifies preload is excluded from SBT score, open/practice interactions are unscored, and every scored source item exposes a deterministic expected response. Additional regression covers the real 80% threshold, source word-bank preservation, G5 corrections, G5 F2 adaptation labeling, G6 crossword constraint restoration, and unscored pronunciation/open practice.
 
 ## Student-facing rationale
 
