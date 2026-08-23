@@ -20,7 +20,10 @@ const DEFAULT_TYPING_UI = Object.freeze({
 export const SUPPORTED_QUESTION_TYPES = Object.freeze(Object.keys(evaluators));
 
 export function questionTypeForItem(item) {
-  return item?.type ?? 'typing';
+  // Matching is a first-class semantic content type. It deliberately reuses the
+  // mature classification interaction/evaluator internally: left terms are tokens,
+  // right meanings are targets. This gives tap-to-match without drag-only UX.
+  return item?.type === 'matching' ? 'classification' : (item?.type ?? 'typing');
 }
 
 export function evaluateQuestion(item, response, options = {}) {
@@ -138,6 +141,8 @@ export function typingUiForItem(item) {
 }
 
 export function questionTypeLabel(itemOrType) {
+  const rawType = typeof itemOrType === 'string' ? itemOrType : itemOrType?.type;
+  if (rawType === 'matching') return 'GHÉP CẶP';
   const type = typeof itemOrType === 'string' ? itemOrType : questionTypeForItem(itemOrType);
   return ({
     typing: 'TYPING',
@@ -145,7 +150,8 @@ export function questionTypeLabel(itemOrType) {
     true_false: 'TRUE / FALSE',
     sentence_order: 'SẮP XẾP CÂU',
     sequence_number: 'SẮP XẾP THỨ TỰ',
-    classification: 'PHÂN LOẠI'
+    classification: 'PHÂN LOẠI',
+    matching: 'GHÉP CẶP'
   })[type] ?? type.toUpperCase();
 }
 
