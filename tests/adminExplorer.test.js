@@ -33,7 +33,7 @@ test('Explorer keeps the top-level curriculum tree and nests workbook folders',(
 
 test('Explorer retains legacy contracts and exposes G2 G3 workbook roots',()=>{
   assert.deepEqual(folderChildren('global2'),['global2-workbook','global2-unit6','global2-writing-typing']);
-  assert.deepEqual(folderChildren('global3'),['global3-workbook','global3-writing-typing']);
+  assert.deepEqual(folderChildren('global3'),['global3-writing-typing','global3-workbook']);
   assert.equal(lessonIds('global2-workbook-u01').length,1);
   assert.equal(lessonIds('global3-workbook-u01').length,1);
   assert.equal(lessonIds('global3-workbook-sc01').length,1);
