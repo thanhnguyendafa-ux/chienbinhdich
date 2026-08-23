@@ -48,3 +48,7 @@ Mastery component CSS no longer owns `.metrics-row` or `.drill-shell`; the paren
 ## Guardrails
 
 `tests/mainFinalSsotArchitecture.test.js` and domain tests fail CI if these ownership boundaries regress.
+
+## Release provenance note
+
+A documentation-only commit was added after Vercel Preview branch tracking was verified, solely to retrigger the Git integration for this PR. It changes no runtime behavior; the Preview gate must still prove that the deployment Git SHA exactly matches the PR head before merge.
