@@ -55,9 +55,9 @@ export function submitAnswer({ session, set, response, answer, attemptMeta = {},
     : evaluateQuestion(item, submittedResponse);
   const submittedAt = finiteTime(attemptMeta.submittedAt, now);
   const startedAt = finiteTime(attemptMeta.startedAt, submittedAt);
-  const explainAndAccept = set?.completionPolicy === EXPLAIN_ACCEPT_POLICY;
-  const revealAfterAttempt = !result.correct && (explainAndAccept || hasSeenAnswer || failedAttemptsBefore + 1 >= 2);
   const scored = isScoredItem(set, item);
+  const explainAndAccept = set?.completionPolicy === EXPLAIN_ACCEPT_POLICY || !scored;
+  const revealAfterAttempt = !result.correct && (explainAndAccept || hasSeenAnswer || failedAttemptsBefore + 1 >= 2);
   const gradedTotal = scoredItemCount(set);
   const masteryDeltaUnits = attemptNumber === 1 ? (result.correct ? 1 : -1) : 0;
   const appliedMasteryDeltaUnits = scored ? masteryDeltaUnits : 0;
@@ -213,7 +213,7 @@ export function getSessionMetrics(session, set, now = Date.now()) {
   const counts = getMasteryCounts(attempts.filter(attempt => attempt.assessmentMode !== 'unscored'));
   const completedMainIds = new Set(
     attempts.filter(attempt => attempt.promptKind === 'main' && (
-      attempt.correct || (set?.completionPolicy === EXPLAIN_ACCEPT_POLICY && attempt.answerRevealedAfterAttempt)
+      attempt.correct || attempt.assessmentMode === 'unscored' || (set?.completionPolicy === EXPLAIN_ACCEPT_POLICY && attempt.answerRevealedAfterAttempt)
     )).map(attempt => attempt.itemId)
   );
   const correctedPromptIds = new Set(
