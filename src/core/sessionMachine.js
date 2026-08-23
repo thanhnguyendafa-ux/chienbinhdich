@@ -1,11 +1,19 @@
-import { assessmentModeForItem, isScoredItem, scoredItemCount } from './assessmentPolicy.js';
+import {
+  assessmentModeForItem,
+  assessmentSetForSession,
+  isScoredItem,
+  masteryModeForItem,
+  scoredItemCount,
+  MASTERY_MODE_COMPLETION,
+  WORKBOOK_ALL_ITEMS_ASSESSMENT
+} from './assessmentPolicy.js';
 import { evaluateQuestion, expectedResponseDisplay, questionTypeForItem } from './questionTypes.js';
 import { getMasteryCounts, getMasteryTransitions, masteryDisplayPercent, masteryPercentFromAttempts, masteryUnitPercent } from './masteryEngine.js';
 import { sessionPassThreshold } from './masteryPolicy.js';
 import { sessionTypingTolerance } from './typingPolicy.js';
 import { advanceLearningPrompt, queueRetry } from './retryScheduler.js';
 
-export const SESSION_SCHEMA_VERSION = 7;
+export const SESSION_SCHEMA_VERSION = 8;
 const EXPLAIN_ACCEPT_POLICY = 'explain-and-accept';
 
 export function createSession({ studentName, set, now = Date.now() }) {
@@ -20,6 +28,9 @@ export function createSession({ studentName, set, now = Date.now() }) {
     setVersion: set.version ?? 1,
     passThresholdAtStart: sessionPassThreshold(null, set),
     typingToleranceAtStart: sessionTypingTolerance(null, set),
+    assessmentPolicyAtStart: set.assessmentPolicy ?? null,
+    assessmentContractVersionAtStart: set.assessmentContractVersion ?? null,
+    completionPolicyAtStart: set.completionPolicy ?? null,
     startedAt: now,
     completedAt: null,
     submittedAt: null,
@@ -41,13 +52,16 @@ export function submitAnswer({ session, set, response, answer, attemptMeta = {},
   const item = set.items.find(candidate => candidate.id === session.currentItemId);
   if (!item) throw new Error(`Current item not found: ${session.currentItemId}`);
 
+  const assessmentSet = assessmentSetForSession(session, set);
+  const masteryMode = masteryModeForItem(assessmentSet, item);
+  const completionMode = masteryMode === MASTERY_MODE_COMPLETION;
   const exposureAttempts = session.attempts.filter(attempt => attempt.promptIndex === session.promptIndex);
   const itemAttempts = session.attempts.filter(attempt => attempt.itemId === item.id);
   const attemptNumber = exposureAttempts.length + 1;
   const itemAttemptNumber = itemAttempts.length + 1;
-  const hadWrongThisExposure = exposureAttempts.some(attempt => !attempt.correct);
+  const hadWrongThisExposure = exposureAttempts.some(attempt => attemptFailed(attempt));
   const hasSeenAnswer = exposureAttempts.some(attempt => attempt.answerRevealedAfterAttempt === true);
-  const failedAttemptsBefore = exposureAttempts.filter(attempt => !attempt.correct).length;
+  const failedAttemptsBefore = exposureAttempts.filter(attempt => attemptFailed(attempt)).length;
   const submittedResponse = response === undefined ? answer : response;
   const typingTolerance = sessionTypingTolerance(session, set);
   const result = typingTolerance
@@ -55,11 +69,19 @@ export function submitAnswer({ session, set, response, answer, attemptMeta = {},
     : evaluateQuestion(item, submittedResponse);
   const submittedAt = finiteTime(attemptMeta.submittedAt, now);
   const startedAt = finiteTime(attemptMeta.startedAt, submittedAt);
-  const scored = isScoredItem(set, item);
-  const explainAndAccept = set?.completionPolicy === EXPLAIN_ACCEPT_POLICY || !scored;
-  const revealAfterAttempt = !result.correct && (explainAndAccept || hasSeenAnswer || failedAttemptsBefore + 1 >= 2);
-  const gradedTotal = scoredItemCount(set);
-  const masteryDeltaUnits = attemptNumber === 1 ? (result.correct ? 1 : -1) : 0;
+  const scored = isScoredItem(assessmentSet, item);
+  const explainAndAccept = assessmentSet?.completionPolicy === EXPLAIN_ACCEPT_POLICY || !scored;
+  const revealAfterAttempt = completionMode
+    ? false
+    : !result.correct && (explainAndAccept || hasSeenAnswer || failedAttemptsBefore + 1 >= 2);
+  const gradedTotal = scoredItemCount(assessmentSet);
+  const masteryDeltaUnits = masteryDeltaForAttempt({
+    assessmentSet,
+    masteryMode,
+    result,
+    attemptNumber,
+    itemAttempts
+  });
   const appliedMasteryDeltaUnits = scored ? masteryDeltaUnits : 0;
   const masteryBefore = masteryDisplayPercent(session.attempts, gradedTotal);
   const expectedDisplay = expectedResponseDisplay(item);
@@ -68,17 +90,22 @@ export function submitAnswer({ session, set, response, answer, attemptMeta = {},
     id: `${session.id}-p${session.promptIndex}-a${attemptNumber}`,
     itemId: item.id,
     questionType: questionTypeForItem(item),
-    assessmentMode: assessmentModeForItem(set, item),
+    assessmentMode: assessmentModeForItem(assessmentSet, item),
+    masteryMode,
+    masteryAchieved: Boolean(result.correct),
     promptIndex: session.promptIndex,
     promptKind: session.currentPromptKind,
     attemptNumber,
     itemAttemptNumber,
     submittedResponse: result.normalizedResponse,
     submittedAnswer: result.displayResponse,
-    correct: result.correct,
-    result: explainAndAccept && !result.correct
-      ? 'explained_incorrect'
-      : resolveAttemptResult({ correct: result.correct, hadWrongThisExposure, revealAfterAttempt }),
+    correct: completionMode ? null : result.correct,
+    completed: completionMode ? Boolean(result.correct) : null,
+    result: completionMode
+      ? (result.correct ? 'completion_success' : 'completion_retry')
+      : explainAndAccept && !result.correct
+        ? 'explained_incorrect'
+        : resolveAttemptResult({ correct: result.correct, hadWrongThisExposure, revealAfterAttempt }),
     masteryDeltaUnits: appliedMasteryDeltaUnits,
     startedAt,
     submittedAt,
@@ -86,13 +113,31 @@ export function submitAnswer({ session, set, response, answer, attemptMeta = {},
     inputMethod: normalizeInputMethod(attemptMeta.inputMethod),
     pasteDetected: Boolean(attemptMeta.pasteDetected),
     answerRevealedBeforeAttempt: hasSeenAnswer,
-    answerRevealedAfterAttempt: revealAfterAttempt || hasSeenAnswer
+    answerRevealedAfterAttempt: completionMode ? false : (revealAfterAttempt || hasSeenAnswer)
   };
 
   let nextSession = structuredClone(session);
   nextSession.attempts.push(attempt);
   const mastery = masteryDisplayPercent(nextSession.attempts, gradedTotal);
   const masteryDeltaPercent = round2(mastery - masteryBefore);
+
+  if (completionMode && !result.correct) {
+    nextSession.retryQueue = queueRetry(nextSession.retryQueue, item.id, session.promptIndex);
+    return {
+      session: nextSession,
+      event: {
+        type: 'completion_retry',
+        entered: result.displayResponse,
+        assessmentMode: attempt.assessmentMode,
+        masteryMode,
+        attemptNumber,
+        masteryDeltaUnits: appliedMasteryDeltaUnits,
+        masteryBefore,
+        masteryDeltaPercent,
+        mastery
+      }
+    };
+  }
 
   if (!result.correct && explainAndAccept) {
     nextSession = qualifySessionIfEligible(nextSession, set);
@@ -104,6 +149,7 @@ export function submitAnswer({ session, set, response, answer, attemptMeta = {},
         entered: result.displayResponse,
         answer: expectedDisplay,
         assessmentMode: attempt.assessmentMode,
+        masteryMode,
         attemptNumber,
         masteryDeltaUnits: appliedMasteryDeltaUnits,
         masteryBefore,
@@ -123,6 +169,7 @@ export function submitAnswer({ session, set, response, answer, attemptMeta = {},
         entered: result.displayResponse,
         revealAnswer: revealAfterAttempt ? expectedDisplay : null,
         assessmentMode: attempt.assessmentMode,
+        masteryMode,
         attemptNumber,
         masteryDeltaUnits: appliedMasteryDeltaUnits,
         masteryBefore,
@@ -132,17 +179,18 @@ export function submitAnswer({ session, set, response, answer, attemptMeta = {},
     };
   }
 
-  const wasCorrection = hadWrongThisExposure;
+  const wasCorrection = completionMode ? false : hadWrongThisExposure;
   nextSession = qualifySessionIfEligible(nextSession, set);
   if (nextSession.status !== 'passed') nextSession = advanceLearningPrompt(nextSession, set);
 
   return {
     session: nextSession,
     event: {
-      type: wasCorrection ? 'correction' : 'retrieval_success',
+      type: completionMode ? 'completion_success' : (wasCorrection ? 'correction' : 'retrieval_success'),
       entered: result.displayResponse,
-      answer: expectedDisplay,
+      answer: completionMode ? '' : expectedDisplay,
       assessmentMode: attempt.assessmentMode,
+      masteryMode,
       masteryDeltaUnits: appliedMasteryDeltaUnits,
       masteryBefore,
       masteryDeltaPercent,
@@ -154,21 +202,24 @@ export function submitAnswer({ session, set, response, answer, attemptMeta = {},
 
 export function qualifySessionIfEligible(session, set) {
   if (session?.status !== 'active') return session;
-  if (!completionPolicySatisfied(session, set)) return session;
+  const assessmentSet = assessmentSetForSession(session, set);
+  if (!completionPolicySatisfied(session, assessmentSet)) return session;
   const threshold = sessionPassThreshold(session, set);
-  const gradedTotal = scoredItemCount(set);
+  const gradedTotal = scoredItemCount(assessmentSet);
   if (gradedTotal > 0
-    && set?.completionPolicy !== EXPLAIN_ACCEPT_POLICY
+    && assessmentSet?.completionPolicy !== EXPLAIN_ACCEPT_POLICY
     && masteryPercentFromAttempts(session.attempts, gradedTotal) < threshold) return session;
+
+  const qualifiedAt = assessmentSet?.assessmentPolicy === WORKBOOK_ALL_ITEMS_ASSESSMENT
+    ? lastAttemptTimestamp(session.attempts)
+    : assessmentSet?.completionPolicy === EXPLAIN_ACCEPT_POLICY || gradedTotal === 0
+      ? lastAttemptTimestamp(session.attempts)
+      : firstQualificationTimestamp(session.attempts, gradedTotal, threshold);
 
   return {
     ...session,
     status: 'passed',
-    qualifiedAt: session.qualifiedAt ?? (
-      set?.completionPolicy === EXPLAIN_ACCEPT_POLICY || gradedTotal === 0
-        ? lastAttemptTimestamp(session.attempts)
-        : firstQualificationTimestamp(session.attempts, gradedTotal, threshold)
-    )
+    qualifiedAt: session.qualifiedAt ?? qualifiedAt
   };
 }
 
@@ -207,13 +258,17 @@ export function getCurrentItem(session, set) {
 
 export function getSessionMetrics(session, set, now = Date.now()) {
   const attempts = session.attempts ?? [];
-  const gradedTotal = scoredItemCount(set);
+  const assessmentSet = assessmentSetForSession(session, set);
+  const gradedTotal = scoredItemCount(assessmentSet);
   const masteryExact = masteryPercentFromAttempts(attempts, gradedTotal);
   const mastery = masteryDisplayPercent(attempts, gradedTotal);
-  const counts = getMasteryCounts(attempts.filter(attempt => attempt.assessmentMode !== 'unscored'));
+  const accuracyAttempts = attempts.filter(attempt => attempt.assessmentMode !== 'unscored' && attempt.masteryMode !== MASTERY_MODE_COMPLETION);
+  const counts = getMasteryCounts(accuracyAttempts);
   const completedMainIds = new Set(
     attempts.filter(attempt => attempt.promptKind === 'main' && (
-      attempt.correct || attempt.assessmentMode === 'unscored' || (set?.completionPolicy === EXPLAIN_ACCEPT_POLICY && attempt.answerRevealedAfterAttempt)
+      attemptSucceeded(attempt)
+      || attempt.assessmentMode === 'unscored'
+      || (assessmentSet?.completionPolicy === EXPLAIN_ACCEPT_POLICY && attempt.answerRevealedAfterAttempt)
     )).map(attempt => attempt.itemId)
   );
   const correctedPromptIds = new Set(
@@ -232,16 +287,31 @@ export function getSessionMetrics(session, set, now = Date.now()) {
   const extendedPractice = Boolean(session.extendedPracticeStartedAt);
   const extraPracticeEnd = session.extendedPracticeEndedAt ?? session.submittedAt ?? (extendedPractice ? now : null);
   const passThreshold = sessionPassThreshold(session, set);
+  const masteryUnitsEarned = clampUnitCount(
+    attempts.reduce((total, attempt) => total + Number(attempt.masteryDeltaUnits ?? 0), 0),
+    gradedTotal
+  );
+  const accuracyItems = (assessmentSet.items ?? []).filter(item => isScoredItem(assessmentSet, item) && masteryModeForItem(assessmentSet, item) !== MASTERY_MODE_COMPLETION);
+  const completionItems = (assessmentSet.items ?? []).filter(item => isScoredItem(assessmentSet, item) && masteryModeForItem(assessmentSet, item) === MASTERY_MODE_COMPLETION);
+  const accuracyEarned = earnedItemCount(attempts, new Set(accuracyItems.map(item => item.id)));
+  const completionEarned = earnedItemCount(attempts, new Set(completionItems.map(item => item.id)));
 
   return {
     total: set.items.length,
     gradedTotal,
     unscoredTotal: Math.max(0, set.items.length - gradedTotal),
+    masteryTotal: gradedTotal,
+    masteryEarned: masteryUnitsEarned,
+    accuracyTotal: accuracyItems.length,
+    accuracyEarned,
+    completionTotal: completionItems.length,
+    completionEarned,
     completedMainItems: completedMainIds.size,
     mainComplete: completedMainIds.size >= set.items.length,
     totalAttempts: attempts.length,
     retrievalSuccesses: counts.gains,
     retrievalErrors: counts.losses,
+    completionCredits: completionEarned,
     corrections: correctedPromptIds.size,
     revealedCount: revealedPromptIds.size,
     retryCount: retryPromptIds.size,
@@ -280,6 +350,42 @@ function firstQualificationTimestamp(attempts, totalItems, threshold) {
     }
   }
   return null;
+}
+
+function masteryDeltaForAttempt({ assessmentSet, masteryMode, result, attemptNumber, itemAttempts }) {
+  if (assessmentSet?.assessmentPolicy !== WORKBOOK_ALL_ITEMS_ASSESSMENT) {
+    return attemptNumber === 1 ? (result.correct ? 1 : -1) : 0;
+  }
+  if (masteryMode === MASTERY_MODE_COMPLETION) {
+    const alreadyEarned = itemAttempts.some(attempt => Number(attempt.masteryDeltaUnits ?? 0) > 0);
+    return result.correct && !alreadyEarned ? 1 : 0;
+  }
+  return attemptNumber === 1 && result.correct ? 1 : 0;
+}
+
+function attemptSucceeded(attempt) {
+  if (typeof attempt?.masteryAchieved === 'boolean') return attempt.masteryAchieved;
+  if (attempt?.masteryMode === MASTERY_MODE_COMPLETION) return attempt.completed === true;
+  return attempt?.correct === true;
+}
+
+function attemptFailed(attempt) {
+  if (typeof attempt?.masteryAchieved === 'boolean') return !attempt.masteryAchieved;
+  if (attempt?.masteryMode === MASTERY_MODE_COMPLETION) return attempt.completed === false;
+  return attempt?.correct === false;
+}
+
+function earnedItemCount(attempts, itemIds) {
+  const earned = new Set();
+  for (const attempt of attempts) {
+    if (!itemIds.has(attempt.itemId)) continue;
+    if (Number(attempt.masteryDeltaUnits ?? 0) > 0) earned.add(attempt.itemId);
+  }
+  return earned.size;
+}
+
+function clampUnitCount(value, total) {
+  return Math.min(Math.max(Number(value) || 0, 0), Math.max(Number(total) || 0, 0));
 }
 
 function lastAttemptTimestamp(attempts) {
