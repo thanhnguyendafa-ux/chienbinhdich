@@ -11,7 +11,7 @@ function arg(name, fallback = '') {
   const index = process.argv.indexOf(name);
   return index >= 0 ? String(process.argv[index + 1] ?? fallback) : fallback;
 }
-
+const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 const mode = arg('--mode', 'smoke');
 const ref = arg('--ref', 'local').replace(/[^a-zA-Z0-9._-]+/g, '-').slice(0, 40);
 if (!['smoke', 'production'].includes(mode)) throw new Error(`Unsupported sync mode: ${mode}`);
@@ -24,20 +24,33 @@ function destinationPath(remotePath) {
   return mode === 'production' ? canonical : `__pipeline-smoke/${ref}/${canonical}`;
 }
 
-async function exists(url) {
-  try {
-    const response = await fetch(url, { method: 'HEAD', redirect: 'follow' });
-    return response.ok;
-  } catch {
-    return false;
+async function head(url) {
+  try { return await fetch(url, { method: 'HEAD', redirect: 'follow', cache: 'no-store' }); }
+  catch { return null; }
+}
+
+async function verifyPublicUrl(assetId, url) {
+  let lastStatus = 0;
+  let lastError = '';
+  for (let attempt = 1; attempt <= 10; attempt += 1) {
+    const response = await head(`${url}${url.includes('?') ? '&' : '?'}cb=${Date.now()}`);
+    if (response?.ok) {
+      console.log(`MEDIA_OK ${assetId} ${url}`);
+      return;
+    }
+    lastStatus = response?.status ?? 0;
+    lastError = response?.headers?.get('ik-error') ?? '';
+    if (attempt < 10) await sleep(1500);
   }
+  throw new Error(`${assetId}: public URL verification failed with ${lastStatus}${lastError ? ` (${lastError})` : ''}: ${url}`);
 }
 
 for (const asset of mediaManifest.assets) {
   const destination = destinationPath(asset.remotePath);
-  const publicUrl = mediaAssetUrl(destination);
-  if (await exists(publicUrl)) {
-    console.log(`MEDIA_SKIP ${asset.id} ${publicUrl}`);
+  const canonicalUrl = mediaAssetUrl(destination);
+  const existing = await head(canonicalUrl);
+  if (existing?.ok) {
+    console.log(`MEDIA_SKIP ${asset.id} ${canonicalUrl}`);
     continue;
   }
 
@@ -49,7 +62,7 @@ for (const asset of mediaManifest.assets) {
   form.append('fileName', filename);
   form.append('folder', folder);
   form.append('useUniqueFileName', 'false');
-  form.append('overwriteFile', 'false');
+  form.append('overwriteFile', 'true');
   form.append('isPublished', 'true');
   form.append('tags', 'chienbinhdich,media-pipeline-v1');
 
@@ -58,10 +71,9 @@ for (const asset of mediaManifest.assets) {
   const bodyText = await response.text();
   if (!response.ok) throw new Error(`${asset.id}: ImageKit upload ${response.status}: ${bodyText.slice(0, 500)}`);
   const body = JSON.parse(bodyText);
-  const uploadedUrl = String(body.url ?? publicUrl);
-  const verify = await fetch(uploadedUrl, { method: 'HEAD', redirect: 'follow' });
-  if (!verify.ok) throw new Error(`${asset.id}: uploaded URL verification failed with ${verify.status}.`);
-  console.log(`MEDIA_OK ${asset.id} ${uploadedUrl}`);
+  const uploadedUrl = String(body.url ?? canonicalUrl);
+  console.log(`MEDIA_UPLOADED ${asset.id} fileId=${body.fileId ?? 'unknown'} filePath=${body.filePath ?? destination} url=${uploadedUrl}`);
+  await verifyPublicUrl(asset.id, uploadedUrl);
 }
 
 console.log(`ImageKit media sync complete in ${mode} mode.`);
