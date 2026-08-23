@@ -206,12 +206,12 @@ test('published G6 pronunciation and open production count as completion Mastery
 });
 
 test('published G7 open tasks are completion Mastery while objective items stay accuracy Mastery', async () => {
-  const c1=publishedById('g7-u03-wb-c1');
+  const c1=publishedById('g7-u3-wb-c1');
   const c1Content=await c1.loadContent();
   assert.ok(sourceItems(c1Content).every(item=>item.masteryMode==='completion'));
   assert.ok(sourceItems(c1Content).every(item=>item.assessmentMode==='scored'));
 
-  const d1=publishedById('g7-u03-wb-d1');
+  const d1=publishedById('g7-u3-wb-d1');
   const d1Content=await d1.loadContent();
   assert.ok(sourceItems(d1Content).every(item=>item.masteryMode==='accuracy'));
 });
