@@ -1,0 +1,12 @@
+/* Primary-school workbook ergonomics. Matching reuses classification internals. */
+.classification-token{min-height:48px;padding:9px 12px}
+.classification-group-target{min-height:48px;padding:9px 10px}
+@media (max-width:640px){
+  .classification-token{min-height:48px;font-size:15px}
+  .classification-group-target{min-height:50px}
+  .classification-helper{font-size:13px;line-height:1.5}
+}
+@media (max-height:500px) and (orientation:landscape){
+  .classification-token{min-height:44px}
+  .classification-group-target{min-height:44px}
+}
