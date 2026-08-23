@@ -4,8 +4,10 @@ import { browserSessionStore as browser } from './browserSessionStore.js';
 import { createFirebaseSessionRepository } from './firebaseSessionRepository.js';
 
 // Compatibility facade: existing app imports keep working while persistence dual-writes.
-// Session/report semantics stay V7 (cbd.report.v7.); cbd.activeSession.v7 is migration-only.
-// Active in-progress attempts use scoped cbd.activeSession.v8.* keys so different lesson links cannot overwrite each other.
+// Storage namespace names are historical and intentionally stable: cbd.report.v7.* remains readable,
+// cbd.activeSession.v7 is the legacy global key, and scoped active sessions use cbd.activeSession.v8.*.
+// Session object schemas are versioned independently; the browser store accepts both schema V7 and V8
+// so an in-progress V7 lesson can finish under its snapshotted historical grading law.
 const pendingSessions = new Map();
 let remoteRepository = null;
 let remoteReady = false;
