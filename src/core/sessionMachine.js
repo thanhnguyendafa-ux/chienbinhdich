@@ -9,6 +9,7 @@ import {
 } from './assessmentPolicy.js';
 import { evaluateQuestion, expectedResponseDisplay, questionTypeForItem } from './questionTypes.js';
 import { getMasteryCounts, getMasteryTransitions, masteryDisplayPercent, masteryPercentFromAttempts, masteryUnitPercent } from './masteryEngine.js';
+import { masteryDeltaForAttempt } from './masteryScoringPolicy.js';
 import { sessionPassThreshold } from './masteryPolicy.js';
 import { sessionTypingTolerance } from './typingPolicy.js';
 import { advanceLearningPrompt, queueRetry } from './retryScheduler.js';
@@ -350,17 +351,6 @@ function firstQualificationTimestamp(attempts, totalItems, threshold) {
     }
   }
   return null;
-}
-
-function masteryDeltaForAttempt({ assessmentSet, masteryMode, result, attemptNumber, itemAttempts }) {
-  if (assessmentSet?.assessmentPolicy !== WORKBOOK_ALL_ITEMS_ASSESSMENT) {
-    return attemptNumber === 1 ? (result.correct ? 1 : -1) : 0;
-  }
-  if (masteryMode === MASTERY_MODE_COMPLETION) {
-    const alreadyEarned = itemAttempts.some(attempt => Number(attempt.masteryDeltaUnits ?? 0) > 0);
-    return result.correct && !alreadyEarned ? 1 : 0;
-  }
-  return attemptNumber === 1 && result.correct ? 1 : 0;
 }
 
 function attemptSucceeded(attempt) {
