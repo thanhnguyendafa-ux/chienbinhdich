@@ -18,7 +18,7 @@ export function masteryModeForItem(set, item) {
 export function isScoredItem(set, item) {
   if (!item) return false;
   if (set?.assessmentPolicy === WORKBOOK_ALL_ITEMS_ASSESSMENT) return true;
-  if (item.assessmentMode === UNSCORED) return false;
+  if (item.assessmentMode === UNSCORED || item.legacyAssessmentMode === UNSCORED) return false;
   if (set?.assessmentPolicy !== SOURCE_ONLY_ASSESSMENT) return true;
   if (item.learningPhase !== 'source') return false;
   if (item.responseMode === 'open') return false;
@@ -43,12 +43,14 @@ export function withSourceOnlyWorkbookAssessment(descriptor) {
 }
 
 export function withWorkbookAllItemsMastery(descriptor) {
+  const baseLoadContent = descriptor.loadContent;
   return Object.freeze({
     ...descriptor,
     completionPolicy: 'all-items',
     assessmentPolicy: WORKBOOK_ALL_ITEMS_ASSESSMENT,
     assessmentContractVersion: 1,
-    assessmentLabel: 'Mastery tính tất cả câu trong bài: câu có đáp án tính theo độ chính xác; bài mở/tự luyện tính khi hoàn thành.'
+    assessmentLabel: 'Mastery tính tất cả câu trong bài: câu có đáp án tính theo độ chính xác; bài mở/tự luyện tính khi hoàn thành.',
+    loadContent: async () => normalizeWorkbookContent(await baseLoadContent())
   });
 }
 
@@ -74,4 +76,21 @@ export function assessmentSetForSession(session, set) {
   }
 
   return set;
+}
+
+function normalizeWorkbookContent(content) {
+  const items = (content?.items ?? []).map(item => {
+    const masteryMode = item.masteryMode === MASTERY_MODE_COMPLETION
+      || item.responseMode === 'open'
+      || item.assessmentMode === UNSCORED
+      ? MASTERY_MODE_COMPLETION
+      : MASTERY_MODE_ACCURACY;
+    return Object.freeze({
+      ...item,
+      ...(item.assessmentMode === UNSCORED ? { legacyAssessmentMode: UNSCORED } : {}),
+      assessmentMode: 'scored',
+      masteryMode
+    });
+  });
+  return Object.freeze({ ...content, items: Object.freeze(items) });
 }
