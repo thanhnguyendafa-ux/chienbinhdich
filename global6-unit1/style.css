@@ -1,0 +1,25 @@
+:root{font-family:Arial,"Helvetica Neue",sans-serif;color:#111;background:#f4f4f4}
+*{box-sizing:border-box} body{margin:0}
+.topbar{position:fixed;top:0;left:0;right:0;height:64px;background:#fff;border-bottom:1px solid #ccc;display:flex;align-items:center;gap:10px;padding:10px 14px;z-index:5}
+.topbar .title{font-weight:700;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+button,.linkbtn{border:1px solid #222;background:#fff;color:#111;padding:9px 12px;border-radius:8px;font-weight:700;text-decoration:none;cursor:pointer}
+button:disabled{opacity:.35;cursor:default}
+.counter{min-width:72px;text-align:center;font-variant-numeric:tabular-nums}
+.deck{padding-top:64px}
+.slide{display:none;min-height:calc(100vh - 64px);padding:28px;align-items:center;justify-content:center}
+.slide.active{display:flex}
+.sheet{width:min(1100px,96vw);min-height:min(650px,82vh);background:#fff;border:1px solid #bbb;border-radius:16px;padding:38px 46px;box-shadow:0 8px 30px rgba(0,0,0,.08)}
+.kicker{font-size:14px;text-transform:uppercase;letter-spacing:.12em;font-weight:800;margin-bottom:12px}
+h1{font-size:clamp(28px,4vw,46px);line-height:1.12;margin:0 0 24px}
+h2{font-size:clamp(21px,2.6vw,31px);margin:18px 0 10px}
+h3{font-size:clamp(18px,2.1vw,24px);margin:0 0 10px}
+p{font-size:clamp(18px,2vw,25px);line-height:1.42;margin:8px 0}
+.bullet{padding-left:22px;position:relative}.bullet:before{content:"•";position:absolute;left:5px}
+.box{border:1px solid #bbb;border-radius:12px;padding:14px 18px;margin:14px 0}
+.note{font-size:16px;color:#444}
+.index-wrap{max-width:980px;margin:0 auto;padding:28px 18px 60px}
+.index-wrap h1{margin-top:10px}
+.card{background:#fff;border:1px solid #bbb;border-radius:12px;padding:16px 18px;margin:10px 0}
+.card a{font-size:19px;font-weight:700;color:#111}
+.card small{display:block;margin-top:6px;color:#555}
+@media(max-width:640px){.topbar{height:58px;padding:8px}.deck{padding-top:58px}.slide{padding:10px}.sheet{padding:24px 20px;border-radius:10px}.topbar .title{display:none}button,.linkbtn{padding:8px 9px}}
