@@ -13,9 +13,9 @@ export const G6_TAP2_SOURCE = freeze({
     'Unit 12 · Robots',
     'Test Yourself 4'
   ]),
-  numberedExerciseCount: 119,
+  numberedExerciseCount: 118,
   auditedAtomCount: 120,
-  note: 'Unit 11 D2c is tracked as its own audited atom because the source exercise D2 contains a distinct picture-ordering subtask that needs a separate digital interaction.'
+  note: 'The source has 118 numbered exercises. The digital SSOT audits 120 atoms because Unit 11 D2c is split from D2 and Unit 12 C1a/C1b are tracked separately so no subtask can disappear.'
 });
 
 export const G6_TAP2_INTERACTION_POLICY = freeze({
