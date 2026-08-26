@@ -5,7 +5,7 @@ import { lessonFolders, lessonRegistry } from '../src/data/publishedLessonCatalo
 import { validateCatalog } from '../src/data/catalogValidator.js';
 import { validateSet } from '../src/data/contentValidator.js';
 import { g6WorkbookRemainingSourceManifest } from '../src/data/workbooks/g6/index.js';
-import { G6_TAP2_EXPECTED_ATOM_COUNT, G6_TAP2_INTERACTION_POLICY, g6Tap2ExpectedLessonIds, g6Tap2Ssot } from '../src/data/workbooks/g6/tap2-ssot.js';
+import { G6_TAP2_EXPECTED_ATOM_COUNT, G6_TAP2_INTERACTION_POLICY, G6_TAP2_SOURCE, g6Tap2ExpectedLessonIds, g6Tap2Ssot } from '../src/data/workbooks/g6/tap2-ssot.js';
 import { loadLessonSet } from '../src/repositories/lessonRepository.js';
 
 const wordCount = value => String(value ?? '').trim().split(/\s+/).filter(Boolean).length;
@@ -19,7 +19,8 @@ function manifestId(row) {
   return `g6-u${String(row.unit).padStart(2, '0')}-wb-${row.key}`;
 }
 
-test('G6 Tập Hai SSOT contains 120 audited atoms / 119 numbered exercises', () => {
+test('G6 Tập Hai SSOT contains 120 audited atoms / 118 numbered exercises', () => {
+  assert.equal(G6_TAP2_SOURCE.numberedExerciseCount, 118);
   assert.equal(G6_TAP2_EXPECTED_ATOM_COUNT, 120);
   assert.equal(g6Tap2Ssot.length, 120);
   assert.equal(new Set(g6Tap2ExpectedLessonIds).size, 120);
