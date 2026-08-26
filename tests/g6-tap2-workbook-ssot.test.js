@@ -6,6 +6,7 @@ import { validateCatalog } from '../src/data/catalogValidator.js';
 import { validateSet } from '../src/data/contentValidator.js';
 import { g6WorkbookRemainingSourceManifest } from '../src/data/workbooks/g6/index.js';
 import { G6_TAP2_EXPECTED_ATOM_COUNT, G6_TAP2_INTERACTION_POLICY, g6Tap2ExpectedLessonIds, g6Tap2Ssot } from '../src/data/workbooks/g6/tap2-ssot.js';
+import { loadLessonSet } from '../src/repositories/lessonRepository.js';
 
 const wordCount = value => String(value ?? '').trim().split(/\s+/).filter(Boolean).length;
 const isLongScoredTyping = item => item?.type === 'typing'
@@ -54,13 +55,11 @@ test('published catalog remains valid after G6 Tập Hai supplements', () => {
 });
 
 test('G6 Tập Hai lessons load, validate, and contain no long scored typing answers', async () => {
-  const byId = new Map(lessonRegistry.map(entry => [entry.id, entry]));
   const longTyping = [];
   const contentErrors = [];
 
   for (const id of g6Tap2ExpectedLessonIds) {
-    const entry = byId.get(id);
-    const content = await entry.loadContent();
+    const content = await loadLessonSet(id);
     for (const error of validateSet(content)) contentErrors.push(`${id}: ${error}`);
     for (const item of content.items ?? []) {
       if (isLongScoredTyping(item)) longTyping.push(`${id}/${item.id}: ${item.en}`);
