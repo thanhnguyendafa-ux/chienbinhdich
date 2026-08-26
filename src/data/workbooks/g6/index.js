@@ -2,7 +2,8 @@ import g1 from './catalog/u04-u06.js';
 import g2 from './catalog/u07-u09.js';
 import g3 from './catalog/u10-u12.js';
 import { defineG6WorkbookLesson } from './shared/workbook-lesson-v2.js';
-import { g6Tap2SupplementFolders, g6Tap2SupplementManifest, g6Tap2SupplementRegistry } from './tap2-supplements.js';
+import { g6Tap2SupplementFolders, g6Tap2SupplementManifest } from './tap2-supplements.js';
+import { g6Tap2PublishedSupplementRegistry } from './tap2-published-supplements.js';
 
 const units=Object.freeze([...g1,...g2,...g3]);
 const baseManifest=units.flatMap(x=>x.manifest);
@@ -30,5 +31,4 @@ const LOADERS=Object.freeze({
 
 function descriptor(mod,row){const [key,order,title,sourceActivityTypes,sourceItemCount,expectedTimeMinutes]=row;const unit=mod.unit;const id=`g6-u${String(unit).padStart(2,'0')}-wb-${key}`;const activityTypes=[...new Set(['mcq',...sourceActivityTypes,...(sourceActivityTypes.includes('typing')?['sentence_order']:[])])];return Object.freeze({id,folderId:`global6-unit${unit}-workbook`,order,version:2,course:'Global Success 6',unit:`Unit ${unit} · ${mod.name} · Sách bài tập`,title,subtitle:'Nhắc nhanh lớp 3 · 4 từ + 4 cụm Anh→Việt · Bài SBT · Giải thích lớp 3 sau Submit',expectedTimeMinutes:Math.min(20,expectedTimeMinutes+4),lessonSlug:id,passThreshold:80,completionPolicy:'explain-and-accept',typingTolerance:true,teacher:'Thầy Thành MRT',description:`4 câu TỪ VỰNG tiếng Anh → nghĩa Việt + 4 câu CỤM TỪ tiếng Anh → nghĩa Việt + ${sourceItemCount} lượt bài SBT. Bài typing có đáp án chuẩn từ 5 từ trở lên tự chuyển thành sentence_order; bài mở vẫn unscored.`,sourceActivityTypes:Object.freeze(sourceActivityTypes),activityTypes:Object.freeze(activityTypes),sourceItemCount,preloadItemCount:8,itemCount:sourceItemCount+8,loadContent:()=>LOADERS[unit]().then(specs=>{const spec=specs[id];if(!spec)throw new Error(`Unknown G6 workbook lesson: ${id}`);return defineG6WorkbookLesson(spec);})});}
 const baseRegistry=units.flatMap(mod=>mod.rows.map(row=>descriptor(mod,row)));
-const normalizedSupplementRegistry=g6Tap2SupplementRegistry.map(entry=>Object.freeze({...entry,expectedTimeMinutes:Math.min(20,entry.expectedTimeMinutes),activityTypes:Object.freeze(entry.activityTypes.map(type=>type==='tf'?'true_false':type))}));
-export const g6WorkbookRemainingRegistry=Object.freeze([...baseRegistry,...normalizedSupplementRegistry]);
+export const g6WorkbookRemainingRegistry=Object.freeze([...baseRegistry,...g6Tap2PublishedSupplementRegistry]);
