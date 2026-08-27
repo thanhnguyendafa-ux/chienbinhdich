@@ -32,13 +32,18 @@ test('G6 U4-U12 is published through one SSOT registry with bounded lazy loaders
   }
 });
 
-test('G6 U4-U12 manifest omits only the still-media-dependent tasks and never publishes them', () => {
+test('G6 U4-U12 base manifest keeps legacy media omissions while recovered supplements are explicit', () => {
   const retained=unitManifest.filter(x=>x.status==='retained');
   const omitted=unitManifest.filter(x=>x.status==='omitted');
-  assert.equal(retained.length,unitRegistry.length);
-  assert.equal(omitted.length,4);
+  const recovered=new Set(['8:b2','9:c3','11:b2','11:c3','11:d2c']);
+  assert.equal(retained.length,148);
+  assert.equal(omitted.length,9);
   assert.ok(omitted.every(x=>/image|picture|map|hình|tranh|bản đồ|lưới/i.test(x.reason)),JSON.stringify(omitted));
-  for (const row of omitted) assert.equal(unitRegistry.some(x=>x.id===`g6-u${String(row.unit).padStart(2,'0')}-wb-${row.key}`),false);
+  for (const row of omitted) {
+    const lessonId=`g6-u${String(row.unit).padStart(2,'0')}-wb-${row.key}`;
+    const isPublished=unitRegistry.some(x=>x.id===lessonId);
+    assert.equal(isPublished,recovered.has(`${Number(row.unit)}:${row.key}`),lessonId);
+  }
 });
 
 test('every G6 U4-U12 lesson has Grade-3 theory, exactly 4 vocab + 4 phrase MCQs, and valid source feedback', async () => {
