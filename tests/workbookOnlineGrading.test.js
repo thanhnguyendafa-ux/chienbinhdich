@@ -36,14 +36,14 @@ function publishedById(id) {
   return byId(publishedWorkbook,id);
 }
 
-test('all 378 published G5/G6/G7 workbook lessons use one current all-items Mastery contract', () => {
+test('all 383 published G5/G6/G7 unit workbook lessons use one current all-items Mastery contract', () => {
   const g5=publishedWorkbook.filter(entry=>entry.id.startsWith('g5-'));
   const g6=publishedWorkbook.filter(entry=>entry.id.startsWith('g6-'));
   const g7=publishedWorkbook.filter(entry=>entry.id.startsWith('g7-'));
   assert.equal(g5.length,141);
-  assert.equal(g6.length,192);
+  assert.equal(g6.length,197);
   assert.equal(g7.length,45);
-  assert.equal(publishedWorkbook.length,378);
+  assert.equal(publishedWorkbook.length,383);
   for(const descriptor of publishedWorkbook) {
     assert.equal(descriptor.assessmentPolicy,WORKBOOK_ALL_ITEMS_ASSESSMENT,descriptor.id);
     assert.equal(descriptor.assessmentContractVersion,CURRENT_WORKBOOK_MASTERY_CONTRACT_VERSION,descriptor.id);
@@ -54,7 +54,7 @@ test('all 378 published G5/G6/G7 workbook lessons use one current all-items Mast
   }
 });
 
-test('378/378 workbook lessons put every visible item in the Mastery denominator', async () => {
+test('383/383 unit workbook lessons put every visible item in the Mastery denominator', async () => {
   const census={
     g5:{lessons:0,items:0,accuracy:0,completion:0},
     g6:{lessons:0,items:0,accuracy:0,completion:0},
@@ -85,7 +85,7 @@ test('378/378 workbook lessons put every visible item in the Mastery denominator
   assert.equal(census.g5.completion,0,'G5 controlled adaptations should remain objective');
   assert.equal(census.g7.completion,33,'audited G7 open/pronunciation source interactions');
   assert.ok(census.g6.completion>0,'G6 must include real completion-mode open/pronunciation practice');
-  assert.equal(census.g5.lessons+census.g6.lessons+census.g7.lessons,378);
+  assert.equal(census.g5.lessons+census.g6.lessons+census.g7.lessons,383);
   console.log('WORKBOOK_MASTERY_CENSUS',JSON.stringify(census));
 });
 
@@ -264,12 +264,16 @@ test('G6 crossword clues without their original grid remain constrained MCQ', as
   ]);
 });
 
-test('raw workbook coverage remains 141 G5 + 192 G6 + 45 G7 lessons', () => {
+test('raw workbook coverage reflects recovered G6 U4-U12 plus Test Yourself supplements', () => {
+  const g6NumericRemaining=g6WorkbookRemainingRegistry.filter(entry=>/^g6-u(?:0[4-9]|1[0-2])-wb-/.test(entry.id));
+  const g6TestYourself=g6WorkbookRemainingRegistry.filter(entry=>/^g6-ty[34]-wb-/.test(entry.id));
   assert.equal(g5WorkbookRegistry.length,141);
   assert.equal(g6U1WorkbookRegistry.length,15);
   assert.equal(g6U2WorkbookRegistry.length,14);
   assert.equal(g6U3WorkbookRegistry.length,15);
-  assert.equal(g6WorkbookRemainingRegistry.length,148);
+  assert.equal(g6NumericRemaining.length,153);
+  assert.equal(g6TestYourself.length,16);
+  assert.equal(g6WorkbookRemainingRegistry.length,169);
   assert.equal(g7U1WorkbookRegistry.length,12);
   assert.equal(g7U2WorkbookRegistry.length,16);
   assert.equal(g7U3WorkbookRegistry.length,17);
