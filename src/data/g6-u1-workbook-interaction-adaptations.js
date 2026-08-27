@@ -43,6 +43,26 @@ function closedTypingMcq(item, { options, correct, prompt }) {
   });
 }
 
+function openProductionMcq(item, { options, correct, prompt }) {
+  const { vi, en, acceptedAnswers, typingUi, responseMode, ...rest } = item;
+  return freeze({
+    ...rest,
+    type: 'mcq',
+    prompt: prompt ?? vi ?? item.prompt ?? '',
+    choices: freeze(options.map(([id, text]) => choice(id, text))),
+    correctChoiceId: correct,
+    digitalAdaptation: freeze({
+      sourceResponseType: 'open_written_or_spoken_response',
+      adaptedResponseType: 'mcq',
+      reason: 'Bài nguồn là sản sinh mở. Bản số hoá chuyển sang MCQ nhận diện mẫu đáp án phù hợp để Unit 1 không còn ô typing và không phát sinh tranh cãi chấm câu trả lời tự do.'
+    }),
+    teachingFeedback: freeze({
+      ...(item.teachingFeedback ?? {}),
+      correctLabel: options.find(([id]) => id === correct)?.[1] ?? correct
+    })
+  });
+}
+
 function withSourceWordBank(item) {
   const bank = (item.choices ?? []).map(candidate => String(candidate.text));
   if (!bank.length) return item;
@@ -114,12 +134,38 @@ const B4 = freeze({
   'g6-u1-wb-b4-06b': freeze({ correct:'D', options:[['A','go'],['B','goes'],['C','gone'],['D','went']] })
 });
 
+const C1 = freeze({
+  'g6-u1-wb-c1-01': freeze({
+    correct:'A',
+    prompt:'C1 · Chọn đoạn hội thoại phù hợp nhất với yêu cầu giới thiệu một người bạn với một người khác.',
+    options:[
+      ['A','Lan, this is Minh, my new friend. — Hi, Minh. Nice to meet you. — Hi, Lan. Nice to meet you, too.'],
+      ['B','My name is Minh. I am twelve years old and I live near my school.'],
+      ['C','Where is your school? — It is in the town centre.'],
+      ['D','Goodbye, Lan. See you tomorrow. — Bye!']
+    ]
+  })
+});
+
 const B6 = freeze({
   'g6-u1-wb-b6-01': freeze({ correctOrder:['My grandmother','is','always','at home','in the evening'], tokens:['always','are','in the evening','My grandmother','at home','is'] }),
   'g6-u1-wb-b6-02': freeze({ correctOrder:['I','usually','celebrate','my birthday','with my friends'], tokens:['with my friends','usually','I','celebrate','am','my birthday'] }),
   'g6-u1-wb-b6-03': freeze({ correctOrder:['What time','do','you','usually','get up','on Sunday?'], tokens:['does','get up','What time','usually','on Sunday?','you','do'] }),
   'g6-u1-wb-b6-04': freeze({ correctOrder:['We','hardly ever','speak Vietnamese','in our English class'], tokens:['speak Vietnamese','We','hardly ever','are','in our English class'] }),
   'g6-u1-wb-b6-05': freeze({ correctOrder:['The school bus','always','arrives','at six forty-five'], tokens:['at six forty-five','arrive','always','The school bus','arrives'] })
+});
+
+const C3 = freeze({
+  'g6-u1-wb-c3-01': freeze({
+    correct:'A',
+    prompt:'C3 · Chọn bài nói bao quát tốt nhất các ý SBT yêu cầu: tên và vị trí trường, người/lớp học, môn học, hoạt động và điều em thích.',
+    options:[
+      ['A','My school is Nguyen Du Secondary School. It is in my town. There are many classes, teachers and students. We study English, maths and other subjects. We have sports and club activities. I like my teachers and friends at school.'],
+      ['B','My school is Nguyen Du Secondary School. It is very big.'],
+      ['C','I get up at six every day. Then I have breakfast and go to school by bike.'],
+      ['D','Last summer I visited Da Nang with my family. We stayed there for three days.']
+    ]
+  })
 });
 
 const E1 = freeze({
@@ -136,6 +182,19 @@ const E2 = freeze({
   'g6-u1-wb-e2-03': freeze({ correctOrder:['There are','six coloured pencils',"in my friend's box."], tokens:['There is','six coloured pencils',"in my friend's box.",'There are','on'] }),
   'g6-u1-wb-e2-04': freeze({ correctOrder:['Where','does','Ms Lan','live?'], tokens:['Where','do','does','Ms Lan','lives?','live?'] }),
   'g6-u1-wb-e2-05': freeze({ correctOrder:['Shall I','introduce you','to my best friend, An Son?'], tokens:['Shall I','introduce you','my best friend, An Son?','to my best friend, An Son?','introducing'] })
+});
+
+const E3 = freeze({
+  'g6-u1-wb-e3-01': freeze({
+    correct:'A',
+    prompt:"E3 · Chọn đoạn văn phù hợp nhất với yêu cầu 40–50 từ về cách em giữ nội quy lớp, dựa trên các gợi ý của Linda.",
+    options:[
+      ['A','We always arrive on time and remember our books and homework. We listen carefully in class and are ready to work in pairs or groups. We do all the homework our teacher gives us, and we also try to speak English during every English lesson.'],
+      ['B','Our classroom is large and beautiful. There are many desks, chairs and pictures on the wall.'],
+      ['C','I sometimes arrive late, often forget my books and rarely do homework. I usually talk while the teacher is speaking.'],
+      ['D','Yesterday I played football with my friends after school. Then I went home and watched television.']
+    ]
+  })
 });
 
 const D2 = freeze({
@@ -196,16 +255,24 @@ function adaptClosedTypingBySpec(item, specs) {
   return spec ? closedTypingMcq(item, spec) : item;
 }
 
+function adaptOpenProductionBySpec(item, specs) {
+  const spec = specs[item?.id];
+  return spec ? openProductionMcq(item, spec) : item;
+}
+
 export function applyG6U1WorkbookInteractionAdaptations(key, content) {
   const lessonKey = String(key ?? '').toLowerCase();
   let items = content.items ?? [];
 
   if (lessonKey === 'b3') items = items.map(item => adaptClosedTypingBySpec(item, B3));
   if (lessonKey === 'b4') items = items.map(item => adaptClosedTypingBySpec(item, B4));
+  if (lessonKey === 'c1') items = items.map(item => adaptOpenProductionBySpec(item, C1));
   if (lessonKey === 'b5' || lessonKey === 'd1') items = items.map(withSourceWordBank);
   if (lessonKey === 'b6') items = items.map(item => adaptSentenceOrderBySpec(item, B6));
+  if (lessonKey === 'c3') items = items.map(item => adaptOpenProductionBySpec(item, C3));
   if (lessonKey === 'e1') items = items.map(item => adaptSentenceOrderBySpec(item, E1));
   if (lessonKey === 'e2') items = items.map(item => adaptSentenceOrderBySpec(item, E2));
+  if (lessonKey === 'e3') items = items.map(item => adaptOpenProductionBySpec(item, E3));
   if (lessonKey === 'd2') items = items.map(item => D2[item.id] ? readingMcq(item, D2[item.id]) : item);
 
   return freeze({ ...content, items: freeze(items) });
