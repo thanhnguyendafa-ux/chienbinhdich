@@ -21,13 +21,26 @@ const LESSONS = Object.freeze([
   Object.freeze({ group: 8, title: '08 · High-Value Collocations & Patterns', expectedTimeMinutes: 17 })
 ]);
 
+const TYPING_UI = Object.freeze({
+  promptLabel: 'Gõ phần tiếng Anh',
+  contextLabel: 'Nghĩa tiếng Việt',
+  instruction: 'Dựa vào nghĩa và ví dụ tiếng Việt, gõ đúng từ hoặc cụm từ tiếng Anh.',
+  inputLabel: 'Từ hoặc cụm từ tiếng Anh',
+  placeholder: 'Type the English word or phrase...'
+});
+
+function productionItems(items) {
+  return Object.freeze(items.map(item => Object.freeze({ ...item, typingUi: TYPING_UI })));
+}
+
 function descriptor(spec) {
   const data = g6U1VocabTypingGroups[spec.group];
+  const items = productionItems(data.items);
   return Object.freeze({
     id: `g6-u1-vocab-typing-${String(spec.group).padStart(2, '0')}`,
     folderId: 'global6-unit1-vocab-typing',
     order: spec.group,
-    version: 1,
+    version: 2,
     course: 'Global Success 6',
     unit: 'Unit 1 · My New School',
     title: spec.title,
@@ -38,10 +51,10 @@ function descriptor(spec) {
     completionPolicy: 'all-items',
     typingTolerance: false,
     teacher: 'Thầy Thành MRT',
-    description: `${data.items.length} mục · ${data.tier2Count} Tier 2 + ${data.tier3Count} Tier 3 · English ẩn trước Submit; prompt chỉ hiện nghĩa và ví dụ tiếng Việt dễ hiểu.`,
+    description: `${items.length} mục · ${data.tier2Count} Tier 2 + ${data.tier3Count} Tier 3 · English ẩn trước Submit; prompt chỉ hiện nghĩa và ví dụ tiếng Việt dễ hiểu.`,
     activityTypes: Object.freeze(['typing']),
-    itemCount: data.items.length,
-    loadContent: () => Promise.resolve(Object.freeze({ items: data.items }))
+    itemCount: items.length,
+    loadContent: () => Promise.resolve(Object.freeze({ items }))
   });
 }
 
