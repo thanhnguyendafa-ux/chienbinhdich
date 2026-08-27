@@ -37,7 +37,7 @@ test('recovered C2 keeps all five cue sets as five question + answer pairs', asy
   assert.ok(items[8].tokens.includes('listens to music?'));
 });
 
-test('typing accepts source-supported alternative answers', () => {
+test('typing accepts source-supported alternative answers before digital adaptation', () => {
   const item = getG6U1WorkbookContent('b4').items.find(candidate => candidate.id === 'g6-u1-wb-b4-06a');
   assert.equal(evaluateQuestion(item, 'spending', { typingTolerance:true }).correct, true);
   assert.equal(evaluateQuestion(item, 'to spend', { typingTolerance:true }).correct, true);
@@ -54,6 +54,17 @@ test('workbook choices marked preserveOrder stay in SBT order', () => {
   const item = getG6U1WorkbookContent('a1').items[0];
   const ordered = orderForExposure(item.choices, 'any-session-key');
   assert.deepEqual(ordered.map(choice => choice.id), ['A','B','C','D']);
+});
+
+test('B3 and B4 closed-answer source tasks use MCQ instead of typing', async () => {
+  const b3 = sourceItems((await load('b3')).content);
+  const b4 = sourceItems((await load('b4')).content);
+  assert.equal(b3.length, 8);
+  assert.equal(b4.length, 12);
+  assert.ok(b3.every(item => item.type === 'mcq'));
+  assert.ok(b4.every(item => item.type === 'mcq'));
+  assert.equal(correctChoiceText(b3[2]), 'bike / bicycle');
+  assert.equal(correctChoiceText(b4[10]), 'Cả A và B đều được chấp nhận');
 });
 
 test('B5 and D1 use word-bank choice instead of typing and keep source bank metadata', async () => {
@@ -83,15 +94,29 @@ test('B6 and E1/E2 use sentence order because source task is building word order
   assert.ok(e2[3].tokens.includes('lives?'));
 });
 
-test('D2 keeps short recall typing but moves long fixed reading answers to MCQ', async () => {
+test('D2 reading uses MCQ for all five closed answers', async () => {
   const { descriptor, content } = await load('d2');
   const items = sourceItems(content);
-  assert.deepEqual(descriptor.sourceActivityTypes, ['mcq','typing']);
-  assert.deepEqual(items.map(item => item.type), ['mcq','mcq','typing','typing','mcq']);
+  assert.deepEqual(descriptor.sourceActivityTypes, ['mcq']);
+  assert.ok(items.every(item => item.type === 'mcq'));
   assert.match(correctChoiceText(items[0]), /teachers and most of his classmates/);
-  assert.equal(items[2].en, 'IT.');
-  assert.equal(items[3].en, 'The judo club.');
+  assert.equal(correctChoiceText(items[2]), 'IT.');
+  assert.equal(correctChoiceText(items[3]), 'The judo club.');
   assert.match(correctChoiceText(items[4]), /good first day/);
+});
+
+test('only genuinely open C1 C3 E3 source tasks remain typing', async () => {
+  const allowedOpenTyping = new Set(['g6-u1-wb-c1','g6-u1-wb-c3','g6-u1-wb-e3']);
+  for (const descriptor of g6U1WorkbookRegistry) {
+    const content = await descriptor.loadContent();
+    const typingItems = sourceItems(content).filter(item => item.type === 'typing');
+    if (allowedOpenTyping.has(descriptor.id)) {
+      assert.ok(typingItems.length > 0, `${descriptor.id} should keep open typing`);
+      assert.ok(typingItems.every(item => item.responseMode === 'open'));
+    } else {
+      assert.equal(typingItems.length, 0, `${descriptor.id} should have no closed typing`);
+    }
+  }
 });
 
 test('direct word-bank rendering is browser-DOM independent and scoped to its owner item', async () => {
