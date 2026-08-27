@@ -4,15 +4,15 @@ import { applyG6WorkbookTranslationPreload, getG6WorkbookPreloadCount } from './
 const lessonSpecs = Object.freeze([
   Object.freeze({ key: 'a1', order: 1, title: 'A1 · Tìm từ có âm khác', expectedTimeMinutes: 6, itemCount: 5, activityTypes: ['mcq'] }),
   Object.freeze({ key: 'b2', order: 2, title: 'B2 · Chọn từ đúng', expectedTimeMinutes: 8, itemCount: 6, activityTypes: ['mcq'] }),
-  Object.freeze({ key: 'b3', order: 3, title: 'B3 · Đọc mô tả và viết từ', expectedTimeMinutes: 10, itemCount: 8, activityTypes: ['typing'] }),
-  Object.freeze({ key: 'b4', order: 4, title: 'B4 · Chia dạng đúng của động từ', expectedTimeMinutes: 14, itemCount: 12, activityTypes: ['typing'] }),
+  Object.freeze({ key: 'b3', order: 3, title: 'B3 · Đọc mô tả và chọn từ', expectedTimeMinutes: 10, itemCount: 8, activityTypes: ['mcq'] }),
+  Object.freeze({ key: 'b4', order: 4, title: 'B4 · Chọn dạng đúng của động từ', expectedTimeMinutes: 14, itemCount: 12, activityTypes: ['mcq'] }),
   Object.freeze({ key: 'b5', order: 5, title: 'B5 · Chọn từ trong word box', expectedTimeMinutes: 9, itemCount: 8, activityTypes: ['mcq'] }),
   Object.freeze({ key: 'b6', order: 6, title: 'B6 · Sắp xếp thành câu', expectedTimeMinutes: 10, itemCount: 5, activityTypes: ['sentence_order'] }),
   Object.freeze({ key: 'c1', order: 7, title: 'C1 · Giới thiệu một người bạn', expectedTimeMinutes: 6, itemCount: 1, activityTypes: ['typing'] }),
   Object.freeze({ key: 'c2', order: 8, title: 'C2 · Dựng 5 bộ câu hỏi và trả lời từ cues', expectedTimeMinutes: 12, itemCount: 10, activityTypes: ['sentence_order'] }),
   Object.freeze({ key: 'c3', order: 9, title: 'C3 · Nói về trường của em', expectedTimeMinutes: 10, itemCount: 1, activityTypes: ['typing'] }),
   Object.freeze({ key: 'd1', order: 10, title: 'D1 · Chọn từ trong word box cho bài đọc', expectedTimeMinutes: 10, itemCount: 8, activityTypes: ['mcq'] }),
-  Object.freeze({ key: 'd2', order: 11, title: 'D2 · Tom ở trường mới', expectedTimeMinutes: 12, itemCount: 5, activityTypes: ['mcq','typing'] }),
+  Object.freeze({ key: 'd2', order: 11, title: 'D2 · Tom ở trường mới', expectedTimeMinutes: 12, itemCount: 5, activityTypes: ['mcq'] }),
   Object.freeze({ key: 'd3', order: 12, title: 'D3 · Tìm sách trong thư viện', expectedTimeMinutes: 12, itemCount: 8, activityTypes: ['mcq'] }),
   Object.freeze({ key: 'e1', order: 13, title: 'E1 · Hoàn thành hội thoại bằng cách sắp khối', expectedTimeMinutes: 8, itemCount: 5, activityTypes: ['sentence_order'] }),
   Object.freeze({ key: 'e2', order: 14, title: 'E2 · Tạo câu hoàn chỉnh từ cues', expectedTimeMinutes: 10, itemCount: 5, activityTypes: ['sentence_order'] }),
@@ -20,7 +20,7 @@ const lessonSpecs = Object.freeze([
 ]);
 
 export const g6U1WorkbookFolders = Object.freeze([
-  Object.freeze({ id:'global6-unit1-workbook', name:'Sách bài tập · Unit 1', description:'Bài SBT Global Success 6 Unit 1 giữ mục tiêu nguồn và thêm preload Anh→Việt theo từng bài: Nhắc nhanh → Từ vựng → Cụm từ → bài SBT. Chỉ A2 và B1 còn loại vì thật sự cần hình.', parentId:'global6-unit1', order:1 })
+  Object.freeze({ id:'global6-unit1-workbook', name:'Sách bài tập · Unit 1', description:'Bài SBT Global Success 6 Unit 1 giữ mục tiêu nguồn và thêm preload Anh→Việt theo từng bài: Nhắc nhanh → Từ vựng → Cụm từ → bài SBT. Đáp án đóng được ưu tiên MCQ/sắp xếp để tránh tranh cãi cách gõ; C1, C3, E3 vẫn là bài mở. Chỉ A2 và B1 còn loại vì thật sự cần hình.', parentId:'global6-unit1', order:1 })
 ]);
 
 function loadSourceContent(key) {
@@ -32,7 +32,7 @@ function descriptor(spec) {
   const preloadCount = getG6WorkbookPreloadCount('u1', spec.key);
   const activityTypes = Object.freeze([...new Set(['mcq', ...spec.activityTypes])]);
   return Object.freeze({
-    id:`g6-u1-wb-${spec.key}`, folderId:'global6-unit1-workbook', order:spec.order, version:4,
+    id:`g6-u1-wb-${spec.key}`, folderId:'global6-unit1-workbook', order:spec.order, version:5,
     course:'Global Success 6', unit:'Unit 1 · My New School · Sách bài tập', title:spec.title,
     subtitle:'Nhắc nhanh · Từ vựng → Cụm từ Anh–Việt · Bài SBT · Giải thích sau Submit',
     expectedTimeMinutes:spec.expectedTimeMinutes + 4, lessonSlug:`g6-u1-wb-${spec.key}`, passThreshold:80,

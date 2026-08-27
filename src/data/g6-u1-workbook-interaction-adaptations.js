@@ -23,6 +23,26 @@ function sentenceOrder(item, { correctOrder, tokens, acceptedOrders = [] }) {
   });
 }
 
+function closedTypingMcq(item, { options, correct, prompt }) {
+  const { vi, en, acceptedAnswers, typingUi, responseMode, ...rest } = item;
+  return freeze({
+    ...rest,
+    type: 'mcq',
+    prompt: prompt ?? vi ?? item.prompt ?? '',
+    choices: freeze(options.map(([id, text]) => choice(id, text))),
+    correctChoiceId: correct,
+    digitalAdaptation: freeze({
+      sourceResponseType: 'closed_written_answer',
+      adaptedResponseType: 'mcq',
+      reason: 'Đáp án nguồn là đáp án đóng. Chuyển sang MCQ để học sinh tập trung vào kiến thức, không bị trừ vì khác cách gõ, viết hoa, dấu câu hoặc một biến thể hợp lý.'
+    }),
+    teachingFeedback: freeze({
+      ...(item.teachingFeedback ?? {}),
+      correctLabel: options.find(([id]) => id === correct)?.[1] ?? correct
+    })
+  });
+}
+
 function withSourceWordBank(item) {
   const bank = (item.choices ?? []).map(candidate => String(candidate.text));
   if (!bank.length) return item;
@@ -59,7 +79,7 @@ function readingMcq(item, { options, correct }) {
     digitalAdaptation: freeze({
       sourceResponseType: 'written_reading_answer',
       adaptedResponseType: 'mcq',
-      reason: 'Câu trả lời dài cố định được chuyển sang lựa chọn có bẫy gần nghĩa; câu trả lời ngắn vẫn giữ typing.'
+      reason: 'Câu đọc hiểu có đáp án đóng được chuyển sang lựa chọn có bẫy gần nghĩa để tránh tranh cãi do cách diễn đạt hoặc định dạng câu trả lời.'
     }),
     teachingFeedback: freeze({
       ...(item.teachingFeedback ?? {}),
@@ -67,6 +87,32 @@ function readingMcq(item, { options, correct }) {
     })
   });
 }
+
+const B3 = freeze({
+  'g6-u1-wb-b3-01': freeze({ correct:'A', options:[['A','bench'],['B','desk'],['C','chair'],['D','board']] }),
+  'g6-u1-wb-b3-02': freeze({ correct:'B', options:[['A','compasses'],['B','coloured pencils'],['C','notebooks'],['D','calculators']] }),
+  'g6-u1-wb-b3-03': freeze({ correct:'A', options:[['A','bike / bicycle'],['B','bus'],['C','car'],['D','train']] }),
+  'g6-u1-wb-b3-04': freeze({ correct:'C', options:[['A','notebook'],['B','textbook'],['C','dictionary'],['D','calculator']] }),
+  'g6-u1-wb-b3-05': freeze({ correct:'B', options:[['A','dictionary'],['B','notebook'],['C','poster'],['D','pencil case']] }),
+  'g6-u1-wb-b3-06': freeze({ correct:'D', options:[['A','compass'],['B','sharpener'],['C','ruler'],['D','calculator']] }),
+  'g6-u1-wb-b3-07': freeze({ correct:'C', options:[['A','classroom'],['B','playground'],['C','library'],['D','canteen']] }),
+  'g6-u1-wb-b3-08': freeze({ correct:'A', options:[['A','poster'],['B','board'],['C','map'],['D','notebook']] })
+});
+
+const B4 = freeze({
+  'g6-u1-wb-b4-01': freeze({ correct:'A', options:[['A','finishes'],['B','finish'],['C','finishing'],['D','finished']] }),
+  'g6-u1-wb-b4-02a': freeze({ correct:'A', options:[['A','Do'],['B','Does'],['C','Is'],['D','Are']] }),
+  'g6-u1-wb-b4-02b': freeze({ correct:'B', options:[['A','writes'],['B','write'],['C','writing'],['D','wrote']] }),
+  'g6-u1-wb-b4-03a': freeze({ correct:'B', options:[['A','Do'],['B','Does'],['C','Is'],['D','Has']] }),
+  'g6-u1-wb-b4-03b': freeze({ correct:'A', options:[['A','like'],['B','likes'],['C','liking'],['D','liked']] }),
+  'g6-u1-wb-b4-03c': freeze({ correct:'C', options:[['A','say'],['B','said'],['C','says'],['D','saying']] }),
+  'g6-u1-wb-b4-04a': freeze({ correct:'A', options:[['A',"don't want"],['B',"doesn't want"],['C','not want'],['D',"didn't want"]] }),
+  'g6-u1-wb-b4-04b': freeze({ correct:'B', options:[['A','stay'],['B','to stay'],['C','staying'],['D','stayed']] }),
+  'g6-u1-wb-b4-05a': freeze({ correct:'A', options:[['A','wear'],['B','wears'],['C','wearing'],['D','wore']] }),
+  'g6-u1-wb-b4-05b': freeze({ correct:'C', options:[['A','goes'],['B','went'],['C','go'],['D','going']] }),
+  'g6-u1-wb-b4-06a': freeze({ correct:'C', options:[['A','to spend'],['B','spending'],['C','Cả A và B đều được chấp nhận'],['D','spent']] }),
+  'g6-u1-wb-b4-06b': freeze({ correct:'D', options:[['A','go'],['B','goes'],['C','gone'],['D','went']] })
+});
 
 const B6 = freeze({
   'g6-u1-wb-b6-01': freeze({ correctOrder:['My grandmother','is','always','at home','in the evening'], tokens:['always','are','in the evening','My grandmother','at home','is'] }),
@@ -111,6 +157,24 @@ const D2 = freeze({
       ['D','They are nervous because Tom is new.']
     ]
   }),
+  'g6-u1-wb-d2-03': freeze({
+    correct:'B',
+    options:[
+      ['A','Maths.'],
+      ['B','IT.'],
+      ['C','Geography.'],
+      ['D','Judo.']
+    ]
+  }),
+  'g6-u1-wb-d2-04': freeze({
+    correct:'A',
+    options:[
+      ['A','The judo club.'],
+      ['B','The IT club.'],
+      ['C','The geography club.'],
+      ['D','The homework club.']
+    ]
+  }),
   'g6-u1-wb-d2-05': freeze({
     correct:'B',
     options:[
@@ -122,19 +186,26 @@ const D2 = freeze({
   })
 });
 
-function adaptBySpec(item, specs) {
+function adaptSentenceOrderBySpec(item, specs) {
   const spec = specs[item?.id];
   return spec ? sentenceOrder(item, spec) : item;
+}
+
+function adaptClosedTypingBySpec(item, specs) {
+  const spec = specs[item?.id];
+  return spec ? closedTypingMcq(item, spec) : item;
 }
 
 export function applyG6U1WorkbookInteractionAdaptations(key, content) {
   const lessonKey = String(key ?? '').toLowerCase();
   let items = content.items ?? [];
 
+  if (lessonKey === 'b3') items = items.map(item => adaptClosedTypingBySpec(item, B3));
+  if (lessonKey === 'b4') items = items.map(item => adaptClosedTypingBySpec(item, B4));
   if (lessonKey === 'b5' || lessonKey === 'd1') items = items.map(withSourceWordBank);
-  if (lessonKey === 'b6') items = items.map(item => adaptBySpec(item, B6));
-  if (lessonKey === 'e1') items = items.map(item => adaptBySpec(item, E1));
-  if (lessonKey === 'e2') items = items.map(item => adaptBySpec(item, E2));
+  if (lessonKey === 'b6') items = items.map(item => adaptSentenceOrderBySpec(item, B6));
+  if (lessonKey === 'e1') items = items.map(item => adaptSentenceOrderBySpec(item, E1));
+  if (lessonKey === 'e2') items = items.map(item => adaptSentenceOrderBySpec(item, E2));
   if (lessonKey === 'd2') items = items.map(item => D2[item.id] ? readingMcq(item, D2[item.id]) : item);
 
   return freeze({ ...content, items: freeze(items) });
