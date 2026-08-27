@@ -12,7 +12,7 @@ export const g6U1VocabTypingFolders = Object.freeze([
 
 const LESSONS = Object.freeze([
   Object.freeze({ group: 1, title: '01 · People & School Places', expectedTimeMinutes: 19 }),
-  Object.freeze({ group: 2, title: '02 · Subjects & Learning', expectedTimeMinutes: 24 }),
+  Object.freeze({ group: 2, title: '02 · Subjects & Learning', expectedTimeMinutes: 20 }),
   Object.freeze({ group: 3, title: '03 · School Things & Objects', expectedTimeMinutes: 13 }),
   Object.freeze({ group: 4, title: '04 · School Routines & Rules', expectedTimeMinutes: 16 }),
   Object.freeze({ group: 5, title: '05 · Time & Frequency', expectedTimeMinutes: 13 }),
