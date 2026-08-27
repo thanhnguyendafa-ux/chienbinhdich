@@ -21,7 +21,8 @@ const lessonIds = id => folderEntries(tree,id).filter(node=>node.type==='lesson'
 test('Explorer keeps the top-level curriculum tree and nests workbook folders',()=>{
   assert.equal(tree.id,rootFolderId());
   assert.deepEqual(folderChildren(rootFolderId()),['samples','global2','global3','global5','global6','global7','mrt-lessons']);
-  assert.deepEqual(folderChildren('global6'),['global6-unit1','global6-unit2','global6-unit3','global6-unit4','global6-unit5','global6-unit6','global6-unit7','global6-unit8','global6-unit9','global6-unit10','global6-unit11','global6-unit12','global6-unit-review']);
+  assert.deepEqual(folderChildren('global6'),['global6-unit1','global6-unit2','global6-unit3','global6-unit4','global6-unit5','global6-unit6','global6-unit7','global6-unit8','global6-unit9','global6-unit10','global6-unit11','global6-unit12','global6-unit-review','global6-test-yourself-3','global6-test-yourself-4']);
+  assert.ok(folderChildren('global6-unit1').includes('global6-unit1-vocab-typing'));
   assert.deepEqual(folderChildren('global7'),['global7-unit1','global7-unit2','global7-unit3','global7-unit-review']);
   assert.deepEqual(folderChildren('global7-unit1').includes('global7-unit1-workbook'),true);
   assert.deepEqual(folderChildren('global7-unit2'),['global7-unit2-writing-sentence-builder','global7-unit2-workbook']);
@@ -46,10 +47,10 @@ test('Explorer retains legacy contracts and exposes G2 G3 workbook roots',()=>{
   assert.equal(lessonIds('global6-unit5-workbook').length,19);
   assert.equal(lessonIds('global6-unit6-workbook').length,16);
   assert.equal(lessonIds('global6-unit7-workbook').length,17);
-  assert.equal(lessonIds('global6-unit8-workbook').length,17);
-  assert.equal(lessonIds('global6-unit9-workbook').length,16);
+  assert.equal(lessonIds('global6-unit8-workbook').length,18);
+  assert.equal(lessonIds('global6-unit9-workbook').length,17);
   assert.equal(lessonIds('global6-unit10-workbook').length,18);
-  assert.equal(lessonIds('global6-unit11-workbook').length,13);
+  assert.equal(lessonIds('global6-unit11-workbook').length,16);
   assert.equal(lessonIds('global6-unit12-workbook').length,18);
   assert.ok(lessonIds('global6-unit1-workbook').includes('g6-u1-wb-c2'));
   assert.ok(lessonIds('global6-unit2-workbook').includes('g6-u2-wb-b2'));
@@ -74,7 +75,7 @@ test('Explorer recursive lesson counts include complete G2 G3 G5 G6 G7 workbook 
   assert.equal(folderLessonCount(findAdminTreeNode(tree,'global2')),73);
   assert.equal(folderLessonCount(findAdminTreeNode(tree,'global3')),112);
   assert.equal(folderLessonCount(findAdminTreeNode(tree,'global5')),442);
-  assert.equal(folderLessonCount(findAdminTreeNode(tree,'global6')),301);
+  assert.equal(folderLessonCount(findAdminTreeNode(tree,'global6')),330);
   assert.equal(folderLessonCount(findAdminTreeNode(tree,'global7-unit1')),59);
   assert.equal(folderLessonCount(findAdminTreeNode(tree,'global7-unit1-workbook')),12);
   assert.equal(folderLessonCount(findAdminTreeNode(tree,'global7-unit2')),32);
@@ -96,12 +97,13 @@ test('Explorer search finds legacy and new workbook lessons by title, slug, id a
   assert.deepEqual(searchLessonDescriptors(sets,'g7-u3-wb-d3').map(set=>set.id),['g7-u3-wb-d3']);
   assert.deepEqual(searchLessonDescriptors(sets,'g6-u1-wb-c2').map(set=>set.id),['g6-u1-wb-c2']);
   assert.deepEqual(searchLessonDescriptors(sets,'g6-u12-wb-d2').map(set=>set.id),['g6-u12-wb-d2']);
+  assert.deepEqual(searchLessonDescriptors(sets,'g6-u1-vocab-typing-01').map(set=>set.id),['g6-u1-vocab-typing-01']);
   assert.ok(searchLessonDescriptors(sets,'typing').some(set=>set.id==='g7-u2-wb-b3'));
   assert.ok(searchLessonDescriptors(sets,'classification').some(set=>set.id==='g6-u2-wb-b2'));
 });
 
 test('Explorer type filters still distinguish single-type and mixed lessons',()=>{
-  for(const id of ['g2u01-writing-01','g3u01-writing-01','g6-u1-writing-s1-01','g7-u1-writing-s1-01']) assert.equal(lessonMatchesType(sets.find(set=>set.id===id),'typing'),true);
+  for(const id of ['g2u01-writing-01','g3u01-writing-01','g6-u1-writing-s1-01','g6-u1-vocab-typing-01','g7-u1-writing-s1-01']) assert.equal(lessonMatchesType(sets.find(set=>set.id===id),'typing'),true);
   assert.equal(lessonMatchesType(sets.find(set=>set.id==='g7-u1-translation-01'),'mcq'),true);
   assert.equal(lessonMatchesType(sets.find(set=>set.id==='mrt-left-cut-right-01'),'mix'),true);
   assert.equal(lessonMatchesType(sets.find(set=>set.id==='g7-u2-wb-b5'),'mix'),true);
