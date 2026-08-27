@@ -44,7 +44,7 @@ test('typing accepts source-supported alternative answers before digital adaptat
   assert.match(expectedResponseDisplay(item), /spending/);
 });
 
-test('open SBT production tasks accept any non-empty student response', () => {
+test('raw source keeps open production permissive before interaction adaptation', () => {
   const item = getG6U1WorkbookContent('e3').items[0];
   assert.equal(evaluateQuestion(item, 'My class rules are important.').correct, true);
   assert.equal(evaluateQuestion(item, '   ').correct, false);
@@ -65,6 +65,23 @@ test('B3 and B4 closed-answer source tasks use MCQ instead of typing', async () 
   assert.ok(b4.every(item => item.type === 'mcq'));
   assert.equal(correctChoiceText(b3[2]), 'bike / bicycle');
   assert.equal(correctChoiceText(b4[10]), 'Cả A và B đều được chấp nhận');
+});
+
+test('C1 C3 E3 open production tasks are adapted to MCQ with no typing UI', async () => {
+  for (const key of ['c1','c3','e3']) {
+    const { descriptor, content } = await load(key);
+    const items = sourceItems(content);
+    assert.deepEqual(descriptor.sourceActivityTypes, ['mcq']);
+    assert.equal(items.length, 1);
+    assert.equal(items[0].type, 'mcq');
+    assert.equal(items[0].digitalAdaptation?.sourceResponseType, 'open_written_or_spoken_response');
+    assert.equal(items[0].digitalAdaptation?.adaptedResponseType, 'mcq');
+    assert.equal('typingUi' in items[0], false);
+    assert.equal('responseMode' in items[0], false);
+  }
+  assert.match(correctChoiceText(sourceItems((await load('c1')).content)[0]), /this is Minh, my new friend/);
+  assert.match(correctChoiceText(sourceItems((await load('c3')).content)[0]), /Nguyen Du Secondary School/);
+  assert.match(correctChoiceText(sourceItems((await load('e3')).content)[0]), /arrive on time/);
 });
 
 test('B5 and D1 use word-bank choice instead of typing and keep source bank metadata', async () => {
@@ -105,17 +122,12 @@ test('D2 reading uses MCQ for all five closed answers', async () => {
   assert.match(correctChoiceText(items[4]), /good first day/);
 });
 
-test('only genuinely open C1 C3 E3 source tasks remain typing', async () => {
-  const allowedOpenTyping = new Set(['g6-u1-wb-c1','g6-u1-wb-c3','g6-u1-wb-e3']);
+test('published Unit 1 has zero typing items end to end', async () => {
   for (const descriptor of g6U1WorkbookRegistry) {
+    assert.ok(!descriptor.sourceActivityTypes.includes('typing'), `${descriptor.id} catalog must not advertise typing`);
     const content = await descriptor.loadContent();
-    const typingItems = sourceItems(content).filter(item => item.type === 'typing');
-    if (allowedOpenTyping.has(descriptor.id)) {
-      assert.ok(typingItems.length > 0, `${descriptor.id} should keep open typing`);
-      assert.ok(typingItems.every(item => item.responseMode === 'open'));
-    } else {
-      assert.equal(typingItems.length, 0, `${descriptor.id} should have no closed typing`);
-    }
+    const typingItems = content.items.filter(item => item.type === 'typing');
+    assert.equal(typingItems.length, 0, `${descriptor.id} must have zero published typing items`);
   }
 });
 
