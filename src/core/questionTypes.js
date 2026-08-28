@@ -157,6 +157,7 @@ export function questionTypeLabel(itemOrType) {
 
 function evaluateTyping(item, response, options = {}) {
   const tolerant = options?.typingTolerance === true;
+  const separatorTolerant = item?.typingSeparatorTolerance === true || options?.typingSeparatorTolerance === true;
   const normalizedOpen = normalizeAnswer(String(response ?? ''), {
     ignoreCase: false,
     ignorePunctuation: false
@@ -188,6 +189,14 @@ function evaluateTyping(item, response, options = {}) {
         displayResponse: result.normalizedInput
       };
     }
+    if (separatorTolerant
+      && normalizeTypingSeparatorComparable(normalizedOpen) === normalizeTypingSeparatorComparable(expected)) {
+      return {
+        correct: true,
+        normalizedResponse: normalizedOpen,
+        displayResponse: normalizedOpen
+      };
+    }
     fallback = fallback ?? result;
   }
 
@@ -196,6 +205,13 @@ function evaluateTyping(item, response, options = {}) {
     normalizedResponse: fallback.normalizedInput,
     displayResponse: fallback.normalizedInput
   };
+}
+
+function normalizeTypingSeparatorComparable(value) {
+  return normalizeAnswer(String(value ?? ''), {
+    ignoreCase: false,
+    ignorePunctuation: false
+  }).replace(/[\s\-‐‑‒–—―−﹣－?？]/gu, '');
 }
 
 function evaluateMcq(item, response) {
