@@ -29,8 +29,14 @@ const TYPING_UI = Object.freeze({
   placeholder: 'Type the English word or phrase...'
 });
 
+const TYPING_SEPARATOR_TOLERANCE = true;
+
 function productionItems(items) {
-  return Object.freeze(items.map(item => Object.freeze({ ...item, typingUi: TYPING_UI })));
+  return Object.freeze(items.map(item => Object.freeze({
+    ...item,
+    typingSeparatorTolerance: TYPING_SEPARATOR_TOLERANCE,
+    typingUi: TYPING_UI
+  })));
 }
 
 function descriptor(spec) {
@@ -40,7 +46,7 @@ function descriptor(spec) {
     id: `g6-u1-vocab-typing-${String(spec.group).padStart(2, '0')}`,
     folderId: 'global6-unit1-vocab-typing',
     order: spec.group,
-    version: 2,
+    version: 3,
     course: 'Global Success 6',
     unit: 'Unit 1 · My New School',
     title: spec.title,
@@ -50,8 +56,9 @@ function descriptor(spec) {
     passThreshold: 80,
     completionPolicy: 'all-items',
     typingTolerance: false,
+    typingSeparatorTolerance: TYPING_SEPARATOR_TOLERANCE,
     teacher: 'Thầy Thành MRT',
-    description: `${items.length} mục · ${data.tier2Count} Tier 2 + ${data.tier3Count} Tier 3 · English ẩn trước Submit; prompt chỉ hiện nghĩa và ví dụ tiếng Việt dễ hiểu.`,
+    description: `${items.length} mục · ${data.tier2Count} Tier 2 + ${data.tier3Count} Tier 3 · English ẩn trước Submit; bỏ thiếu khoảng trắng, dấu gạch nối hoặc dấu ? vẫn được chấm đúng nếu các chữ còn lại chính xác.`,
     activityTypes: Object.freeze(['typing']),
     itemCount: items.length,
     loadContent: () => Promise.resolve(Object.freeze({ items }))
