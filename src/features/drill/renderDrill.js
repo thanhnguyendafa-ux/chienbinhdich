@@ -10,6 +10,7 @@ import { bindQuestionInteraction, renderQuestionInteraction } from './questionTy
 import { getQuestionContext } from './questionContext.js';
 import { bindTheorySupport, renderTheorySupport } from './theorySupportRenderer.js';
 import { renderAnswerAnalysis } from './answerAnalysisRenderer.js';
+import { renderTypingErrorMapFeedback } from './typingErrorMapRenderer.js';
 
 const EXPLAIN_ACCEPT_POLICY = 'explain-and-accept';
 
@@ -214,6 +215,8 @@ function renderFeedback(feedback, item) {
     : hitFloor
       ? 'Mastery đang ở sàn 0%'
       : 'Mastery không đổi';
+  const typingErrorFeedback = renderTypingErrorMapFeedback({ feedback, item, masteryMessage, esc });
+  if (typingErrorFeedback) return typingErrorFeedback;
   const choiceHint = mcqChoiceFeedback(item, feedback.entered);
   const readingHint = readingFeedbackHint(item, feedback.entered);
   const writingHint = sentenceOrderFeedbackHint(item, feedback.entered);

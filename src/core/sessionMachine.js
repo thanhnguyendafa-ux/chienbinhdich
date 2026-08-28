@@ -8,6 +8,7 @@ import {
   WORKBOOK_ALL_ITEMS_ASSESSMENT
 } from './assessmentPolicy.js';
 import { evaluateQuestion, expectedResponseDisplay, questionTypeForItem } from './questionTypes.js';
+import { typingErrorMapEnabled } from './typingErrorMap.js';
 import { getMasteryCounts, getMasteryTransitions, masteryDisplayPercent, masteryPercentFromAttempts, masteryUnitPercent } from './masteryEngine.js';
 import { masteryDeltaForAttempt } from './masteryScoringPolicy.js';
 import { sessionPassThreshold } from './masteryPolicy.js';
@@ -72,9 +73,10 @@ export function submitAnswer({ session, set, response, answer, attemptMeta = {},
   const startedAt = finiteTime(attemptMeta.startedAt, submittedAt);
   const scored = isScoredItem(assessmentSet, item);
   const explainAndAccept = assessmentSet?.completionPolicy === EXPLAIN_ACCEPT_POLICY || !scored;
+  const revealTypingErrorMap = typingErrorMapEnabled(item);
   const revealAfterAttempt = completionMode
     ? false
-    : !result.correct && (explainAndAccept || hasSeenAnswer || failedAttemptsBefore + 1 >= 2);
+    : !result.correct && (revealTypingErrorMap || explainAndAccept || hasSeenAnswer || failedAttemptsBefore + 1 >= 2);
   const gradedTotal = scoredItemCount(assessmentSet);
   const masteryDeltaUnits = masteryDeltaForAttempt({
     assessmentSet,

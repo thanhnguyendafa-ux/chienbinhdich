@@ -1,4 +1,5 @@
 import { evaluateAnswer, normalizeAnswer } from './answerEvaluator.js';
+import { normalizeTypingSeparatorComparable } from './typingErrorMap.js';
 
 const evaluators = Object.freeze({
   typing: evaluateTyping,
@@ -205,13 +206,6 @@ function evaluateTyping(item, response, options = {}) {
     normalizedResponse: fallback.normalizedInput,
     displayResponse: fallback.normalizedInput
   };
-}
-
-function normalizeTypingSeparatorComparable(value) {
-  return normalizeAnswer(String(value ?? ''), {
-    ignoreCase: false,
-    ignorePunctuation: false
-  }).replace(/[\s\-‐‑‒–—―−﹣－?？]/gu, '');
 }
 
 function evaluateMcq(item, response) {

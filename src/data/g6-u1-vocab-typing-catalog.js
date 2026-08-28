@@ -30,11 +30,13 @@ const TYPING_UI = Object.freeze({
 });
 
 const TYPING_SEPARATOR_TOLERANCE = true;
+const TYPING_ERROR_MAP = true;
 
 function productionItems(items) {
   return Object.freeze(items.map(item => Object.freeze({
     ...item,
     typingSeparatorTolerance: TYPING_SEPARATOR_TOLERANCE,
+    typingErrorMap: TYPING_ERROR_MAP,
     typingUi: TYPING_UI
   })));
 }
@@ -46,7 +48,7 @@ function descriptor(spec) {
     id: `g6-u1-vocab-typing-${String(spec.group).padStart(2, '0')}`,
     folderId: 'global6-unit1-vocab-typing',
     order: spec.group,
-    version: 3,
+    version: 4,
     course: 'Global Success 6',
     unit: 'Unit 1 · My New School',
     title: spec.title,
@@ -57,8 +59,9 @@ function descriptor(spec) {
     completionPolicy: 'all-items',
     typingTolerance: false,
     typingSeparatorTolerance: TYPING_SEPARATOR_TOLERANCE,
+    typingErrorMap: TYPING_ERROR_MAP,
     teacher: 'Thầy Thành MRT',
-    description: `${items.length} mục · ${data.tier2Count} Tier 2 + ${data.tier3Count} Tier 3 · English ẩn trước Submit; bỏ thiếu khoảng trắng, dấu gạch nối hoặc dấu ? vẫn được chấm đúng nếu các chữ còn lại chính xác.`,
+    description: `${items.length} mục · ${data.tier2Count} Tier 2 + ${data.tier3Count} Tier 3 · English ẩn trước Submit; nếu gõ sai, bản đồ lỗi xanh/đỏ hiện ngay để chỉ đúng vị trí cần sửa; bỏ thiếu khoảng trắng, dấu gạch nối hoặc dấu ? vẫn được chấm đúng nếu các chữ còn lại chính xác.`,
     activityTypes: Object.freeze(['typing']),
     itemCount: items.length,
     loadContent: () => Promise.resolve(Object.freeze({ items }))
