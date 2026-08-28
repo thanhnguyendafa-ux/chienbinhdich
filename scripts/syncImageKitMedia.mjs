@@ -14,14 +14,14 @@ function arg(name, fallback = '') {
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 const mode = arg('--mode', 'smoke');
 const ref = arg('--ref', 'local').replace(/[^a-zA-Z0-9._-]+/g, '-').slice(0, 40);
-if (!['smoke', 'production'].includes(mode)) throw new Error(`Unsupported sync mode: ${mode}`);
+if (!['smoke', 'preview', 'production'].includes(mode)) throw new Error(`Unsupported sync mode: ${mode}`);
 const privateKey = String(process.env.IMAGEKIT_PRIVATE_KEY ?? '').trim();
 if (!privateKey) throw new Error('IMAGEKIT_PRIVATE_KEY is missing.');
 await validateMediaManifest();
 
 function destinationPath(remotePath) {
   const canonical = normalizeMediaPath(remotePath);
-  return mode === 'production' ? canonical : `__pipeline-smoke/${ref}/${canonical}`;
+  return mode === 'smoke' ? `__pipeline-smoke/${ref}/${canonical}` : canonical;
 }
 
 async function head(url) {
@@ -62,9 +62,9 @@ for (const asset of mediaManifest.assets) {
   form.append('fileName', filename);
   form.append('folder', folder);
   form.append('useUniqueFileName', 'false');
-  form.append('overwriteFile', 'true');
+  form.append('overwriteFile', mode === 'smoke' ? 'true' : 'false');
   form.append('isPublished', 'true');
-  form.append('tags', 'chienbinhdich,media-pipeline-v1');
+  form.append('tags', `chienbinhdich,media-pipeline-v1,${mode}`);
 
   const auth = Buffer.from(`${privateKey}:`).toString('base64');
   const response = await fetch(UPLOAD_URL, { method: 'POST', headers: { Authorization: `Basic ${auth}`, Accept: 'application/json' }, body: form });

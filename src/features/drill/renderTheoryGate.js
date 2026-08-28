@@ -1,3 +1,5 @@
+import { renderMediaBlock } from './questionMediaRenderer.js';
+
 export function renderTheoryGate({ root, set, session, onBottomReached, onConfirm, onExit }) {
   const theory = set?.preLessonTheory;
   if (!theory?.required) return onConfirm?.();
@@ -15,11 +17,13 @@ export function renderTheoryGate({ root, set, session, onBottomReached, onConfir
 
       <section class="theory-gate-shell shell">
         <div class="theory-gate-heading">
-          <p class="eyebrow">GLOBAL SUCCESS 6 · UNIT 2</p>
+          <p class="eyebrow">${esc(set.course ?? 'GLOBAL SUCCESS')} · ${esc(set.unit ?? '')}</p>
           <h1>${esc(theory.title)}</h1>
           <p>${esc(theory.intro)}</p>
-          ${sourceLabel ? `<p class="theory-source-note"><strong>Bám theo Unit 2:</strong> ${esc(sourceLabel)}</p>` : ''}
+          ${sourceLabel ? `<p class="theory-source-note"><strong>Bám theo bài:</strong> ${esc(sourceLabel)}</p>` : ''}
         </div>
+
+        ${renderMediaBlock(theory.media,{variant:'theory'})}
 
         <div class="theory-read-progress" aria-live="polite">
           <div><strong>Tiến độ đọc</strong><span id="theory-progress-label">${bottomAlreadyReached ? '100%' : '0%'}</span></div>

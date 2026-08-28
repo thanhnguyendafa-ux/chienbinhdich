@@ -5,24 +5,32 @@ on:
   push:
     paths:
       - 'media-staging/**'
+      - 'media-bundles/**'
       - 'media/**'
       - 'scripts/mediaManifest.mjs'
+      - 'scripts/prepareMediaBundles.mjs'
       - 'scripts/validateMediaManifest.mjs'
       - 'scripts/syncImageKitMedia.mjs'
       - 'src/config/mediaConfig.js'
       - 'src/core/mediaAsset.js'
-      - 'media-smoke.html'
+      - 'src/core/mediaCatalog.js'
+      - 'src/data/workbooks/gs23/g2-media.js'
+      - 'src/services/lessonMediaService.js'
       - '.github/workflows/imagekit-media-sync.yml'
   pull_request:
     paths:
       - 'media-staging/**'
+      - 'media-bundles/**'
       - 'media/**'
       - 'scripts/mediaManifest.mjs'
+      - 'scripts/prepareMediaBundles.mjs'
       - 'scripts/validateMediaManifest.mjs'
       - 'scripts/syncImageKitMedia.mjs'
       - 'src/config/mediaConfig.js'
       - 'src/core/mediaAsset.js'
-      - 'media-smoke.html'
+      - 'src/core/mediaCatalog.js'
+      - 'src/data/workbooks/gs23/g2-media.js'
+      - 'src/services/lessonMediaService.js'
       - '.github/workflows/imagekit-media-sync.yml'
 
 permissions:
@@ -37,7 +45,7 @@ jobs:
   validate-and-sync:
     name: Validate and sync ImageKit media
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 8
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -50,20 +58,29 @@ jobs:
       - name: Validate immutable media manifest
         run: node scripts/validateMediaManifest.mjs
 
-      - name: Choose isolated smoke or canonical production namespace
+      - name: Choose smoke, preview or production namespace
         id: mode
         shell: bash
         run: |
           if [[ "$GITHUB_REF" == "refs/heads/main" ]]; then
             echo "mode=production" >> "$GITHUB_OUTPUT"
+          elif [[ "$GITHUB_EVENT_NAME" == "pull_request" && "${{ github.event.pull_request.head.repo.full_name }}" == "$GITHUB_REPOSITORY" ]]; then
+            echo "mode=preview" >> "$GITHUB_OUTPUT"
+          elif [[ "$GITHUB_EVENT_NAME" == "push" ]]; then
+            echo "mode=preview" >> "$GITHUB_OUTPUT"
           else
             echo "mode=smoke" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Upload and verify ImageKit assets
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
         env:
           IMAGEKIT_PRIVATE_KEY: ${{ secrets.IMAGEKIT_PRIVATE_KEY }}
         run: node scripts/syncImageKitMedia.mjs --mode "${{ steps.mode.outputs.mode }}" --ref "$GITHUB_SHA"
+
+      - name: Fork PR media note
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository
+        run: echo "Fork PR validated manifest only; repository secrets and ImageKit upload are intentionally unavailable."
 
       - name: Publish auditable ImageKit media status on main
         if: always() && github.ref == 'refs/heads/main'
