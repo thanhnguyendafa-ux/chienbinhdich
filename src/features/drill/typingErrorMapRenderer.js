@@ -21,18 +21,19 @@ export function renderTypingErrorMapFeedback({ feedback, item, masteryMessage, e
       </div>
       <div class="typing-error-comparison" aria-hidden="true">
         ${renderRow('Con đã gõ', errorMap.enteredTokens, esc)}
-        ${renderRow('Đáp án đúng', errorMap.expectedTokens, esc)}
+        ${renderRow('Đáp án đúng', errorMap.expectedTokens, esc, { canonical: true })}
       </div>
       ${separatorNote}
       <p class="typing-error-map-action">Gõ lại từ/cụm từ đúng để hoàn thành correction. Câu này vẫn quay lại trong chuỗi ôn.</p>
     </section>`;
 }
 
-function renderRow(label, tokens, esc) {
+function renderRow(label, tokens, esc, { canonical = false } = {}) {
+  const visibleTokens = canonical ? tokens.filter(token => token.status !== 'missing') : tokens;
   return `
     <div class="typing-error-row">
       <span class="typing-error-row-label">${label}</span>
-      <code class="typing-diff-text">${tokens.map(token => renderToken(token, esc)).join('')}</code>
+      <code class="typing-diff-text">${visibleTokens.map(token => renderToken(token, esc)).join('')}</code>
     </div>`;
 }
 
