@@ -1,0 +1,88 @@
+name: Assess Release E2E
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/assess-release-e2e.yml'
+      - 'scripts/assessReleaseE2E.mjs'
+      - 'assess.html'
+      - 'assess-admin.html'
+      - 'api/assess/**'
+      - 'server/assessBackend.js'
+      - 'src/assess-app.js'
+      - 'src/assess-admin-app.js'
+      - 'src/core/assessPayload.js'
+      - 'src/core/assessScoringPolicy.js'
+      - 'src/core/assessSummary.js'
+      - 'src/core/deliveryMode.js'
+      - 'src/features/assess/**'
+      - 'src/repositories/assessApiRepository.js'
+      - 'src/repositories/assessDeliveryRepository.js'
+      - 'src/repositories/assessSessionRepository.js'
+      - 'firestore.rules'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: assess-release-e2e-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release-e2e:
+    name: Real Firebase browser flow
+    if: github.event_name == 'workflow_dispatch' || github.head_ref == 'docs/assess-production-contract'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      FIREBASE_SERVICE_ACCOUNT_CHIENBINHDICH: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_CHIENBINHDICH }}
+      FIREBASE_PROJECT_ID: chienbinhdich
+
+    steps:
+      - name: Checkout PR head
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Require Firebase release credential
+        shell: bash
+        run: |
+          if [ -z "$FIREBASE_SERVICE_ACCOUNT_CHIENBINHDICH" ]; then
+            echo 'Missing GitHub Actions secret FIREBASE_SERVICE_ACCOUNT_CHIENBINHDICH.' >&2
+            exit 1
+          fi
+
+      - name: Materialize Firebase service account
+        shell: bash
+        run: |
+          credential_file="$RUNNER_TEMP/firebase-service-account.json"
+          printf '%s' "$FIREBASE_SERVICE_ACCOUNT_CHIENBINHDICH" > "$credential_file"
+          chmod 600 "$credential_file"
+          echo "GOOGLE_APPLICATION_CREDENTIALS=$credential_file" >> "$GITHUB_ENV"
+
+      - name: Expand Firestore rules for Session V7 + V8 Assess
+        run: npx --yes firebase-tools@15.24.0 deploy --only firestore:rules --project "$FIREBASE_PROJECT_ID" --non-interactive
+
+      - name: Install release E2E dependencies
+        run: npm install --no-save --package-lock=false firebase-admin@13.5.0 playwright@1.55.0
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run Admin → Assess → Admin browser acceptance
+        run: node scripts/assessReleaseE2E.mjs
+
+      - name: Upload release evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: assess-release-e2e-${{ github.sha }}
+          path: artifacts/assess-release-e2e
+          if-no-files-found: warn
+          retention-days: 14
