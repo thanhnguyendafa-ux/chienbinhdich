@@ -64,10 +64,10 @@ try {
   const adminContext = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
   const adminPage = await adminContext.newPage();
   attachPageDiagnostics(adminPage, 'admin');
-  await adminPage.goto(`${ORIGIN}/assess-admin`, { waitUntil: 'networkidle' });
+  await adminPage.goto(`${ORIGIN}/assess-admin`, { waitUntil: 'domcontentloaded' });
   await adminPage.waitForSelector('[data-admin-login]');
   await signInAdminWithCustomToken(adminPage, adminCustomToken);
-  await adminPage.reload({ waitUntil: 'networkidle' });
+  await adminPage.reload({ waitUntil: 'domcontentloaded' });
   await adminPage.waitForSelector('[data-issue-assess]');
 
   await adminPage.selectOption('[data-issue-assess] select[name="setId"]', SET_ID);
@@ -83,7 +83,7 @@ try {
   const masteryContext = await browser.newContext({ viewport: { width: 1280, height: 800 } });
   const masteryPage = await masteryContext.newPage();
   attachPageDiagnostics(masteryPage, 'mastery');
-  await masteryPage.goto(`${ORIGIN}/a/${fullLesson.lessonSlug}`, { waitUntil: 'networkidle' });
+  await masteryPage.goto(`${ORIGIN}/a/${fullLesson.lessonSlug}`, { waitUntil: 'domcontentloaded' });
   await masteryPage.waitForSelector('#name-form');
   const masteryEntryText = await masteryPage.locator('body').innerText();
   assert.match(masteryEntryText, /Mastery/i, 'Same lesson did not open with Mastery semantics.');
@@ -99,7 +99,7 @@ try {
   const studentPage = await studentContext.newPage();
   attachPageDiagnostics(studentPage, 'assess-student');
   const learnerPayloadPromise = studentPage.waitForResponse(response => response.url().includes('/api/assess/lesson?'));
-  await studentPage.goto(issuedUrl, { waitUntil: 'networkidle' });
+  await studentPage.goto(issuedUrl, { waitUntil: 'domcontentloaded' });
   const learnerPayloadResponse = await learnerPayloadPromise;
   assert.equal(learnerPayloadResponse.status(), 200, 'Assess learner payload endpoint did not return 200.');
   const learnerPayload = await learnerPayloadResponse.json();
@@ -156,7 +156,7 @@ try {
   assert.ok(storedSession?.id, 'Assess session was not persisted locally.');
   assessSessionId = storedSession.id;
 
-  await studentPage.reload({ waitUntil: 'networkidle' });
+  await studentPage.reload({ waitUntil: 'domcontentloaded' });
   await studentPage.waitForSelector('.assess-receipt');
   const reopenedText = await studentPage.locator('.assess-receipt').innerText();
   assert.equal(/\b\d+(?:[.,]\d+)?%\b/.test(reopenedText), false, 'Reopened Assess leaked score.');
@@ -165,7 +165,7 @@ try {
   assert.equal(await masteryPage.locator('.metrics-row').count(), 1, 'Assess completion changed the concurrent Mastery page.');
   assert.equal(await masteryPage.locator('.assess-progress').count(), 0, 'Assess completion changed Mastery delivery mode.');
 
-  await adminPage.reload({ waitUntil: 'networkidle' });
+  await adminPage.reload({ waitUntil: 'domcontentloaded' });
   await adminPage.waitForSelector('.assess-results-panel');
   const resultRow = adminPage.locator('tbody tr').filter({ hasText: assessStudent });
   await resultRow.waitFor();
@@ -187,7 +187,7 @@ try {
   assert.ok(q1ExpectedText && detailText.includes(q1ExpectedText), 'Teacher detail did not show Q1 expected answer.');
   await adminPage.screenshot({ path: join(ARTIFACT_DIR, '05-admin-result.png'), fullPage: true });
 
-  await adminPage.reload({ waitUntil: 'networkidle' });
+  await adminPage.reload({ waitUntil: 'domcontentloaded' });
   const persistedRow = adminPage.locator('tbody tr').filter({ hasText: assessStudent });
   await persistedRow.waitFor();
   const persistedText = await persistedRow.innerText();
