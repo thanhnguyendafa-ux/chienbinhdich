@@ -13,8 +13,9 @@ DEFAULT_AUDIENCE="https://vercel.com/${VERCEL_OWNER_SLUG}"
 : "${GOOGLE_APPLICATION_CREDENTIALS:?GOOGLE_APPLICATION_CREDENTIALS is required}"
 gcloud auth activate-service-account --key-file="$GOOGLE_APPLICATION_CREDENTIALS" --project="$PROJECT_ID" >/dev/null
 
-gcloud services enable sts.googleapis.com iamcredentials.googleapis.com --project="$PROJECT_ID" --quiet >/dev/null
-
+# Bootstrap must not grant Service Usage Admin to the release credential.
+# The required IAM/STS APIs are project infrastructure and should already be enabled.
+# If they are unavailable, fail on the exact resource operation below with a precise permission error.
 if ! gcloud iam workload-identity-pools describe "$POOL_ID" --location=global --project="$PROJECT_ID" >/dev/null 2>&1; then
   gcloud iam workload-identity-pools create "$POOL_ID" \
     --location=global \
