@@ -10,7 +10,6 @@ import {
   applySessionMasterySnapshot
 } from './services/effectiveLessonService.js';
 import { deriveAssessSummary } from './core/assessSummary.js';
-import { isAssessSession } from './core/deliveryMode.js';
 import { validateAssessDelivery } from './core/assessScoringPolicy.js';
 
 const root = document.querySelector('#app');
@@ -59,9 +58,6 @@ function renderLogin() {
 async function renderDashboard() {
   renderLoading('Đang tải Assess Dashboard...');
   const descriptors = listSetDescriptors();
-  const sessions = (await admin.listSessions(100)).filter(isAssessSession);
-  const rows = await Promise.all(sessions.map(loadAssessRow));
-  applyBaselineLabels(rows);
 
   root.innerHTML = `
     <main class="assess-admin-page">
@@ -89,14 +85,19 @@ async function renderDashboard() {
         </section>
         <section class="shell assess-results-panel">
           <div class="assess-results-heading">
-            <div><h1>Kết quả Assess</h1><p>Điểm được derive từ Attempt log bằng một scoring owner.</p></div>
-            <button class="secondary-btn" type="button" data-refresh>↻ Làm mới</button>
+            <div>
+              <h1>Kết quả Assess</h1>
+              <p>Điểm được derive từ Attempt log bằng một scoring owner. Lịch sử chỉ tải khi cần để giảm Firestore reads.</p>
+            </div>
+            <button class="secondary-btn" type="button" data-refresh>↻ Tải kết quả</button>
           </div>
-          ${renderResultsTable(rows)}
+          <div data-assess-results>
+            <p>Nhấn “Tải kết quả” để xem tối đa 25 lượt Assess gần nhất.</p>
+          </div>
         </section>
         <section class="shell assess-detail-panel" data-assess-detail>
           <h2>Chi tiết</h2>
-          <p>Chọn “Xem” ở một lượt Assess để kiểm tra từng câu.</p>
+          <p>Tải kết quả rồi chọn “Xem” ở một lượt Assess để kiểm tra từng câu.</p>
         </section>
       </section>
     </main>`;
@@ -105,9 +106,29 @@ async function renderDashboard() {
     await admin.signOutAdmin();
     window.location.reload();
   });
-  root.querySelector('[data-refresh]')?.addEventListener('click', renderDashboard);
+  root.querySelector('[data-refresh]')?.addEventListener('click', loadAssessResults);
   root.querySelector('[data-issue-assess]')?.addEventListener('submit', issueAssess);
-  root.querySelectorAll('[data-session-id]').forEach(button => button.addEventListener('click', () => renderDetail(button.dataset.sessionId, rows)));
+}
+
+async function loadAssessResults() {
+  const target = root.querySelector('[data-assess-results]');
+  const button = root.querySelector('[data-refresh]');
+  if (!target || !button) return;
+  button.disabled = true;
+  target.innerHTML = '<p>Đang tải kết quả Assess...</p>';
+  try {
+    const sessions = await admin.listAssessSessions(25);
+    const rows = await mapWithConcurrency(sessions, 3, loadAssessRow);
+    applyBaselineLabels(rows);
+    target.innerHTML = renderResultsTable(rows);
+    root.querySelectorAll('[data-session-id]').forEach(resultButton => {
+      resultButton.addEventListener('click', () => renderDetail(resultButton.dataset.sessionId, rows));
+    });
+  } catch (error) {
+    target.innerHTML = `<p class="assess-inline-error">${esc(error?.message ?? 'Không tải được kết quả Assess.')}</p>`;
+  } finally {
+    button.disabled = false;
+  }
 }
 
 async function issueAssess(event) {
@@ -142,16 +163,16 @@ async function issueAssess(event) {
 
 async function loadAssessRow(session) {
   try {
-    const [detail, lesson] = await Promise.all([
-      admin.getSessionDetail(session.id),
+    const [attempts, lesson] = await Promise.all([
+      admin.listSessionAttempts(session.id),
       loadAdminHistoricalAssessLesson(session)
     ]);
-    const summary = deriveAssessSummary(detail.attempts, lesson, {
+    const summary = deriveAssessSummary(attempts, lesson, {
       typingTolerance: session.typingToleranceAtStart === true
     });
     return {
       session,
-      attempts: detail.attempts,
+      attempts,
       lesson,
       summary,
       label: '',
@@ -247,6 +268,22 @@ async function loadAdminHistoricalAssessLesson(session) {
     : null;
   const historical = applyLessonMasterySetting(applyLessonContentOverride(staticLesson, content), null);
   return applySessionMasterySnapshot(historical, session);
+}
+
+async function mapWithConcurrency(values, limit, mapper) {
+  const results = new Array(values.length);
+  let cursor = 0;
+  async function worker() {
+    while (true) {
+      const index = cursor;
+      cursor += 1;
+      if (index >= values.length) return;
+      results[index] = await mapper(values[index], index);
+    }
+  }
+  const workerCount = Math.min(Math.max(1, Number(limit) || 1), values.length);
+  await Promise.all(Array.from({ length: workerCount }, () => worker()));
+  return results;
 }
 
 function durationFor(session) {
