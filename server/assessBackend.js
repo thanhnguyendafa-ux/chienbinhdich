@@ -7,6 +7,8 @@ import { evaluateQuestion, questionTypeForItem } from '../src/core/questionTypes
 import { loadLessonSet } from '../src/repositories/lessonRepository.js';
 import { applyLessonContentOverride, applyLessonMasterySetting } from '../src/services/effectiveLessonService.js';
 import { createFirestoreRestClient } from './firestoreRest.js';
+import { verifyFirebaseIdToken } from './firebaseServerAuth.js';
+import { getPrivilegedGoogleAccessToken } from './googleAccessToken.js';
 
 const firestore = createFirestoreRestClient(firebaseConfig.project.projectId);
 
@@ -18,7 +20,9 @@ export function bearerToken(req) {
 }
 
 export async function getAssessLessonPayload({ code, token }) {
-  const { delivery, lesson } = await loadAssessDelivery({ code, token });
+  await verifyFirebaseIdToken(token);
+  const googleToken = await getPrivilegedGoogleAccessToken();
+  const { delivery, lesson } = await loadAssessDelivery({ code, googleToken });
   return Object.freeze({
     delivery: publicDelivery(delivery),
     lesson: sanitizeAssessLesson(lesson)
@@ -26,6 +30,8 @@ export async function getAssessLessonPayload({ code, token }) {
 }
 
 export async function recordAssessAttempt({ token, payload }) {
+  const user = await verifyFirebaseIdToken(token);
+  const googleToken = await getPrivilegedGoogleAccessToken();
   const code = normalizeLegacyAssignmentCode(payload?.code);
   const sessionId = String(payload?.sessionId ?? '').trim();
   const itemId = String(payload?.itemId ?? '').trim();
@@ -35,9 +41,12 @@ export async function recordAssessAttempt({ token, payload }) {
     throw assessBackendError('assess_request_invalid', 'Invalid Assess attempt request.', 400);
   }
 
-  const { delivery, lesson } = await loadAssessDelivery({ code, token });
-  const session = await firestore.getDocument(`sessions/${encodePathSegment(sessionId)}`, token);
+  const { delivery, lesson } = await loadAssessDelivery({ code, googleToken });
+  const session = await firestore.getDocument(`sessions/${encodePathSegment(sessionId)}`, googleToken);
   if (!session) throw assessBackendError('assess_session_not_found', 'Assess session not found.', 404);
+  if (String(session.ownerUid ?? '') !== user.uid) {
+    throw assessBackendError('assess_session_owner_invalid', 'Assess session is owned by another user.', 403);
+  }
   validateSessionAgainstDelivery(session, delivery);
 
   const item = lesson.items[promptIndex];
@@ -72,26 +81,22 @@ export async function recordAssessAttempt({ token, payload }) {
     gradingContractVersion: CURRENT_DELIVERY_CONTRACT_VERSION,
     serverRecordedAt: Date.now(),
     sessionId,
-    ownerUid: String(session.ownerUid ?? '')
+    ownerUid: user.uid
   };
 
   try {
-    await firestore.createDocument(`sessions/${encodePathSegment(sessionId)}/attempts`, attemptId, attempt, token);
+    await firestore.createDocument(`sessions/${encodePathSegment(sessionId)}/attempts`, attemptId, attempt, googleToken);
   } catch (error) {
     if (error?.code !== 'firestore_already_exists') throw error;
   }
 
-  return Object.freeze({
-    ok: true,
-    attemptId,
-    recordedAt: Date.now()
-  });
+  return Object.freeze({ ok: true, attemptId, recordedAt: Date.now() });
 }
 
-export async function loadAssessDelivery({ code, token }) {
+export async function loadAssessDelivery({ code, googleToken }) {
   const normalizedCode = normalizeLegacyAssignmentCode(code);
   if (!normalizedCode) throw assessBackendError('assignment_invalid', 'Invalid Assess delivery code.', 400);
-  const delivery = await firestore.getDocument(`assignments/${normalizedCode}`, token);
+  const delivery = await firestore.getDocument(`assignments/${normalizedCode}`, googleToken);
   if (!delivery || delivery.active !== true) {
     throw assessBackendError('assignment_not_found', 'Assess delivery is not available.', 404);
   }
@@ -112,7 +117,7 @@ export async function loadAssessDelivery({ code, token }) {
     if (!revisionId) throw assessBackendError('delivery_content_snapshot_invalid', 'Assess content snapshot is incomplete.', 409);
     content = await firestore.getDocument(
       `lessonContent/${encodePathSegment(delivery.setId)}/revisions/${encodePathSegment(revisionId)}`,
-      token
+      googleToken
     );
     if (!content || Number(content.revision) !== revision) {
       throw assessBackendError('delivery_content_snapshot_missing', 'Assess content snapshot is unavailable.', 409);

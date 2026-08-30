@@ -7,11 +7,14 @@ on:
     paths:
       - '.github/workflows/assess-release-e2e.yml'
       - 'scripts/assessReleaseE2E.mjs'
+      - 'scripts/setupVercelGcpWif.sh'
       - 'assess.html'
       - 'assess-admin.html'
       - 'api/assess/**'
       - 'server/assess*.js'
       - 'server/firestoreRest.js'
+      - 'server/firebaseServerAuth.js'
+      - 'server/googleAccessToken.js'
       - 'src/assess-app.js'
       - 'src/assess-admin-app.js'
       - 'src/core/assessPayload.js'
@@ -29,11 +32,14 @@ on:
     paths:
       - '.github/workflows/assess-release-e2e.yml'
       - 'scripts/assessReleaseE2E.mjs'
+      - 'scripts/setupVercelGcpWif.sh'
       - 'assess.html'
       - 'assess-admin.html'
       - 'api/assess/**'
       - 'server/assess*.js'
       - 'server/firestoreRest.js'
+      - 'server/firebaseServerAuth.js'
+      - 'server/googleAccessToken.js'
       - 'src/assess-app.js'
       - 'src/assess-admin-app.js'
       - 'src/core/assessPayload.js'
@@ -93,6 +99,10 @@ jobs:
       - name: Expand Firestore rules for Session V7 + V8 Assess
         if: github.event_name != 'push'
         run: npx --yes firebase-tools@15.24.0 deploy --only firestore:rules --project "$FIREBASE_PROJECT_ID" --non-interactive
+
+      - name: Configure Vercel → Google workload identity
+        if: github.event_name != 'push'
+        run: bash scripts/setupVercelGcpWif.sh
 
       - name: Wait for Vercel Production Assess shell
         if: github.event_name == 'push'

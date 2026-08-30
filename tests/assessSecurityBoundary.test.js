@@ -33,6 +33,9 @@ test('trusted grade endpoint returns neutral acknowledgement rather than correct
   const backend = readFileSync(new URL('../server/assessBackend.js', import.meta.url), 'utf8');
   const api = readFileSync(new URL('../api/assess/grade.js', import.meta.url), 'utf8');
   assert.match(backend, /evaluateQuestion\(item/);
+  assert.match(backend, /verifyFirebaseIdToken\(token\)/);
+  assert.match(backend, /getPrivilegedGoogleAccessToken\(\)/);
+  assert.match(backend, /session\.ownerUid[\s\S]*user\.uid/);
   assert.match(backend, /ok:\s*true[\s\S]*attemptId[\s\S]*recordedAt/);
   assert.doesNotMatch(api, /expectedAnswer|revealAnswer|correct:/);
 });
@@ -44,9 +47,21 @@ test('Assess issuing is authorized and snapshotted on the trusted server boundar
   assert.match(repository, /\/api\/assess\/issue/);
   assert.match(repository, /getIdToken\(\)/);
   assert.doesNotMatch(repository, /setDoc|getDoc|collection\(|doc\(/);
+  assert.match(backend, /verifyFirebaseIdToken\(token\)/);
+  assert.match(backend, /getPrivilegedGoogleAccessToken\(\)/);
   assert.match(backend, /admins\//);
   assert.match(backend, /validateAssessDelivery\(lesson\)/);
   assert.match(backend, /deliveryMode:\s*DELIVERY_MODE_ASSESS/);
   assert.match(backend, /contentRevisionAtIssue/);
   assert.match(api, /issueAssessDelivery/);
+});
+
+test('production privileged identity is short-lived workload federation, never a committed service-account key', () => {
+  const googleAuth = readFileSync(new URL('../server/googleAccessToken.js', import.meta.url), 'utf8');
+  const wifSetup = readFileSync(new URL('../scripts/setupVercelGcpWif.sh', import.meta.url), 'utf8');
+  assert.match(googleAuth, /VERCEL_OIDC_TOKEN/);
+  assert.match(googleAuth, /sts\.googleapis\.com\/v1\/token/);
+  assert.match(wifSetup, /workload-identity-pools/);
+  assert.match(wifSetup, /roles\/datastore\.user/);
+  assert.doesNotMatch(googleAuth, /BEGIN PRIVATE KEY/);
 });
