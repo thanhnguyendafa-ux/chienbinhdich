@@ -36,3 +36,17 @@ test('trusted grade endpoint returns neutral acknowledgement rather than correct
   assert.match(backend, /ok:\s*true[\s\S]*attemptId[\s\S]*recordedAt/);
   assert.doesNotMatch(api, /expectedAnswer|revealAnswer|correct:/);
 });
+
+test('Assess issuing is authorized and snapshotted on the trusted server boundary', () => {
+  const repository = readFileSync(new URL('../src/repositories/assessDeliveryRepository.js', import.meta.url), 'utf8');
+  const backend = readFileSync(new URL('../server/assessAdminBackend.js', import.meta.url), 'utf8');
+  const api = readFileSync(new URL('../api/assess/issue.js', import.meta.url), 'utf8');
+  assert.match(repository, /\/api\/assess\/issue/);
+  assert.match(repository, /getIdToken\(\)/);
+  assert.doesNotMatch(repository, /setDoc|getDoc|collection\(|doc\(/);
+  assert.match(backend, /admins\//);
+  assert.match(backend, /validateAssessDelivery\(lesson\)/);
+  assert.match(backend, /deliveryMode:\s*DELIVERY_MODE_ASSESS/);
+  assert.match(backend, /contentRevisionAtIssue/);
+  assert.match(api, /issueAssessDelivery/);
+});

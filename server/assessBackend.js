@@ -6,9 +6,9 @@ import { sanitizeAssessLesson } from '../src/core/assessPayload.js';
 import { evaluateQuestion, questionTypeForItem } from '../src/core/questionTypes.js';
 import { loadLessonSet } from '../src/repositories/lessonRepository.js';
 import { applyLessonContentOverride, applyLessonMasterySetting } from '../src/services/effectiveLessonService.js';
+import { createFirestoreRestClient } from './firestoreRest.js';
 
-const projectId = firebaseConfig.project.projectId;
-const firestoreBase = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents`;
+const firestore = createFirestoreRestClient(firebaseConfig.project.projectId);
 
 export function bearerToken(req) {
   const header = String(req?.headers?.authorization ?? '');
@@ -36,7 +36,7 @@ export async function recordAssessAttempt({ token, payload }) {
   }
 
   const { delivery, lesson } = await loadAssessDelivery({ code, token });
-  const session = await firestoreGet(`sessions/${encodePathSegment(sessionId)}`, token);
+  const session = await firestore.getDocument(`sessions/${encodePathSegment(sessionId)}`, token);
   if (!session) throw assessBackendError('assess_session_not_found', 'Assess session not found.', 404);
   validateSessionAgainstDelivery(session, delivery);
 
@@ -76,7 +76,7 @@ export async function recordAssessAttempt({ token, payload }) {
   };
 
   try {
-    await firestoreCreate(`sessions/${encodePathSegment(sessionId)}/attempts`, attemptId, attempt, token);
+    await firestore.createDocument(`sessions/${encodePathSegment(sessionId)}/attempts`, attemptId, attempt, token);
   } catch (error) {
     if (error?.code !== 'firestore_already_exists') throw error;
   }
@@ -91,7 +91,7 @@ export async function recordAssessAttempt({ token, payload }) {
 export async function loadAssessDelivery({ code, token }) {
   const normalizedCode = normalizeLegacyAssignmentCode(code);
   if (!normalizedCode) throw assessBackendError('assignment_invalid', 'Invalid Assess delivery code.', 400);
-  const delivery = await firestoreGet(`assignments/${normalizedCode}`, token);
+  const delivery = await firestore.getDocument(`assignments/${normalizedCode}`, token);
   if (!delivery || delivery.active !== true) {
     throw assessBackendError('assignment_not_found', 'Assess delivery is not available.', 404);
   }
@@ -110,7 +110,7 @@ export async function loadAssessDelivery({ code, token }) {
   let content = null;
   if (revision > 0) {
     if (!revisionId) throw assessBackendError('delivery_content_snapshot_invalid', 'Assess content snapshot is incomplete.', 409);
-    content = await firestoreGet(
+    content = await firestore.getDocument(
       `lessonContent/${encodePathSegment(delivery.setId)}/revisions/${encodePathSegment(revisionId)}`,
       token
     );
@@ -169,83 +169,6 @@ function publicDelivery(delivery) {
     assessmentContractVersionAtIssue: delivery.assessmentContractVersionAtIssue ?? null,
     completionPolicyAtIssue: delivery.completionPolicyAtIssue ?? null
   });
-}
-
-async function firestoreGet(path, token) {
-  const response = await fetch(`${firestoreBase}/${path}`, {
-    headers: { Authorization: `Bearer ${token}` }
-  });
-  if (response.status === 404) return null;
-  if (!response.ok) throw await firestoreError(response);
-  const document = await response.json();
-  return {
-    ...decodeMap(document.fields ?? {}),
-    id: decodeURIComponent(String(document.name ?? '').split('/').at(-1) ?? '')
-  };
-}
-
-async function firestoreCreate(collectionPath, documentId, data, token) {
-  const url = `${firestoreBase}/${collectionPath}?documentId=${encodeURIComponent(documentId)}`;
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({ fields: encodeMap(data) })
-  });
-  if (response.status === 409) {
-    const error = assessBackendError('firestore_already_exists', 'Attempt already recorded.', 409);
-    throw error;
-  }
-  if (!response.ok) throw await firestoreError(response);
-  return response.json();
-}
-
-async function firestoreError(response) {
-  const body = await response.json().catch(() => ({}));
-  const status = Number(response.status);
-  const code = status === 401 ? 'auth_required'
-    : status === 403 ? 'firestore_forbidden'
-      : status === 404 ? 'firestore_not_found'
-        : 'firestore_error';
-  return assessBackendError(code, body?.error?.message ?? 'Firestore request failed.', status || 500);
-}
-
-function encodeMap(value) {
-  const output = {};
-  for (const [key, child] of Object.entries(value ?? {})) output[key] = encodeValue(child);
-  return output;
-}
-
-function encodeValue(value) {
-  if (value === null || value === undefined) return { nullValue: null };
-  if (typeof value === 'boolean') return { booleanValue: value };
-  if (typeof value === 'number') {
-    return Number.isInteger(value) ? { integerValue: String(value) } : { doubleValue: value };
-  }
-  if (typeof value === 'string') return { stringValue: value };
-  if (Array.isArray(value)) return { arrayValue: { values: value.map(encodeValue) } };
-  if (typeof value === 'object') return { mapValue: { fields: encodeMap(value) } };
-  return { stringValue: String(value) };
-}
-
-function decodeMap(fields) {
-  const output = {};
-  for (const [key, value] of Object.entries(fields ?? {})) output[key] = decodeValue(value);
-  return output;
-}
-
-function decodeValue(value) {
-  if ('nullValue' in value) return null;
-  if ('booleanValue' in value) return value.booleanValue;
-  if ('integerValue' in value) return Number(value.integerValue);
-  if ('doubleValue' in value) return Number(value.doubleValue);
-  if ('stringValue' in value) return value.stringValue;
-  if ('timestampValue' in value) return Date.parse(value.timestampValue);
-  if ('arrayValue' in value) return (value.arrayValue?.values ?? []).map(decodeValue);
-  if ('mapValue' in value) return decodeMap(value.mapValue?.fields ?? {});
-  return null;
 }
 
 function normalizeInputMethod(value) {

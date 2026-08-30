@@ -7,6 +7,7 @@ import { chromium } from 'playwright';
 import { cert, deleteApp, initializeApp } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
+import issueHandler from '../api/assess/issue.js';
 import lessonHandler from '../api/assess/lesson.js';
 import gradeHandler from '../api/assess/grade.js';
 import { assessableItems } from '../src/core/assessScoringPolicy.js';
@@ -18,7 +19,8 @@ const ARTIFACT_DIR = join(ROOT, 'artifacts', 'assess-release-e2e');
 const PROJECT_ID = 'chienbinhdich';
 const SET_ID = 'g7-u1-translation-01';
 const PORT = 4173;
-const ORIGIN = `http://127.0.0.1:${PORT}`;
+const EXTERNAL_ORIGIN = String(process.env.ASSESS_E2E_ORIGIN ?? '').trim().replace(/\/$/, '');
+const ORIGIN = EXTERNAL_ORIGIN || `http://127.0.0.1:${PORT}`;
 const FORBIDDEN_PAYLOAD_KEYS = new Set([
   'en', 'acceptedAnswers', 'correctChoiceId', 'answer', 'correctOrder', 'acceptedOrders',
   'correctGroupId', 'expectedAnswer', 'answerKey', 'sampleAnswer', 'modelAnswer',
@@ -33,7 +35,7 @@ const credential = JSON.parse(rawCredential);
 const adminApp = initializeApp({ credential: cert(credential), projectId: PROJECT_ID }, `assess-release-e2e-${Date.now()}`);
 const db = getFirestore(adminApp);
 const firebaseAuth = getAuth(adminApp);
-const server = createAppServer();
+const server = EXTERNAL_ORIGIN ? null : createAppServer();
 const browser = await chromium.launch({ headless: true });
 
 let issuedCode = null;
@@ -41,10 +43,9 @@ let assessSessionId = null;
 let masterySessionId = null;
 let assessOwnerUid = null;
 let masteryOwnerUid = null;
-let evidence = null;
 
 try {
-  await listen(server, PORT);
+  if (server) await listen(server, PORT);
 
   const adminSnapshot = await db.collection('admins').limit(1).get();
   assert.equal(adminSnapshot.empty, false, 'No Firebase Admin marker exists for release E2E.');
@@ -71,10 +72,14 @@ try {
   await adminPage.waitForSelector('[data-issue-assess]');
 
   await adminPage.selectOption('[data-issue-assess] select[name="setId"]', SET_ID);
+  const issueResponsePromise = adminPage.waitForResponse(response => response.url().includes('/api/assess/issue'));
   await adminPage.click('[data-issue-assess] button[type="submit"]');
-  const issuedLocator = adminPage.locator('.assess-issued-card code');
-  await issuedLocator.waitFor();
-  const issuedUrl = String(await issuedLocator.textContent()).trim();
+  const issueResponse = await issueResponsePromise;
+  assert.equal(issueResponse.status(), 200, `Assess issue API failed: ${await issueResponse.text()}`);
+  await waitForIssuedOrError(adminPage);
+  const issueError = await adminPage.locator('[data-issued-link] .assess-inline-error').textContent().catch(() => null);
+  assert.equal(issueError, null, `Assess issue UI failed: ${issueError}`);
+  const issuedUrl = String(await adminPage.locator('.assess-issued-card code').textContent()).trim();
   const parsed = parseLegacyAssignmentToken(new URL(issuedUrl).searchParams.get('assignment') ?? '');
   assert.ok(parsed, `Issued Assess URL is not parseable: ${issuedUrl}`);
   issuedCode = parsed.code;
@@ -85,13 +90,12 @@ try {
   attachPageDiagnostics(masteryPage, 'mastery');
   await masteryPage.goto(`${ORIGIN}/a/${fullLesson.lessonSlug}`, { waitUntil: 'domcontentloaded' });
   await masteryPage.waitForSelector('#name-form');
-  const masteryEntryText = await masteryPage.locator('body').innerText();
-  assert.match(masteryEntryText, /Mastery/i, 'Same lesson did not open with Mastery semantics.');
+  assert.match(await masteryPage.locator('body').innerText(), /Mastery/i, 'Same lesson did not open with Mastery semantics.');
   assert.equal(await masteryPage.locator('.assess-mode-badge').count(), 0, 'Mastery entry leaked Assess presentation.');
   await masteryPage.fill('#student-name', masteryStudent);
   await masteryPage.click('#name-form button[type="submit"]');
   await masteryPage.waitForSelector('.metrics-row');
-  assert.match(await masteryPage.locator('.metrics-row').innerText(), /Mastery/i, 'Mastery drill did not retain its Mastery metrics.');
+  assert.match(await masteryPage.locator('.metrics-row').innerText(), /Mastery/i, 'Mastery drill did not retain Mastery metrics.');
   assert.equal(await masteryPage.locator('.assess-progress').count(), 0, 'Mastery drill crossed into Assess UI.');
   await masteryPage.screenshot({ path: join(ARTIFACT_DIR, '02-mastery-live.png'), fullPage: true });
 
@@ -104,11 +108,10 @@ try {
   assert.equal(learnerPayloadResponse.status(), 200, 'Assess learner payload endpoint did not return 200.');
   const learnerPayload = await learnerPayloadResponse.json();
   assert.equal(findForbiddenKey(learnerPayload), null, 'Learner payload contains a recoverable answer-key field.');
-  assert.equal(learnerPayload.lesson.itemCount, assessItems.length, 'Sanitized lesson item count drifted from assessable source items.');
+  assert.equal(learnerPayload.lesson.itemCount, assessItems.length, 'Sanitized lesson item count drifted from source assessable items.');
 
   await studentPage.waitForSelector('[data-assess-entry]');
-  const entryText = await studentPage.locator('body').innerText();
-  assert.match(entryText, /không hiển thị đúng\/sai, đáp án hoặc điểm/i, 'Assess entry does not state the blind contract.');
+  assert.match(await studentPage.locator('body').innerText(), /không hiển thị đúng\/sai, đáp án hoặc điểm/i, 'Assess entry does not state blind contract.');
   await studentPage.fill('[data-assess-entry] input[name="studentName"]', assessStudent);
   await studentPage.click('[data-assess-entry] button[type="submit"]');
   await waitForAssessQuestion(studentPage, 1, assessItems.length);
@@ -119,25 +122,24 @@ try {
   const firstGradePromise = studentPage.waitForResponse(response => response.url().includes('/api/assess/grade'));
   await studentPage.click(`[data-choice-id="${cssEscape(String(wrongChoice.id))}"]`);
   const firstGradeResponse = await firstGradePromise;
-  assert.equal(firstGradeResponse.status(), 200, 'Trusted grade endpoint did not accept Q1.');
+  assert.equal(firstGradeResponse.status(), 200, `Trusted grade endpoint did not accept Q1: ${await firstGradeResponse.text()}`);
   const firstAck = await firstGradeResponse.json();
-  assert.equal(firstAck.ok, true, 'Trusted grade endpoint did not return a neutral acknowledgement.');
+  assert.equal(firstAck.ok, true);
   assert.equal('correct' in firstAck, false, 'Grade acknowledgement leaked correctness.');
   assert.equal('expectedAnswer' in firstAck, false, 'Grade acknowledgement leaked expected answer.');
   await waitForAssessQuestion(studentPage, 2, assessItems.length);
   assert.equal(await studentPage.locator('.answer-reveal, .feedback-panel, .mastery-progress, .metrics-row').count(), 0,
-    'Q1 wrong answer exposed learning/result UI instead of advancing neutrally.');
+    'Wrong Assess answer exposed learning/result UI.');
   await studentPage.screenshot({ path: join(ARTIFACT_DIR, '03-assess-q2-after-wrong.png'), fullPage: true });
 
   for (let index = 1; index < assessItems.length; index += 1) {
     const item = assessItems[index];
-    const choiceId = String(item.correctChoiceId);
-    const responsePromise = studentPage.waitForResponse(response => response.url().includes('/api/assess/grade'));
-    await studentPage.click(`[data-choice-id="${cssEscape(choiceId)}"]`);
-    const response = await responsePromise;
-    assert.equal(response.status(), 200, `Trusted grade endpoint failed at Q${index + 1}.`);
-    const acknowledgement = await response.json();
-    assert.equal(acknowledgement.ok, true, `Trusted grade acknowledgement failed at Q${index + 1}.`);
+    const gradePromise = studentPage.waitForResponse(response => response.url().includes('/api/assess/grade'));
+    await studentPage.click(`[data-choice-id="${cssEscape(String(item.correctChoiceId))}"]`);
+    const gradeResponse = await gradePromise;
+    assert.equal(gradeResponse.status(), 200, `Trusted grade endpoint failed at Q${index + 1}: ${await gradeResponse.text()}`);
+    const acknowledgement = await gradeResponse.json();
+    assert.equal(acknowledgement.ok, true);
     assert.equal('correct' in acknowledgement, false, `Q${index + 1} acknowledgement leaked correctness.`);
     if (index < assessItems.length - 1) await waitForAssessQuestion(studentPage, index + 2, assessItems.length);
   }
@@ -146,7 +148,7 @@ try {
   const receiptText = await studentPage.locator('.assess-receipt').innerText();
   assert.match(receiptText, /ĐÃ NỘP BÀI/);
   assert.match(receiptText, /Điểm và đáp án không hiển thị trong chế độ Assess/);
-  assert.equal(/\b\d+(?:[.,]\d+)?%\b/.test(receiptText), false, 'Student receipt leaked a score percentage.');
+  assert.equal(/\b\d+(?:[.,]\d+)?%\b/.test(receiptText), false, 'Student receipt leaked score percentage.');
   await studentPage.screenshot({ path: join(ARTIFACT_DIR, '04-assess-receipt.png'), fullPage: true });
 
   const storedSession = await studentPage.evaluate(() => {
@@ -162,11 +164,12 @@ try {
   assert.equal(/\b\d+(?:[.,]\d+)?%\b/.test(reopenedText), false, 'Reopened Assess leaked score.');
   assert.match(reopenedText, /Điểm và đáp án không hiển thị/);
 
-  assert.equal(await masteryPage.locator('.metrics-row').count(), 1, 'Assess completion changed the concurrent Mastery page.');
+  assert.equal(await masteryPage.locator('.metrics-row').count(), 1, 'Assess completion changed concurrent Mastery page.');
   assert.equal(await masteryPage.locator('.assess-progress').count(), 0, 'Assess completion changed Mastery delivery mode.');
 
   await adminPage.reload({ waitUntil: 'domcontentloaded' });
-  await adminPage.waitForSelector('.assess-results-panel');
+  await adminPage.waitForSelector('[data-refresh]');
+  await adminPage.click('[data-refresh]');
   const resultRow = adminPage.locator('tbody tr').filter({ hasText: assessStudent });
   await resultRow.waitFor();
   const rowText = await resultRow.innerText();
@@ -188,6 +191,8 @@ try {
   await adminPage.screenshot({ path: join(ARTIFACT_DIR, '05-admin-result.png'), fullPage: true });
 
   await adminPage.reload({ waitUntil: 'domcontentloaded' });
+  await adminPage.waitForSelector('[data-refresh]');
+  await adminPage.click('[data-refresh]');
   const persistedRow = adminPage.locator('tbody tr').filter({ hasText: assessStudent });
   await persistedRow.waitFor();
   const persistedText = await persistedRow.innerText();
@@ -218,8 +223,9 @@ try {
   masteryOwnerUid = masteryDocument.data().ownerUid ?? null;
   assert.notEqual(masteryDocument.data().deliveryModeAtStart, 'assess', 'Mastery session was stamped as Assess.');
 
-  evidence = {
+  const evidence = {
     ok: true,
+    origin: ORIGIN,
     gitSha: process.env.GITHUB_SHA ?? null,
     runId: process.env.GITHUB_RUN_ID ?? null,
     setId: SET_ID,
@@ -250,7 +256,7 @@ try {
     if (masteryOwnerUid) await firebaseAuth.deleteUser(masteryOwnerUid).catch(() => {});
   } finally {
     await browser.close().catch(() => {});
-    await closeServer(server).catch(() => {});
+    if (server) await closeServer(server).catch(() => {});
     await deleteApp(adminApp).catch(() => {});
   }
 }
@@ -259,6 +265,10 @@ function createAppServer() {
   return createServer(async (req, res) => {
     try {
       const url = new URL(req.url ?? '/', ORIGIN);
+      if (url.pathname === '/api/assess/issue') {
+        req.body = await readJsonBody(req);
+        return issueHandler(req, apiResponse(res));
+      }
       if (url.pathname === '/api/assess/lesson') {
         req.query = Object.fromEntries(url.searchParams.entries());
         return lessonHandler(req, apiResponse(res));
@@ -309,27 +319,6 @@ async function readJsonBody(req) {
   return JSON.parse(Buffer.concat(chunks).toString('utf8'));
 }
 
-function sendText(res, status, text) {
-  res.statusCode = status;
-  res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-  res.end(text);
-}
-
-function mimeType(extension) {
-  return ({
-    '.html': 'text/html; charset=utf-8',
-    '.js': 'text/javascript; charset=utf-8',
-    '.css': 'text/css; charset=utf-8',
-    '.json': 'application/json; charset=utf-8',
-    '.svg': 'image/svg+xml',
-    '.png': 'image/png',
-    '.jpg': 'image/jpeg',
-    '.jpeg': 'image/jpeg',
-    '.webp': 'image/webp',
-    '.ico': 'image/x-icon'
-  })[extension] ?? 'application/octet-stream';
-}
-
 async function signInAdminWithCustomToken(page, token) {
   await page.evaluate(async customToken => {
     const { firebaseConfig } = await import('/src/config/firebaseConfig.js');
@@ -343,6 +332,13 @@ async function signInAdminWithCustomToken(page, token) {
       ?? appSdk.initializeApp(firebaseConfig.project, appName);
     await authSdk.signInWithCustomToken(authSdk.getAuth(app), customToken);
   }, token);
+}
+
+async function waitForIssuedOrError(page) {
+  await page.waitForFunction(() => Boolean(
+    document.querySelector('.assess-issued-card code')
+    || document.querySelector('[data-issued-link] .assess-inline-error')
+  ));
 }
 
 async function waitForAssessQuestion(page, number, total) {
@@ -404,8 +400,29 @@ function closeServer(target) {
   });
 }
 
+function sendText(res, status, text) {
+  res.statusCode = status;
+  res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+  res.end(text);
+}
+
+function mimeType(extension) {
+  return ({
+    '.html': 'text/html; charset=utf-8',
+    '.js': 'text/javascript; charset=utf-8',
+    '.css': 'text/css; charset=utf-8',
+    '.json': 'application/json; charset=utf-8',
+    '.svg': 'image/svg+xml',
+    '.png': 'image/png',
+    '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg',
+    '.webp': 'image/webp',
+    '.ico': 'image/x-icon'
+  })[extension] ?? 'application/octet-stream';
+}
+
 function cssEscape(value) {
-  return value.replace(/(["\\])/g, '\\$1');
+  return String(value).replace(/(["\\])/g, '\\$1');
 }
 
 function escapeRegExp(value) {

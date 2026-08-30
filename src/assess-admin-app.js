@@ -1,6 +1,5 @@
 import { firebaseConfig } from './config/firebaseConfig.js';
 import { createFirebaseAdminRepository } from './repositories/adminRepository.js';
-import { createAdminLessonSettingsRepository } from './repositories/adminLessonSettingsRepository.js';
 import { createAdminLessonContentRepository } from './repositories/adminLessonContentRepository.js';
 import { createAssessDeliveryRepository } from './repositories/assessDeliveryRepository.js';
 import { listSetDescriptors, loadLessonSet } from './repositories/lessonRepository.js';
@@ -10,11 +9,9 @@ import {
   applySessionMasterySnapshot
 } from './services/effectiveLessonService.js';
 import { deriveAssessSummary } from './core/assessSummary.js';
-import { validateAssessDelivery } from './core/assessScoringPolicy.js';
 
 const root = document.querySelector('#app');
 const admin = createFirebaseAdminRepository(firebaseConfig.project);
-const settingsRepository = createAdminLessonSettingsRepository(firebaseConfig.project);
 const contentRepository = createAdminLessonContentRepository(firebaseConfig.project);
 const deliveryRepository = createAssessDeliveryRepository(firebaseConfig.project);
 
@@ -140,9 +137,7 @@ async function issueAssess(event) {
   button.disabled = true;
   const target = root.querySelector('[data-issued-link]');
   try {
-    const lesson = await loadAdminEffectiveLesson(setId);
-    validateAssessDelivery(lesson);
-    const delivery = await deliveryRepository.createDelivery(lesson);
+    const delivery = await deliveryRepository.createDelivery(setId);
     const url = deliveryRepository.buildUrl(window.location, delivery);
     target.innerHTML = `
       <div class="assess-issued-card">
@@ -249,15 +244,6 @@ function renderDetail(sessionId, rows) {
           <small>${formatDuration(detail.responseDurationMs)} · ${detail.pasteDetected ? 'Có paste' : esc(detail.inputMethod)}</small>
         </article>`).join('')}
     </div>`;
-}
-
-async function loadAdminEffectiveLesson(setId) {
-  const [staticLesson, setting, content] = await Promise.all([
-    loadLessonSet(setId),
-    settingsRepository.getLessonSetting(setId),
-    contentRepository.getCurrentContent(setId)
-  ]);
-  return applyLessonMasterySetting(applyLessonContentOverride(staticLesson, content), setting);
 }
 
 async function loadAdminHistoricalAssessLesson(session) {
