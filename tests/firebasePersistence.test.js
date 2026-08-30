@@ -75,7 +75,7 @@ test('Firebase SDK is pinned and Vercel CSP permits only required Firebase netwo
 test('Firestore rules bind sessions to authenticated owner and keep attempts immutable', () => {
   assert.match(rules, /request\.auth != null/);
   assert.match(rules, /request\.resource\.data\.ownerUid == request\.auth\.uid/);
-  assert.match(rules, /request\.resource\.data\.schemaVersion == 7/);
+  assert.match(rules, /request\.resource\.data\.schemaVersion in \[7, 8\]/);
   assert.match(rules, /request\.resource\.data == resource\.data/);
   assert.match(rules, /allow delete: if false/);
 });
