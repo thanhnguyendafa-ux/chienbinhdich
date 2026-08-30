@@ -4,6 +4,7 @@ service cloud.firestore {
     function signedIn() { return request.auth != null; }
     function isAdmin() { return signedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid)); }
     function ownsSession(sessionId) { return signedIn() && get(/databases/$(database)/documents/sessions/$(sessionId)).data.ownerUid == request.auth.uid; }
+    function assessSession(sessionId) { return get(/databases/$(database)/documents/sessions/$(sessionId)).data.deliveryModeAtStart == 'assess'; }
     function validPassThreshold(value) { return value is int && value >= 1 && value <= 100; }
 
     function validLessonSetting() {
@@ -46,6 +47,48 @@ service cloud.firestore {
         && request.resource.data.updatedBy == request.auth.uid;
     }
 
+    function validDeliveryFields() {
+      return !('deliveryMode' in request.resource.data)
+        || (
+          request.resource.data.deliveryMode in ['mastery', 'assess']
+          && request.resource.data.deliveryContractVersion is int
+          && request.resource.data.deliveryContractVersion >= 1
+          && request.resource.data.contentRevisionAtIssue is int
+          && request.resource.data.contentRevisionAtIssue >= 0
+          && request.resource.data.passThresholdAtIssue is int
+          && validPassThreshold(request.resource.data.passThresholdAtIssue)
+          && request.resource.data.typingToleranceAtIssue is bool
+        );
+    }
+
+    function validAssessAttempt(sessionId, attemptId) {
+      return request.resource.data.keys().hasOnly([
+          'id', 'itemId', 'questionType', 'assessmentMode', 'promptIndex', 'attemptNumber',
+          'submittedResponse', 'submittedAnswer', 'startedAt', 'submittedAt', 'responseDurationMs',
+          'inputMethod', 'pasteDetected', 'skipped', 'deliveryMode', 'gradingContractVersion',
+          'serverRecordedAt', 'sessionId', 'ownerUid'
+        ])
+        && request.resource.data.id == attemptId
+        && request.resource.data.sessionId == sessionId
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.deliveryMode == 'assess'
+        && request.resource.data.gradingContractVersion == 1
+        && request.resource.data.assessmentMode == 'scored'
+        && request.resource.data.promptIndex is int
+        && request.resource.data.promptIndex >= 0
+        && request.resource.data.attemptNumber == 1
+        && request.resource.data.itemId is string
+        && request.resource.data.questionType is string
+        && request.resource.data.submittedAt is int
+        && request.resource.data.startedAt is int
+        && request.resource.data.responseDurationMs is int
+        && request.resource.data.responseDurationMs >= 0
+        && request.resource.data.inputMethod in ['typed', 'paste', 'mixed', 'choice', 'tap', 'unknown']
+        && request.resource.data.pasteDetected is bool
+        && request.resource.data.skipped is bool
+        && request.resource.data.serverRecordedAt is int;
+    }
+
     match /admins/{uid} {
       allow get: if signedIn() && request.auth.uid == uid;
       allow list, create, update, delete: if false;
@@ -84,7 +127,8 @@ service cloud.firestore {
         && request.resource.data.id == assignmentId
         && request.resource.data.code == assignmentId
         && request.resource.data.createdBy == request.auth.uid
-        && request.resource.data.active == true;
+        && request.resource.data.active == true
+        && validDeliveryFields();
       allow update: if isAdmin()
         && request.resource.data.id == resource.data.id
         && request.resource.data.code == resource.data.code
@@ -92,7 +136,16 @@ service cloud.firestore {
         && request.resource.data.setId == resource.data.setId
         && request.resource.data.setVersion == resource.data.setVersion
         && request.resource.data.createdBy == resource.data.createdBy
-        && request.resource.data.createdAt == resource.data.createdAt;
+        && request.resource.data.createdAt == resource.data.createdAt
+        && ((!('deliveryMode' in resource.data) && !('deliveryMode' in request.resource.data)) || request.resource.data.deliveryMode == resource.data.deliveryMode)
+        && ((!('deliveryContractVersion' in resource.data) && !('deliveryContractVersion' in request.resource.data)) || request.resource.data.deliveryContractVersion == resource.data.deliveryContractVersion)
+        && ((!('contentRevisionAtIssue' in resource.data) && !('contentRevisionAtIssue' in request.resource.data)) || request.resource.data.contentRevisionAtIssue == resource.data.contentRevisionAtIssue)
+        && ((!('contentRevisionIdAtIssue' in resource.data) && !('contentRevisionIdAtIssue' in request.resource.data)) || request.resource.data.contentRevisionIdAtIssue == resource.data.contentRevisionIdAtIssue)
+        && ((!('passThresholdAtIssue' in resource.data) && !('passThresholdAtIssue' in request.resource.data)) || request.resource.data.passThresholdAtIssue == resource.data.passThresholdAtIssue)
+        && ((!('typingToleranceAtIssue' in resource.data) && !('typingToleranceAtIssue' in request.resource.data)) || request.resource.data.typingToleranceAtIssue == resource.data.typingToleranceAtIssue)
+        && ((!('assessmentPolicyAtIssue' in resource.data) && !('assessmentPolicyAtIssue' in request.resource.data)) || request.resource.data.assessmentPolicyAtIssue == resource.data.assessmentPolicyAtIssue)
+        && ((!('assessmentContractVersionAtIssue' in resource.data) && !('assessmentContractVersionAtIssue' in request.resource.data)) || request.resource.data.assessmentContractVersionAtIssue == resource.data.assessmentContractVersionAtIssue)
+        && ((!('completionPolicyAtIssue' in resource.data) && !('completionPolicyAtIssue' in request.resource.data)) || request.resource.data.completionPolicyAtIssue == resource.data.completionPolicyAtIssue);
       allow delete: if false;
     }
 
@@ -100,10 +153,19 @@ service cloud.firestore {
       allow create: if signedIn()
         && request.resource.data.ownerUid == request.auth.uid
         && request.resource.data.id == sessionId
-        && request.resource.data.schemaVersion == 7
+        && request.resource.data.schemaVersion in [7, 8]
         && (!('passThresholdAtStart' in request.resource.data) || validPassThreshold(request.resource.data.passThresholdAtStart))
         && (!('typingToleranceAtStart' in request.resource.data) || request.resource.data.typingToleranceAtStart is bool)
-        && (!('contentRevisionAtStart' in request.resource.data) || (request.resource.data.contentRevisionAtStart is int && request.resource.data.contentRevisionAtStart >= 0));
+        && (!('contentRevisionAtStart' in request.resource.data) || (request.resource.data.contentRevisionAtStart is int && request.resource.data.contentRevisionAtStart >= 0))
+        && (!('deliveryModeAtStart' in request.resource.data) || request.resource.data.deliveryModeAtStart in ['mastery', 'assess'])
+        && (!('deliveryContractVersionAtStart' in request.resource.data) || (request.resource.data.deliveryContractVersionAtStart is int && request.resource.data.deliveryContractVersionAtStart >= 1))
+        && (!('entryMode' in request.resource.data)
+          || request.resource.data.entryMode != 'assess-delivery'
+          || (
+            request.resource.data.deliveryModeAtStart == 'assess'
+            && request.resource.data.deliveryContractVersionAtStart == 1
+            && request.resource.data.assignmentId is string
+          ));
       allow read: if isAdmin() || (signedIn() && resource.data.ownerUid == request.auth.uid);
       allow update: if signedIn()
         && resource.data.ownerUid == request.auth.uid
@@ -116,13 +178,21 @@ service cloud.firestore {
         && ((!('passThresholdAtStart' in request.resource.data) && !('passThresholdAtStart' in resource.data)) || ('passThresholdAtStart' in request.resource.data && 'passThresholdAtStart' in resource.data && request.resource.data.passThresholdAtStart == resource.data.passThresholdAtStart))
         && ((!('typingToleranceAtStart' in request.resource.data) && !('typingToleranceAtStart' in resource.data)) || ('typingToleranceAtStart' in request.resource.data && 'typingToleranceAtStart' in resource.data && request.resource.data.typingToleranceAtStart == resource.data.typingToleranceAtStart))
         && ((!('contentRevisionAtStart' in request.resource.data) && !('contentRevisionAtStart' in resource.data)) || ('contentRevisionAtStart' in request.resource.data && 'contentRevisionAtStart' in resource.data && request.resource.data.contentRevisionAtStart == resource.data.contentRevisionAtStart))
+        && ((!('deliveryModeAtStart' in request.resource.data) && !('deliveryModeAtStart' in resource.data)) || ('deliveryModeAtStart' in request.resource.data && 'deliveryModeAtStart' in resource.data && request.resource.data.deliveryModeAtStart == resource.data.deliveryModeAtStart))
+        && ((!('deliveryContractVersionAtStart' in request.resource.data) && !('deliveryContractVersionAtStart' in resource.data)) || ('deliveryContractVersionAtStart' in request.resource.data && 'deliveryContractVersionAtStart' in resource.data && request.resource.data.deliveryContractVersionAtStart == resource.data.deliveryContractVersionAtStart))
+        && ((!('contentRevisionIdAtStart' in request.resource.data) && !('contentRevisionIdAtStart' in resource.data)) || request.resource.data.contentRevisionIdAtStart == resource.data.contentRevisionIdAtStart)
         && ((!('assignmentId' in request.resource.data) && !('assignmentId' in resource.data)) || request.resource.data.assignmentId == resource.data.assignmentId)
         && ((!('accessSlug' in request.resource.data) && !('accessSlug' in resource.data)) || request.resource.data.accessSlug == resource.data.accessSlug)
         && ((!('entryMode' in request.resource.data) && !('entryMode' in resource.data)) || request.resource.data.entryMode == resource.data.entryMode);
       allow delete: if false;
+
       match /attempts/{attemptId} {
         allow read: if isAdmin() || ownsSession(sessionId);
-        allow create: if ownsSession(sessionId) && request.resource.data.ownerUid == request.auth.uid && request.resource.data.sessionId == sessionId && request.resource.data.id == attemptId;
+        allow create: if ownsSession(sessionId)
+          && (
+            (assessSession(sessionId) && validAssessAttempt(sessionId, attemptId))
+            || (!assessSession(sessionId) && request.resource.data.ownerUid == request.auth.uid && request.resource.data.sessionId == sessionId && request.resource.data.id == attemptId)
+          );
         allow update: if ownsSession(sessionId) && request.resource.data == resource.data;
         allow delete: if false;
       }
