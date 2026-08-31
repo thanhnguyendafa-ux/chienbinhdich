@@ -1,4 +1,4 @@
-const WARNING_TYPES = new Set(['paste', 'copy', 'tab_switch']);
+const WARNING_TYPES = new Set(['paste', 'copy', 'tab_switch', 'rapid_response']);
 
 export function createIntegrityState({ now = Date.now(), scope = 'full' } = {}) {
   const normalizedScope = scope === 'partial' ? 'partial' : 'full';
@@ -118,6 +118,11 @@ export function queueIntegrityWarning(session, warning, now = Date.now()) {
     shownAt: null
   };
   if (warning.type === 'tab_switch') queued.awayMs = nonNegative(warning.awayMs);
+  if (warning.type === 'rapid_response') {
+    queued.rapidCount = nonNegative(warning.rapidCount ?? occurrenceNumber);
+    queued.currentStreak = nonNegative(warning.currentStreak);
+    queued.maxStreak = nonNegative(warning.maxStreak);
+  }
   return { ...session, integrity: { ...current, warningQueue: [...current.warningQueue, queued] } };
 }
 
@@ -166,17 +171,16 @@ export function finalizeIntegrityState(session, now = Date.now()) {
 
 export function deriveIntegritySummary(session, now = Date.now()) {
   const integrity = normalizeIntegrityState(session?.integrity);
-  if (!integrity) {
-    return unavailableSummary();
-  }
+  if (!integrity) return unavailableSummary();
   const inProgressAwayMs = integrity.hiddenAt === null ? 0 : Math.max(0, now - integrity.hiddenAt);
   const warningTrackingAvailable = integrity.warningVersion !== null;
   const warnings = warningTrackingAvailable ? [...integrity.acknowledgements, ...integrity.warningQueue] : [];
-  const warningCounts = { paste: 0, copy: 0, tabSwitch: 0 };
+  const warningCounts = { paste: 0, copy: 0, tabSwitch: 0, rapidResponse: 0 };
   for (const warning of warnings) {
     if (warning.type === 'paste') warningCounts.paste += 1;
     if (warning.type === 'copy') warningCounts.copy += 1;
     if (warning.type === 'tab_switch') warningCounts.tabSwitch += 1;
+    if (warning.type === 'rapid_response') warningCounts.rapidResponse += 1;
   }
   return {
     trackingAvailable: true,
@@ -243,6 +247,11 @@ function normalizeWarning(warning) {
     shownAt: finiteOrNull(warning.shownAt)
   };
   if (warning.type === 'tab_switch') normalized.awayMs = nonNegative(warning.awayMs);
+  if (warning.type === 'rapid_response') {
+    normalized.rapidCount = nonNegative(warning.rapidCount ?? warning.occurrenceNumber);
+    normalized.currentStreak = nonNegative(warning.currentStreak);
+    normalized.maxStreak = nonNegative(warning.maxStreak);
+  }
   return normalized;
 }
 
@@ -260,7 +269,6 @@ function nonNegative(value) {
 }
 
 function finiteOrNull(value) {
-  if (value === null || value === undefined || value === '') return null;
   const numeric = Number(value);
   return Number.isFinite(numeric) ? numeric : null;
 }
