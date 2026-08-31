@@ -22,7 +22,7 @@ test('answer submission stops at qualification checkpoint before scheduling anot
     sessionMachine.indexOf('const wasCorrection'),
     sessionMachine.indexOf('return {\n    session: nextSession', sessionMachine.indexOf('const wasCorrection'))
   );
-  assert.match(correctPath, /qualifySessionIfEligible\(nextSession, set\)/);
+  assert.match(correctPath, /qualifySessionIfEligible\(nextSession, set, submittedAt\)/);
   assert.match(correctPath, /if \(nextSession\.status !== 'passed'\) nextSession = advanceLearningPrompt/);
 });
 
