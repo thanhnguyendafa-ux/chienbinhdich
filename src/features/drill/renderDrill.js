@@ -43,10 +43,15 @@ export function renderDrill({ root, session, set, feedback = null, onSubmit, onE
         </div>
       </header>
 
-      <section class="shell metrics-row" aria-label="Tiến độ bài học và Mastery">
+      <section class="shell metrics-row" aria-label="Tiến độ bài học, Mastery và thời gian cố gắng">
         <div class="metric sequence-metric"><span>${extendedMode ? 'Luyện thêm' : 'Chuỗi chính'}</span><strong>${extendedMode ? metrics.extendedAttempts : `${metrics.completedMainItems}/${metrics.total}`}</strong></div>
         <div class="metric mastery-count-metric"><span>Mastery units</span><strong>${metrics.masteryEarned}/${metrics.masteryTotal}</strong></div>
         ${renderMasteryProgress({ value: masteryTransition.to, previous: masteryTransition.from, threshold: masteryTarget, delta: masteryTransition.delta })}
+        ${metrics.effortPassEnabled ? `<div class="metric effort-timer-metric ${metrics.effortThresholdReached ? 'is-reached' : ''}" data-effort-timer>
+          <span>⏱ Cố gắng</span>
+          <strong data-effort-clock>${formatEffortClock(metrics.effortActiveMs)} / ${formatEffortClock(metrics.effortTargetMs)}</strong>
+          <small data-effort-note>${metrics.effortThresholdReached ? 'Đã đủ thời gian · hoàn thành câu hiện tại để hệ thống ghi nhận.' : `PASS khi đạt ${formatMasteryPercent(masteryTarget)}% Mastery HOẶC đủ ${metrics.effortTargetMinutes} phút học chủ động.`}</small>
+        </div>` : ''}
       </section>
 
       <section class="drill-shell shell">
@@ -62,7 +67,7 @@ export function renderDrill({ root, session, set, feedback = null, onSubmit, onE
           ${explainAndAccept ? '' : renderTheorySupport({ item, session, esc, escAttr })}
 
           <p class="encouragement">${extendedMode
-            ? `Con đã vượt ${formatMasteryPercent(set.passThreshold)}%. Làm tiếp để củng cố; khi muốn dừng, bấm Nộp bài.`
+            ? `Con đã đủ điều kiện nộp bài. Làm tiếp để củng cố; khi muốn dừng, bấm Nộp bài.`
             : explainAndAccept
               ? 'Tự gõ tiếng Anh. Sau khi Submit, đọc đáp án và giải thích rồi bấm Chấp nhận. Không có gợi ý trước.'
               : completionMode
@@ -75,16 +80,20 @@ export function renderDrill({ root, session, set, feedback = null, onSubmit, onE
                       ? 'Phân loại hết các mục trước khi kiểm tra. Click mục đã xếp để đưa về kho và sửa lại.'
                       : questionTypeForItem(item) === 'sentence_order' && item.orderDiagnostics
                         ? 'Không nhất thiết phải dùng hết các khối. Chọn đúng thành phần và đúng thứ tự.'
-                        : 'Câu có đáp án nhận 1 Mastery unit khi đúng ngay lần đầu; correction giúp học lại nhưng không cộng thêm unit.'}</p>
+                        : metrics.effortPassEnabled
+                          ? `Đọc kỹ và làm bằng thực lực. Không cần cố làm thật nhanh hoặc cố ngồi chờ; Timer chỉ tính thời gian học chủ động.`
+                          : 'Câu có đáp án nhận 1 Mastery unit khi đúng ngay lần đầu; correction giúp học lại nhưng không cộng thêm unit.'}</p>
         </article>
       </section>
 
       <dialog class="exit-dialog" id="exit-dialog">
         <div class="dialog-copy"><strong>${extendedMode ? 'Con đã đạt mục tiêu rồi!' : 'Em muốn dừng bài?'}</strong><p>${extendedMode
-          ? `Con đã vượt ${formatMasteryPercent(set.passThreshold)}%. Có thể tiếp tục luyện hoặc nộp bài để xem báo cáo.`
+          ? `Con đã đủ điều kiện PASS. Có thể tiếp tục luyện hoặc nộp bài để xem báo cáo.`
           : explainAndAccept
             ? 'Bài này hoàn thành bằng cách đi qua toàn bộ prompt: Submit → đọc giải thích → Chấp nhận.'
-            : `Chưa đạt ${formatMasteryPercent(set.passThreshold)}% thì chưa thể nộp bài. Mastery dùng toàn bộ ${metrics.masteryTotal} câu của bài làm mẫu số.`}</p></div>
+            : metrics.effortPassEnabled
+              ? `Con được nộp khi đạt ${formatMasteryPercent(set.passThreshold)}% Mastery HOẶC học chủ động đủ ${metrics.effortTargetMinutes} phút. Rời tab không được tính vào Timer.`
+              : `Chưa đạt ${formatMasteryPercent(set.passThreshold)}% thì chưa thể nộp bài. Mastery dùng toàn bộ ${metrics.masteryTotal} câu của bài làm mẫu số.`}</p></div>
         <div class="dialog-actions"><button class="primary-btn" id="keep-learning-btn" type="button">Tiếp tục học</button>${extendedMode
           ? '<button class="secondary-btn" id="dialog-submit-btn" type="button">Nộp bài & xem báo cáo</button>'
           : '<button class="danger-text-btn" id="abandon-btn" type="button">Bỏ cuộc và xem báo cáo</button>'}</div>
@@ -92,6 +101,7 @@ export function renderDrill({ root, session, set, feedback = null, onSubmit, onE
     </main>`;
 
   window.requestAnimationFrame(() => animateMasteryProgress(root, masteryTransition));
+  installEffortClock(root, session, set);
   const refocus = bindQuestionInteraction({ root, item, onSubmit, attemptStartedAt: Date.now() });
   bindTheorySupport(root);
 
@@ -175,23 +185,32 @@ export function showSuccess({ root, type, item = null, entered, answer, teaching
 export function renderPassed({ root, session, set, onSubmit, onContinue }) {
   const metrics = getSessionMetrics(session, set);
   const explainAndAccept = set?.completionPolicy === EXPLAIN_ACCEPT_POLICY;
+  const effortPass = metrics.qualificationReason === 'effort';
   root.innerHTML = `
     <main class="page page-centered passed-page">
-      <section class="passed-card qualification-card">
+      <section class="passed-card qualification-card ${effortPass ? 'effort-qualified-card' : ''}">
         <div class="brand-lockup centered"><span class="brand-seal">MRT</span><span>Chiến Binh Dịch</span></div>
-        <p class="eyebrow">${explainAndAccept ? '✅ ĐÃ HOÀN THÀNH' : '🎉 ĐÃ VƯỢT MỤC TIÊU'}</p>
-        <h1>${explainAndAccept ? `${metrics.completedMainItems}/${metrics.total} lượt đã học` : `${metrics.masteryEarned}/${metrics.masteryTotal} · ${formatMasteryPercent(metrics.mastery)}% Mastery`}</h1>
-        <p>${explainAndAccept
-          ? 'Con đã đi qua toàn bộ prompt Việt → Anh, đọc đáp án/giải thích sau mỗi lần Submit và Chấp nhận để tiếp tục.'
-          : `Con đã hoàn thành toàn bộ ${metrics.masteryTotal} câu và vượt mục tiêu ${formatMasteryPercent(set.passThreshold)}%. Accuracy và completion đều nằm trong cùng Mastery.`}</p>
-        <div class="passed-stats"><span>Accuracy ${metrics.accuracyEarned}/${metrics.accuracyTotal}</span><span>Completion ${metrics.completionEarned}/${metrics.completionTotal}</span><span>${metrics.totalAttempts} lượt trả lời</span></div>
+        <p class="eyebrow">${effortPass ? '👏 ĐÃ HOÀN THÀNH MỤC TIÊU CỐ GẮNG' : explainAndAccept ? '✅ ĐÃ HOÀN THÀNH' : '🎉 ĐÃ VƯỢT MỤC TIÊU'}</p>
+        <h1>${effortPass
+          ? `${formatMasteryPercent(metrics.mastery)}% Mastery · ${formatEffortClock(metrics.effortMsAtQualification ?? metrics.effortActiveMs)} cố gắng`
+          : explainAndAccept
+            ? `${metrics.completedMainItems}/${metrics.total} lượt đã học`
+            : `${metrics.masteryEarned}/${metrics.masteryTotal} · ${formatMasteryPercent(metrics.mastery)}% Mastery`}</h1>
+        <p>${effortPass
+          ? `Con chưa cần giả thành ${formatMasteryPercent(set.passThreshold)}% Mastery. Hệ thống ghi nhận đúng rằng con đã kiên trì học chủ động đủ ${metrics.effortTargetMinutes} phút. Con có thể nộp bài hoặc tiếp tục học để nâng Mastery.`
+          : explainAndAccept
+            ? 'Con đã đi qua toàn bộ prompt Việt → Anh, đọc đáp án/giải thích sau mỗi lần Submit và Chấp nhận để tiếp tục.'
+            : `Con đã đạt mục tiêu ${formatMasteryPercent(set.passThreshold)}% Mastery. Accuracy và completion đều nằm trong cùng Mastery.`}</p>
+        <div class="passed-stats"><span>Accuracy ${metrics.accuracyEarned}/${metrics.accuracyTotal}</span><span>Completion ${metrics.completionEarned}/${metrics.completionTotal}</span><span>${metrics.totalAttempts} lượt trả lời</span>${metrics.effortPassEnabled ? `<span>Effort ${formatEffortClock(metrics.effortActiveMs)} / ${formatEffortClock(metrics.effortTargetMs)}</span>` : ''}</div>
         <div class="qualification-actions">
           <button class="primary-btn submit-assignment-btn" id="submit-assignment-btn" type="button">Nộp bài</button>
           ${explainAndAccept ? '' : '<button class="secondary-btn continue-learning-btn" id="continue-learning-btn" type="button">Làm tiếp</button>'}
         </div>
-        <small>${explainAndAccept
-          ? 'Bài này không bắt sửa lại sau khi sai; mục tiêu là production → noticing → chấp nhận đáp án cục bộ.'
-          : 'Mỗi câu là 1 Mastery unit. Bài mở/tự luyện nhận unit khi hoàn thành; câu có đáp án nhận unit khi đúng ngay lần đầu.'}</small>
+        <small>${effortPass
+          ? 'PASS bằng Effort ghi nhận sự kiên trì; Mastery thực tế vẫn được giữ nguyên trong báo cáo.'
+          : explainAndAccept
+            ? 'Bài này không bắt sửa lại sau khi sai; mục tiêu là production → noticing → chấp nhận đáp án cục bộ.'
+            : 'Mỗi câu là 1 Mastery unit. Bài mở/tự luyện nhận unit khi hoàn thành; câu có đáp án nhận unit khi đúng ngay lần đầu.'}</small>
       </section>
     </main>`;
   root.querySelector('#submit-assignment-btn')?.addEventListener('click', async event => {
@@ -302,6 +321,34 @@ function learnerResponseLabel(item) {
   if (type === 'sentence_order') return 'Câu của con';
   if (type === 'classification') return 'Con phân loại';
   return 'Con chọn';
+}
+
+function installEffortClock(root, session, set) {
+  const clock = root.querySelector('[data-effort-clock]');
+  const note = root.querySelector('[data-effort-note]');
+  const card = root.querySelector('[data-effort-timer]');
+  if (!clock || !card) return;
+  const tick = () => {
+    if (!clock.isConnected) return false;
+    const metrics = getSessionMetrics(session, set, Date.now());
+    clock.textContent = `${formatEffortClock(metrics.effortActiveMs)} / ${formatEffortClock(metrics.effortTargetMs)}`;
+    card.classList.toggle('is-reached', metrics.effortThresholdReached);
+    if (note && metrics.effortThresholdReached) {
+      note.textContent = 'Đã đủ thời gian cố gắng · hoàn thành câu hiện tại để hệ thống ghi nhận PASS.';
+    }
+    return true;
+  };
+  tick();
+  const timer = window.setInterval(() => {
+    if (!tick()) window.clearInterval(timer);
+  }, 1000);
+}
+
+function formatEffortClock(value) {
+  const totalSeconds = Math.max(0, Math.floor(Number(value ?? 0) / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 }
 
 function sameText(left, right) {
