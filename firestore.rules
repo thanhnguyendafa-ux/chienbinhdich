@@ -3,8 +3,9 @@ service cloud.firestore {
   match /databases/{database}/documents {
     function signedIn() { return request.auth != null; }
     function isAdmin() { return signedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid)); }
-    function ownsSession(sessionId) { return signedIn() && get(/databases/$(database)/documents/sessions/$(sessionId)).data.ownerUid == request.auth.uid; }
-    function assessSession(sessionId) { return get(/databases/$(database)/documents/sessions/$(sessionId)).data.deliveryModeAtStart == 'assess'; }
+    function sessionData(sessionId) { return get(/databases/$(database)/documents/sessions/$(sessionId)).data; }
+    function ownsSession(sessionId) { return signedIn() && sessionData(sessionId).ownerUid == request.auth.uid; }
+    function assessSession(sessionId) { return sessionData(sessionId).deliveryModeAtStart == 'assess'; }
     function validPassThreshold(value) { return value is int && value >= 1 && value <= 100; }
 
     function validLessonSetting() {
@@ -47,6 +48,19 @@ service cloud.firestore {
         && request.resource.data.updatedBy == request.auth.uid;
     }
 
+    function validAssessLearnerSnapshot() {
+      return request.resource.data.sanitizedLesson is map
+        && request.resource.data.sanitizedLessonBytes is int
+        && request.resource.data.sanitizedLessonBytes > 0
+        && request.resource.data.sanitizedLessonBytes <= 819200
+        && request.resource.data.sanitizedLesson.id == request.resource.data.setId
+        && request.resource.data.sanitizedLesson.version == request.resource.data.setVersion
+        && request.resource.data.sanitizedLesson.items is list
+        && request.resource.data.sanitizedLesson.itemCount is int
+        && request.resource.data.sanitizedLesson.itemCount > 0
+        && request.resource.data.sanitizedLesson.itemCount == request.resource.data.sanitizedLesson.items.size();
+    }
+
     function validDeliveryFields() {
       return !('deliveryMode' in request.resource.data)
         || (
@@ -58,10 +72,26 @@ service cloud.firestore {
           && request.resource.data.passThresholdAtIssue is int
           && validPassThreshold(request.resource.data.passThresholdAtIssue)
           && request.resource.data.typingToleranceAtIssue is bool
+          && (request.resource.data.deliveryMode != 'assess' || validAssessLearnerSnapshot())
         );
     }
 
+    function validAssessSessionDelivery() {
+      let assignment = get(/databases/$(database)/documents/assignments/$(request.resource.data.assignmentId)).data;
+      return assignment.active == true
+        && assignment.deliveryMode == 'assess'
+        && assignment.deliveryContractVersion == request.resource.data.deliveryContractVersionAtStart
+        && assignment.setId == request.resource.data.setId
+        && assignment.setVersion == request.resource.data.setVersion
+        && assignment.contentRevisionAtIssue == request.resource.data.contentRevisionAtStart
+        && assignment.passThresholdAtIssue == request.resource.data.passThresholdAtStart
+        && assignment.typingToleranceAtIssue == request.resource.data.typingToleranceAtStart;
+    }
+
     function validAssessAttempt(sessionId, attemptId) {
+      let session = sessionData(sessionId);
+      let assignment = get(/databases/$(database)/documents/assignments/$(session.assignmentId)).data;
+      let promptIndex = request.resource.data.promptIndex;
       return request.resource.data.keys().hasOnly([
           'id', 'itemId', 'questionType', 'assessmentMode', 'promptIndex', 'attemptNumber',
           'submittedResponse', 'submittedAnswer', 'startedAt', 'submittedAt', 'responseDurationMs',
@@ -74,8 +104,14 @@ service cloud.firestore {
         && request.resource.data.deliveryMode == 'assess'
         && request.resource.data.gradingContractVersion == 1
         && request.resource.data.assessmentMode == 'scored'
-        && request.resource.data.promptIndex is int
-        && request.resource.data.promptIndex >= 0
+        && promptIndex is int
+        && promptIndex >= 0
+        && assignment.deliveryMode == 'assess'
+        && assignment.active == true
+        && assignment.sanitizedLesson is map
+        && assignment.sanitizedLesson.items is list
+        && promptIndex < assignment.sanitizedLesson.items.size()
+        && request.resource.data.itemId == assignment.sanitizedLesson.items[promptIndex].id
         && request.resource.data.attemptNumber == 1
         && request.resource.data.itemId is string
         && request.resource.data.questionType is string
@@ -145,7 +181,9 @@ service cloud.firestore {
         && ((!('typingToleranceAtIssue' in resource.data) && !('typingToleranceAtIssue' in request.resource.data)) || request.resource.data.typingToleranceAtIssue == resource.data.typingToleranceAtIssue)
         && ((!('assessmentPolicyAtIssue' in resource.data) && !('assessmentPolicyAtIssue' in request.resource.data)) || request.resource.data.assessmentPolicyAtIssue == resource.data.assessmentPolicyAtIssue)
         && ((!('assessmentContractVersionAtIssue' in resource.data) && !('assessmentContractVersionAtIssue' in request.resource.data)) || request.resource.data.assessmentContractVersionAtIssue == resource.data.assessmentContractVersionAtIssue)
-        && ((!('completionPolicyAtIssue' in resource.data) && !('completionPolicyAtIssue' in request.resource.data)) || request.resource.data.completionPolicyAtIssue == resource.data.completionPolicyAtIssue);
+        && ((!('completionPolicyAtIssue' in resource.data) && !('completionPolicyAtIssue' in request.resource.data)) || request.resource.data.completionPolicyAtIssue == resource.data.completionPolicyAtIssue)
+        && ((!('sanitizedLesson' in resource.data) && !('sanitizedLesson' in request.resource.data)) || request.resource.data.sanitizedLesson == resource.data.sanitizedLesson)
+        && ((!('sanitizedLessonBytes' in resource.data) && !('sanitizedLessonBytes' in request.resource.data)) || request.resource.data.sanitizedLessonBytes == resource.data.sanitizedLessonBytes);
       allow delete: if false;
     }
 
@@ -165,6 +203,7 @@ service cloud.firestore {
             request.resource.data.deliveryModeAtStart == 'assess'
             && request.resource.data.deliveryContractVersionAtStart == 1
             && request.resource.data.assignmentId is string
+            && validAssessSessionDelivery()
           ));
       allow read: if isAdmin() || (signedIn() && resource.data.ownerUid == request.auth.uid);
       allow update: if signedIn()
