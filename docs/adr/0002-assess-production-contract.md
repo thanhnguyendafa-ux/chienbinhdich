@@ -118,34 +118,13 @@ Requirements:
 
 Mastery remains the supported learning flow and preserves its existing behavior unless a separate ADR changes that contract.
 
-Typical Mastery capabilities include:
-
-- learner-visible correctness feedback;
-- correction/retry behavior;
-- answer reveal where permitted by the Mastery contract;
-- theory/support guidance;
-- Mastery gain/loss/neutral feedback;
-- qualification/pass threshold behavior;
-- extended practice;
-- learner report/progress presentation.
-
 Assess implementation must not regress any existing Mastery session, including supported historical session schemas.
 
 ## 7. Assess student contract
 
 An Assess learner must be blind to scoring and answer feedback during and after the attempt.
 
-### 7.1 Allowed learner-facing information
-
-During Assess:
-
-- lesson title/context;
-- question/prompt;
-- the input controls required to answer;
-- neutral sequence progress such as `4/20` if desired;
-- neutral acknowledgement that a response was recorded;
-- navigation controls required by the test contract;
-- submit/finish controls.
+During Assess the learner may receive lesson/prompt/input controls, neutral sequence progress, neutral acknowledgement, and navigation. The learner must not receive correct/incorrect state, expected answer, answer reveal, Mastery progress, pass/fail, retry/correction, theory hints, or a score/report.
 
 After submission:
 
@@ -155,27 +134,9 @@ Câu trả lời đã được ghi nhận và gửi cho giáo viên.
 Điểm và đáp án không hiển thị trong chế độ Assess.
 ```
 
-### 7.2 Forbidden learner-facing information
-
-Assess must not expose:
-
-- correct/incorrect state;
-- expected answer;
-- answer reveal;
-- Mastery units or Mastery percentage;
-- pass/fail or pass threshold;
-- correction prompts;
-- retry scheduling;
-- theory hints/support triggered by correctness;
-- per-error typing diagnostics that reveal correctness;
-- a student result report containing score, correct/wrong counts, answer key, or item correctness;
-- an indirect result channel that allows the learner to infer the answer key from response metadata.
-
-An implementation that merely hides visible HTML while keeping the learner-facing response payload rich with correctness/expected-answer data does not satisfy the production contract.
-
 ## 8. Assess scoring contract
 
-Assess scoring has one owner and is derived from canonical evaluator results recorded through the attempt flow.
+Assess scoring has one owner and is derived by the authorized teacher/admin path from canonical lesson evaluators plus the raw Attempt log.
 
 Version 1 rules:
 
@@ -188,167 +149,85 @@ Version 1 rules:
 - percentage is `correct / assessableTotal * 100`, with deterministic rounding owned by the Assess scoring policy;
 - an Assess delivery with zero assessable items is invalid and must be rejected before it is issued to students.
 
-If the scoring law changes later, increment `deliveryContractVersion` or an explicitly named Assess scoring contract version and preserve compatibility at one centralized boundary. Do not keep two competing current implementations.
+## 9. Learner-safe delivery boundary
 
-## 9. Secure answer-key boundary
+Production Assess must not rely on UI-only hiding.
 
-Production Assess must not rely on UI-only secrecy.
+The Assess assignment owns one immutable learner projection named `sanitizedLesson`, produced from the effective canonical lesson at issue time. The projection contains only the prompt/input data needed to answer and excludes recoverable answer-key fields.
 
-For Assess delivery, the learner must not receive a payload that contains a recoverable answer key or expected answer for questions whose answers are meant to remain secret.
+Production flow:
 
-Therefore production Assess requires a trusted grading boundary:
+1. authenticated Admin resolves the effective lesson and validates Assess eligibility;
+2. the pure Assess delivery builder creates an immutable `sanitizedLesson` snapshot and rejects answer-key fields or oversized snapshots;
+3. Firestore Rules authorize only Admin creation of the assignment and make delivery/snapshot fields immutable;
+4. student reads that assignment and uses only `sanitizedLesson` for the Assess interaction;
+5. student persists raw neutral attempts directly under the owned session; attempts contain response/timing/input metadata but no correctness, expected answer, Mastery delta, or score;
+6. Firestore Rules bind an Assess session to its assignment snapshot and bind each attempt to the corresponding sanitized item id;
+7. authorized Admin reconstructs the canonical historical lesson and derives correctness/score from the Attempt log using the single Assess summary owner.
 
-1. student receives a sanitized Assess question payload;
-2. answer-key fields are excluded from learner-readable lesson payloads;
-3. submitted response is graded by trusted server-side/backend code or another access-controlled grading boundary;
-4. the backend persists the canonical attempt/evaluation record;
-5. student receives only a neutral acknowledgement/continuation response;
-6. admin/teacher may retrieve the complete result and expected-answer detail through authorized admin access.
+There is no production Assess grading/issue server API and no privileged Vercel identity. GitHub/Vercel therefore do not need a copied service-account key, WIF bootstrap, or a second storage/scoring path.
 
-**Forbidden production shortcut:** shipping the full answer key to the browser and only hiding it with CSS/JavaScript.
+**Threat-model note:** the repository and the existing Mastery client corpus are public/client-delivered, so this ADR does not claim cryptographic secrecy against a determined person who independently inspects public source. The enforceable product contract is that the Assess delivery/assignment payload, raw attempt records, learner UI, and learner result flow do not expose correctness or answer-key material.
 
-If a question type cannot be securely graded under this boundary, it must not be enabled for production Assess until that question type has a safe grading path.
+Forbidden shortcuts:
+
+- shipping full answers inside `sanitizedLesson` and hiding them with CSS/JavaScript;
+- grading in the student Assess app;
+- persisting correctness/score alongside raw attempts;
+- introducing a second database or secret server path only for Assess.
 
 ## 10. Module boundaries — no god components
 
-Assess must be implemented as a delivery domain, not as dozens of `if (assess)` branches inside existing Mastery components.
+Assess remains a delivery domain rather than mode branches inside Mastery components.
 
-Recommended ownership:
+Ownership:
 
 ```text
 src/core/deliveryMode.js
-  validate/resolve delivery mode and contract version
+  delivery mode / contract
+
+src/core/assessPayload.js
+  answer-key-free learner projection
+
+src/core/assessDelivery.js
+  pure delivery snapshot law + size/safety validation
 
 src/core/assessScoringPolicy.js
-  Assess scoring law only
+  Assess scoring law
 
 src/core/assessSummary.js
-  derive teacher-facing Assess summary from attempts
+  canonical teacher result derivation from raw attempts
 
-src/features/assess/assessSessionController.js
-  Assess flow orchestration
+src/core/assessResponse.js
+  neutral student response display only
 
-src/features/assess/renderAssess.js
-  learner Assess UI
+src/repositories/assessDeliveryRepository.js
+  Admin-authorized effective-lesson reads + assignment persistence
 
-src/features/assess/renderAssessReceipt.js
-  learner post-submit neutral receipt
+src/repositories/assessAttemptRepository.js
+  owned raw-attempt persistence only
 
-src/features/admin/results/renderAssessSessionDetail.js
-  teacher Assess detail UI
+src/features/assess/*
+  learner flow/rendering
 ```
 
-Shared primitives may be reused when they are genuinely mode-neutral, for example:
-
-- question prompt/input rendering;
-- question evaluator interface;
-- persistence primitives;
-- formatters;
-- safe layout components.
-
-### 10.1 Forbidden dependency directions
-
-CI architecture tests must reject at least these regressions:
-
-- Assess renderer importing Mastery engine/progress;
-- Assess renderer importing theory-support or retry scheduling;
-- Assess scoring importing DOM/rendering code;
-- admin result renderer inventing a second score formula;
-- `app.js` implementing Assess scoring;
-- `renderDrill.js` becoming the owner of both full Mastery and full Assess behavior;
-- `lessonSettings` becoming an alternate delivery-mode SSOT;
-- repository code deciding correctness or score;
-- CSS/DOM/localStorage becoming a mode authority.
-
-### 10.2 Orchestration rule
-
-The application shell may select the correct mode-specific controller at one composition boundary, but mode-specific behavior remains inside its domain.
-
-Conceptually:
-
-```text
-controller = sessionControllerFor(session.deliveryModeAtStart)
-controller.start()
-controller.submit()
-controller.finish()
-```
-
-The shell routes and composes. It does not own Assess or Mastery business rules.
+Architecture tests must reject: Assess renderers importing Mastery engines/retry/theory, student code importing `deriveAssessSummary`/`evaluateQuestion`, Admin UI inventing score formulas, lesson settings owning delivery mode, or repositories storing derived score/correctness.
 
 ## 11. Admin/teacher contract
 
-Teacher/admin results must make the mode explicit.
+Teacher/admin results must make mode explicit and derive from the same canonical Assess summary. Teacher detail may show correct/incorrect/unanswered, percentage, duration, student response, and canonical expected answer.
 
-Recommended list projection:
+Baseline/retest labels are derived analytics and never replace raw session/attempt truth.
 
-| Học sinh | Mode | Bài | Điểm | Đúng/Tổng | Thời gian | Lần | Cập nhật |
-| --- | --- | --- | ---: | ---: | ---: | --- | --- |
-| An | Assess | Unit 1 | 42% | 8/19 | 06:41 | Baseline | ... |
+## 12. Persistence and migration
 
-Assess detail must provide the authorized teacher with:
+New Assess sessions snapshot `deliveryModeAtStart`, `deliveryContractVersionAtStart`, content revision, set/version, threshold/tolerance semantics and assignment id.
 
-- student identity/display name available to the application;
-- `ASSESS` mode label;
-- baseline/retest classification where the product supports it;
-- correct/incorrect/unanswered/assessable total;
-- percentage;
-- duration;
-- submission timestamp;
-- integrity diagnostics already supported by the app where appropriate;
-- question-by-question submitted response;
-- canonical expected answer for teacher review;
-- item correctness/evaluation result.
+Historical Mastery/session compatibility remains centralized. Firestore rules, repository schema, and runtime schema version must move together. Runtime must never write a schema production Rules reject.
 
-The admin UI consumes the same canonical Assess summary; it must not maintain a second scoring formula.
+## 13. Required tests
 
-## 12. Baseline and retest semantics
-
-Where the same learner has multiple completed Assess sessions for the same delivery target:
-
-- first qualifying independent Assess may be labeled `BASELINE`;
-- later qualifying Assess may be labeled `RETEST`;
-- these labels are derived from session history and do not change the raw result.
-
-A future learning-gain view may compare:
-
-```text
-postAssessPercent - baselineAssessPercent
-```
-
-Learning gain is a derived analytics value, never a replacement for either source result.
-
-## 13. Persistence and migration
-
-### 13.1 New sessions
-
-New session schema must include immutable-at-start delivery fields.
-
-Example:
-
-```text
-deliveryModeAtStart
-deliveryContractVersionAtStart
-```
-
-### 13.2 Historical sessions
-
-Historical sessions remain readable/resumable according to the currently supported compatibility policy.
-
-If historical sessions predate delivery mode:
-
-- one centralized compatibility resolver maps them to their historical Mastery behavior;
-- compatibility logic must not leak into every renderer/repository;
-- compatibility code is explicitly marked as migration compatibility, not a second current implementation.
-
-### 13.3 Firestore/security schema
-
-Firestore rules, repository validation, and session schema version must be updated together. CI must detect mismatches between runtime session schema and rules validation.
-
-No deployment may ship with the runtime writing a schema version that production Firestore rules reject.
-
-## 14. Required tests
-
-At minimum add:
+At minimum:
 
 ```text
 deliveryMode.test.js
@@ -363,202 +242,132 @@ assessSsotArchitecture.test.js
 assessMasteryRegression.test.js
 ```
 
-### 14.1 Contract tests
+Tests must prove peer modes, immutable session snapshot, zero retry/qualification semantics in Assess, deterministic summary from Attempt log, learner snapshot answer-key filtering, raw neutral attempts, teacher-only result derivation, historical Mastery compatibility, and no god-component dependency regression.
 
-Must prove:
+## 14. End-to-end acceptance scenario
 
-- Mastery and Assess are peer modes;
-- one lesson can be delivered in both modes concurrently;
-- session mode snapshot is immutable after start;
-- modifying delivery configuration does not mutate a running session;
-- Assess does not invoke retry/correction behavior;
-- Assess does not apply Mastery pass-threshold qualification;
-- Assess score is deterministic from the Attempt log;
-- unanswered final items are handled according to the Assess contract;
-- zero-assessable-item delivery is rejected;
-- historical Mastery sessions still behave under their historical contract.
+Production acceptance requires one full real-flow proof:
 
-### 14.2 Blind-UI tests
+1. Admin creates an Assess delivery from an objectively assessable lesson.
+2. Persisted assignment contains a non-empty `sanitizedLesson` and no forbidden answer-key field.
+3. The same source lesson remains usable concurrently in Mastery.
+4. New learner opens Assess and starts a session stamped `deliveryModeAtStart = assess`.
+5. Learner answers Q1 incorrectly and receives no incorrect marker, expected answer, score, retry, theory or Mastery semantics.
+6. Learner completes remaining questions and sees only the neutral receipt.
+7. Reload does not expose score or answers.
+8. Firestore Attempt log contains one raw neutral attempt per assessable item and no correctness/expected-answer field.
+9. Admin results derive the expected score/correct-total from the canonical lesson + persisted Attempt log.
+10. Admin detail shows Q1 as incorrect and displays expected answer to the authorized teacher.
+11. Reloading Admin yields the same derived result.
+12. Concurrent Mastery remains unchanged.
 
-Automated tests must assert the absence of learner-visible or learner-retrievable:
-
-- `Mastery` result/progress semantics in Assess;
-- `PASS`/`FAIL` semantics;
-- expected answer;
-- correctness feedback;
-- retry/correction controls;
-- theory support based on correctness;
-- final score/report.
-
-Testing only the visible text is insufficient for the secure boundary. Network/data payload tests must also prove that answer-key material is not sent to the learner in production Assess.
-
-### 14.3 Architecture tests
-
-Tests must fail CI if ownership boundaries regress into a god component or duplicate source of truth.
-
-Examples:
-
-```text
-renderAssess -> must not import masteryEngine
-renderAssess -> must not import retryScheduler
-renderAssess -> must not import theorySupport
-app.js -> must not calculate Assess score
-renderResultsView -> must not implement independent Assess scoring
-lessonSettings -> must not own deliveryMode
-session record -> must not treat derived score as authoritative state
-```
-
-## 15. End-to-end acceptance scenario
-
-Production acceptance requires one full real-flow proof.
-
-### 15.1 Admin issue
-
-1. Admin selects an objectively assessable lesson.
-2. Admin creates/chooses an `Assess` delivery.
-3. System validates at least one assessable item.
-4. System produces authorized student access carrying trusted delivery context.
-
-### 15.2 Student execution
-
-1. New learner opens Assess access.
-2. Session records `deliveryModeAtStart = assess`.
-3. Learner answers question 1 incorrectly.
-4. Learner sees no incorrect indicator and no answer.
-5. Learner proceeds without retry/correction.
-6. Learner completes remaining questions.
-7. Learner submits.
-8. Learner sees only the neutral submitted receipt.
-9. Refresh/reopen does not expose score or answer key.
-
-### 15.3 Teacher result
-
-1. Admin results list shows Mode = Assess.
-2. Admin sees the canonical derived percentage and correct/total.
-3. Admin opens the detail view.
-4. Question 1 shows learner response, incorrect evaluation, and expected answer to the authorized teacher.
-5. Reloading the admin result returns the same canonical derivation from persisted attempts.
-
-### 15.4 Concurrent mode proof
-
-Using the same lesson at the same time:
-
-- Student A opens Mastery.
-- Student B opens Assess.
-- A receives normal Mastery learning behavior.
-- B remains completely blind to correctness, answer key, and score.
-- changing or completing A does not alter B's mode or result;
-- changing or completing B does not alter A's mode or result.
-
-Any cross-mode interference is a production failure.
-
-## 16. Production gates
-
-All gates are mandatory.
+## 15. Production gates
 
 | Gate | PASS condition |
 | --- | --- |
-| SSOT | exactly one Assess scoring implementation |
-| Mode SSOT | exactly one trusted delivery-mode resolution path + immutable session snapshot |
-| No split brain | same lesson can run concurrently in both modes without cross-mode effects |
-| Attempt SSOT | canonical Assess result is reproducible from attempts |
-| Blind student | no score/correctness/answer/hint/retry leakage in UI or learner payload |
-| Secure key | production Assess learner cannot read the answer key from downloaded data |
-| No Mastery semantics | Assess has no Mastery progress, qualification threshold, retry or correction loop |
-| Teacher visibility | authorized admin sees summary + question-level result |
+| SSOT | one Assess scoring implementation |
+| Mode SSOT | trusted assignment mode + immutable session snapshot |
+| No split brain | same lesson runs Mastery and Assess concurrently |
+| Attempt SSOT | result reproducible from raw attempts |
+| Blind student | no score/correctness/answer/hint/retry in Assess UI/result |
+| Learner-safe payload | persisted `sanitizedLesson` has no forbidden answer-key fields |
+| Raw persistence | Assess attempts contain no correctness/expected answer/score |
+| Teacher visibility | authorized Admin derives summary and item detail |
 | Historical compatibility | supported old sessions remain valid |
-| No god component | architecture dependency tests pass |
-| No schema drift | runtime/repository/rules agree on session schema |
+| No god component | architecture tests pass |
+| No schema drift | runtime/repository/Rules align |
 | Regression | all pre-existing CI tests pass |
-| New tests | all Assess domain/security/architecture tests pass |
-| Browser E2E | admin -> student Assess -> admin result flow passes on production-like deployment |
-| Production provenance | Vercel Production Git SHA exactly equals merged GitHub `main` SHA |
+| PR browser E2E | branch code + real Firebase Admin→Assess→Admin flow passes without production deploy |
+| Main Rules deploy | `firestore.rules` workflow succeeds from merged `main` |
+| Production provenance | Vercel Production Git SHA equals merged GitHub `main` SHA |
+| Production browser E2E | same acceptance scenario passes on Production URL |
 
-No gate may be waived as "follow-up" for production Assess.
+No gate may be waived as a follow-up.
 
-## 17. Explicit technical-debt prohibitions
+## 16. Explicit technical-debt prohibitions
 
-The following are not acceptable production implementations:
+Not acceptable:
 
-1. `?mode=assess` as the sole authority controlled by the student browser.
-2. a global `lessonSettings.deliveryMode` that changes every learner using the lesson.
-3. duplicating a lesson into `lesson-master.md` / `lesson-assess.md` or separate content sets solely for mode behavior.
-4. copy/pasting the score formula into admin UI and student/session code.
-5. storing mutable score state as a competing truth beside attempts.
-6. hiding the answer with CSS while sending it to the learner browser.
-7. reusing the full Mastery drill and sprinkling mode conditionals throughout it.
-8. putting networking, persistence, scoring, rendering, routing, and grading into one new Assess component.
-9. leaving schema/rules mismatch to be fixed after deployment.
-10. shipping a temporary Assess path and promising to secure/refactor it later.
+1. `?mode=assess` as student-controlled authority.
+2. global `lessonSettings.deliveryMode`.
+3. duplicated Mastery/Assess content sets.
+4. copied score formulas.
+5. mutable derived score beside Attempt log.
+6. answers hidden only by CSS while included in Assess learner snapshot.
+7. one giant Mastery/Assess renderer/controller.
+8. persistence/scoring/rendering/routing in one component.
+9. schema/rules mismatch.
+10. temporary WIF/service-account/server workaround for Assess when the Firebase Rules path can own persistence safely.
+11. manual Vercel deployment or Preview promotion as normal release procedure.
 
-If implementation requires one of these shortcuts, Assess remains non-production.
+## 17. Release workflow — GitHub `main` is the only production trigger
 
-## 18. Release workflow
+Normal release is:
 
-Implementation follows this order:
+```text
+feature branch
+  -> PR
+  -> canonical CI + PR Assess browser E2E PASS
+  -> merge main
+  -> GitHub main is production SSOT
+       -> Vercel Git Integration auto-deploys that exact main SHA
+       -> Firestore Rules GitHub Action deploys rules when changed
+  -> verify main CI + Rules workflow
+  -> verify Vercel Production READY and Git SHA == main SHA
+  -> Production Assess browser E2E
+  -> Production acceptance evidence
+```
 
-1. land/update this ADR;
-2. add delivery-mode domain and schema contracts;
-3. add secure Assess grading boundary and sanitized learner payload;
-4. add Assess scoring/summary domain;
-5. add Assess session controller;
-6. add learner Assess renderer + neutral receipt;
-7. add admin list/detail support;
-8. update persistence and Firestore rules together;
-9. add architecture/security/domain tests;
-10. run complete existing CI + new Assess tests;
-11. deploy preview;
-12. execute browser E2E acceptance scenario;
-13. verify answer-key non-exposure from learner network/data payloads;
-14. verify concurrent Mastery/Assess behavior on the same lesson;
-15. merge only after all PR checks pass;
-16. deploy Production from merged `main`;
-17. verify Vercel Production Git SHA equals GitHub `main` SHA;
-18. repeat smoke E2E on Production;
-19. record production acceptance evidence.
+Rules:
 
-## 19. Definition of Done
+- no `vercel deploy` in the release workflow;
+- no manual Preview promotion;
+- no alternate production branch;
+- no per-release IAM/WIF bootstrap;
+- Firestore Rules are deployed from GitHub Actions on `main` when `firestore.rules` changes;
+- rollback is a Git revert on `main`, which Vercel then deploys through the same Git integration.
 
-Assess is **Production Accepted** only when all of the following are true:
+## 18. Definition of Done
 
 ```text
 [ ] ADR accepted
-[ ] Mastery/Assess modeled as peer delivery modes
-[ ] authoritative delivery-mode resolution implemented
+[ ] Mastery/Assess peer modes implemented
+[ ] trusted delivery-mode resolution implemented
 [ ] immutable session delivery snapshot implemented
-[ ] answer-key-safe Assess payload implemented
-[ ] trusted Assess grading boundary implemented
+[ ] immutable answer-key-free sanitizedLesson delivery snapshot implemented
+[ ] raw neutral Attempt persistence implemented
 [ ] one Assess scoring owner implemented
-[ ] canonical summary derives from Attempt log
-[ ] Assess learner flow has no feedback/retry/score leak
-[ ] neutral learner receipt implemented
-[ ] teacher list and detail implemented
-[ ] same lesson works concurrently in Mastery and Assess
-[ ] historical Mastery sessions remain compatible
-[ ] Firestore/runtime schema contract aligned
-[ ] SSOT/god-component architecture tests pass
-[ ] security tests pass
-[ ] all existing regression tests pass
-[ ] preview browser E2E passes
+[ ] canonical teacher summary derives from Attempt log
+[ ] student has no feedback/retry/score leak
+[ ] neutral receipt implemented
+[ ] teacher list/detail implemented
+[ ] concurrent Mastery/Assess works
+[ ] historical Mastery sessions compatible
+[ ] Firestore/runtime schema aligned
+[ ] no privileged Vercel Assess server/WIF dependency
+[ ] SSOT/god-component/security tests pass
+[ ] all regression tests pass
+[ ] PR real-Firebase browser E2E passes
 [ ] merged main CI passes
-[ ] Production SHA == GitHub main SHA
-[ ] Production smoke E2E passes
+[ ] Firestore Rules main workflow passes
+[ ] Vercel Production SHA == GitHub main SHA
+[ ] Production browser E2E passes
 [ ] production acceptance evidence recorded
 ```
 
-Until every checkbox is satisfied, the feature may be in development or preview, but it must not be represented as production-ready Assess.
+Until every checkbox is satisfied, Assess must not be represented as Production Accepted.
 
-## 20. Final production invariant
-
-The invariant for Chiến Binh Dịch is:
+## 19. Final production invariant
 
 ```text
 one lesson corpus
++ one trusted Assess learner projection per delivery
 + one trusted delivery mode per session
-+ one canonical attempt history
++ one canonical raw attempt history
 + one scoring owner per mode
 + mode-specific presentation
++ GitHub main as the only production source
 = Mastery and Assess without split brain
 ```
 
-Assess measures what the learner can do independently. Mastery helps the learner improve. They share the lesson and neutral primitives, but they do not share conflicting business rules or learner-feedback behavior.
+Assess measures what the learner can do independently. Mastery helps the learner improve. They share canonical lesson content and neutral primitives, but they do not share conflicting business rules or learner-feedback behavior.
