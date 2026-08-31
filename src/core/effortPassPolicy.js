@@ -77,9 +77,10 @@ export function activeStudyMs(session, now = Date.now()) {
   if (!Number.isFinite(endAt)) return 0;
   const integrity = session?.integrity ?? null;
   const recordedAwayMs = nonNegative(integrity?.tabAwayMs);
-  const inProgressAwayMs = Number.isFinite(Number(integrity?.hiddenAt))
-    ? Math.max(0, Number(now) - Number(integrity.hiddenAt))
-    : 0;
+  const hiddenAt = finiteOrNull(integrity?.hiddenAt);
+  const inProgressAwayMs = hiddenAt === null
+    ? 0
+    : Math.max(0, Number(now) - hiddenAt);
   return Math.max(0, endAt - startedAt - recordedAwayMs - inProgressAwayMs);
 }
 
@@ -96,6 +97,7 @@ export function effortQualification(session, lesson, now = Date.now()) {
 }
 
 function finiteOrNull(value) {
+  if (value === null || value === undefined || value === '') return null;
   const numeric = Number(value);
   return Number.isFinite(numeric) ? numeric : null;
 }
