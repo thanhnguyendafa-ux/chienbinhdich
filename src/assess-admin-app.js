@@ -55,6 +55,7 @@ function renderLogin() {
 async function renderDashboard() {
   renderLoading('Đang tải Assess Dashboard...');
   const descriptors = listSetDescriptors();
+  const requestedSetId = new URL(window.location.href).searchParams.get('setId') ?? '';
 
   root.innerHTML = `
     <main class="assess-admin-page">
@@ -73,7 +74,7 @@ async function renderDashboard() {
             <label>Chọn bài
               <select name="setId" required>
                 <option value="">— Chọn lesson —</option>
-                ${descriptors.map(set => `<option value="${escAttr(set.id)}">${esc(set.course)} · ${esc(set.unit)} · ${esc(set.title)}</option>`).join('')}
+                ${descriptors.map(set => `<option value="${escAttr(set.id)}" ${String(set.id) === String(requestedSetId) ? 'selected' : ''}>${esc(set.course)} · ${esc(set.unit)} · ${esc(set.title)}</option>`).join('')}
               </select>
             </label>
             <button type="submit" class="primary-btn">Tạo link Assess</button>
