@@ -1,8 +1,9 @@
 import { firebaseConfig } from './config/firebaseConfig.js';
+import { validateAssessAssignmentSnapshot } from './core/assessDelivery.js';
 import { parseLegacyAssignmentToken } from './core/lessonLinks.js';
 import { DELIVERY_MODE_ASSESS, resolveDeliveryMode } from './core/deliveryMode.js';
+import { createAssessAttemptRepository } from './repositories/assessAttemptRepository.js';
 import { createLegacyAssignmentRepository } from './repositories/legacyAssignmentRepository.js';
-import { createAssessApiRepository } from './repositories/assessApiRepository.js';
 import { createAssessSessionRepository } from './repositories/assessSessionRepository.js';
 import {
   advanceAssessSession,
@@ -15,7 +16,7 @@ import { renderAssessReceipt } from './features/assess/renderAssessReceipt.js';
 
 const root = document.querySelector('#app');
 const assignmentRepository = createLegacyAssignmentRepository(firebaseConfig.project);
-const api = createAssessApiRepository(firebaseConfig.project);
+const attemptRepository = createAssessAttemptRepository(firebaseConfig.project);
 const sessionRepository = createAssessSessionRepository(firebaseConfig.project);
 let delivery = null;
 let lesson = null;
@@ -36,9 +37,8 @@ async function bootstrap() {
     throw assessError('assignment_invalid', 'Link Assess không khớp delivery đã phát hành.');
   }
 
-  const payload = await api.getLesson(parsed.code);
-  delivery = payload.delivery;
-  lesson = payload.lesson;
+  delivery = assignment;
+  lesson = validateAssessAssignmentSnapshot(assignment);
   session = resumeCandidate(sessionRepository.loadLocal(delivery.id), delivery, lesson);
 
   if (session?.status === 'submitted') return renderReceipt();
@@ -109,10 +109,9 @@ async function record({ response, attemptMeta }, skipped) {
   const item = currentAssessItem(session, lesson);
   if (!item) return;
 
-  const acknowledgement = await api.recordAttempt({
-    code: delivery.code,
-    sessionId: session.id,
-    itemId: item.id,
+  const acknowledgement = await attemptRepository.record({
+    session,
+    item,
     promptIndex: progress.index,
     response,
     skipped,

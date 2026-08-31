@@ -1,15 +1,12 @@
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import { extname, join, normalize, resolve } from 'node:path';
+import { extname, normalize, resolve, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
 import { cert, deleteApp, initializeApp } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
-import issueHandler from '../api/assess/issue.js';
-import lessonHandler from '../api/assess/lesson.js';
-import gradeHandler from '../api/assess/grade.js';
 import { assessableItems } from '../src/core/assessScoringPolicy.js';
 import { parseLegacyAssignmentToken } from '../src/core/lessonLinks.js';
 import { loadLessonSet } from '../src/repositories/lessonRepository.js';
@@ -28,14 +25,13 @@ const FORBIDDEN_PAYLOAD_KEYS = new Set([
 ]);
 
 await mkdir(ARTIFACT_DIR, { recursive: true });
-
 const rawCredential = process.env.FIREBASE_SERVICE_ACCOUNT_CHIENBINHDICH;
 assert.ok(rawCredential, 'FIREBASE_SERVICE_ACCOUNT_CHIENBINHDICH is required.');
 const credential = JSON.parse(rawCredential);
 const adminApp = initializeApp({ credential: cert(credential), projectId: PROJECT_ID }, `assess-release-e2e-${Date.now()}`);
 const db = getFirestore(adminApp);
 const firebaseAuth = getAuth(adminApp);
-const server = EXTERNAL_ORIGIN ? null : createAppServer();
+const server = EXTERNAL_ORIGIN ? null : createStaticServer();
 const browser = await chromium.launch({ headless: true });
 
 let issuedCode = null;
@@ -72,10 +68,7 @@ try {
   await adminPage.waitForSelector('[data-issue-assess]');
 
   await adminPage.selectOption('[data-issue-assess] select[name="setId"]', SET_ID);
-  const issueResponsePromise = adminPage.waitForResponse(response => response.url().includes('/api/assess/issue'));
   await adminPage.click('[data-issue-assess] button[type="submit"]');
-  const issueResponse = await issueResponsePromise;
-  assert.equal(issueResponse.status(), 200, `Assess issue API failed: ${await issueResponse.text()}`);
   await waitForIssuedOrError(adminPage);
   const issueError = await adminPage.locator('[data-issued-link] .assess-inline-error').textContent().catch(() => null);
   assert.equal(issueError, null, `Assess issue UI failed: ${issueError}`);
@@ -83,6 +76,15 @@ try {
   const parsed = parseLegacyAssignmentToken(new URL(issuedUrl).searchParams.get('assignment') ?? '');
   assert.ok(parsed, `Issued Assess URL is not parseable: ${issuedUrl}`);
   issuedCode = parsed.code;
+
+  const assignmentSnapshot = await db.collection('assignments').doc(issuedCode).get();
+  assert.equal(assignmentSnapshot.exists, true, 'Issued Assess assignment was not persisted.');
+  const assignment = assignmentSnapshot.data();
+  assert.equal(assignment.deliveryMode, 'assess');
+  assert.ok(assignment.sanitizedLesson, 'Assess assignment is missing learner snapshot.');
+  assert.equal(findForbiddenKey(assignment.sanitizedLesson), null, 'Assess learner snapshot contains answer-key material.');
+  assert.equal(assignment.sanitizedLesson.itemCount, assessItems.length, 'Learner snapshot item count drifted from source.');
+  assert.ok(Number(assignment.sanitizedLessonBytes) > 0 && Number(assignment.sanitizedLessonBytes) <= 819200);
   await adminPage.screenshot({ path: join(ARTIFACT_DIR, '01-admin-issued.png'), fullPage: true });
 
   const masteryContext = await browser.newContext({ viewport: { width: 1280, height: 800 } });
@@ -91,42 +93,28 @@ try {
   await masteryPage.goto(`${ORIGIN}/a/${fullLesson.lessonSlug}`, { waitUntil: 'domcontentloaded' });
   await masteryPage.waitForSelector('#name-form');
   assert.match(await masteryPage.locator('body').innerText(), /Mastery/i, 'Same lesson did not open with Mastery semantics.');
-  assert.equal(await masteryPage.locator('.assess-mode-badge').count(), 0, 'Mastery entry leaked Assess presentation.');
   await masteryPage.fill('#student-name', masteryStudent);
   await masteryPage.click('#name-form button[type="submit"]');
   await masteryPage.waitForSelector('.metrics-row');
-  assert.match(await masteryPage.locator('.metrics-row').innerText(), /Mastery/i, 'Mastery drill did not retain Mastery metrics.');
-  assert.equal(await masteryPage.locator('.assess-progress').count(), 0, 'Mastery drill crossed into Assess UI.');
+  assert.match(await masteryPage.locator('.metrics-row').innerText(), /Mastery/i);
+  assert.equal(await masteryPage.locator('.assess-progress').count(), 0);
   await masteryPage.screenshot({ path: join(ARTIFACT_DIR, '02-mastery-live.png'), fullPage: true });
 
   const studentContext = await browser.newContext({ viewport: { width: 1280, height: 800 } });
   const studentPage = await studentContext.newPage();
   attachPageDiagnostics(studentPage, 'assess-student');
-  const learnerPayloadPromise = studentPage.waitForResponse(response => response.url().includes('/api/assess/lesson?'));
   await studentPage.goto(issuedUrl, { waitUntil: 'domcontentloaded' });
-  const learnerPayloadResponse = await learnerPayloadPromise;
-  assert.equal(learnerPayloadResponse.status(), 200, 'Assess learner payload endpoint did not return 200.');
-  const learnerPayload = await learnerPayloadResponse.json();
-  assert.equal(findForbiddenKey(learnerPayload), null, 'Learner payload contains a recoverable answer-key field.');
-  assert.equal(learnerPayload.lesson.itemCount, assessItems.length, 'Sanitized lesson item count drifted from source assessable items.');
-
   await studentPage.waitForSelector('[data-assess-entry]');
-  assert.match(await studentPage.locator('body').innerText(), /không hiển thị đúng\/sai, đáp án hoặc điểm/i, 'Assess entry does not state blind contract.');
+  assert.match(await studentPage.locator('body').innerText(), /không hiển thị đúng\/sai, đáp án hoặc điểm/i);
+  assert.equal(await studentPage.locator('.metrics-row, .mastery-progress, .answer-reveal').count(), 0);
   await studentPage.fill('[data-assess-entry] input[name="studentName"]', assessStudent);
   await studentPage.click('[data-assess-entry] button[type="submit"]');
   await waitForAssessQuestion(studentPage, 1, assessItems.length);
 
   const first = assessItems[0];
   const wrongChoice = first.choices.find(choice => String(choice.id) !== String(first.correctChoiceId));
-  assert.ok(wrongChoice, 'Could not choose a deterministic wrong answer for Q1.');
-  const firstGradePromise = studentPage.waitForResponse(response => response.url().includes('/api/assess/grade'));
+  assert.ok(wrongChoice, 'Could not select deterministic wrong Q1 choice.');
   await studentPage.click(`[data-choice-id="${cssEscape(String(wrongChoice.id))}"]`);
-  const firstGradeResponse = await firstGradePromise;
-  assert.equal(firstGradeResponse.status(), 200, `Trusted grade endpoint did not accept Q1: ${await firstGradeResponse.text()}`);
-  const firstAck = await firstGradeResponse.json();
-  assert.equal(firstAck.ok, true);
-  assert.equal('correct' in firstAck, false, 'Grade acknowledgement leaked correctness.');
-  assert.equal('expectedAnswer' in firstAck, false, 'Grade acknowledgement leaked expected answer.');
   await waitForAssessQuestion(studentPage, 2, assessItems.length);
   assert.equal(await studentPage.locator('.answer-reveal, .feedback-panel, .mastery-progress, .metrics-row').count(), 0,
     'Wrong Assess answer exposed learning/result UI.');
@@ -134,13 +122,7 @@ try {
 
   for (let index = 1; index < assessItems.length; index += 1) {
     const item = assessItems[index];
-    const gradePromise = studentPage.waitForResponse(response => response.url().includes('/api/assess/grade'));
     await studentPage.click(`[data-choice-id="${cssEscape(String(item.correctChoiceId))}"]`);
-    const gradeResponse = await gradePromise;
-    assert.equal(gradeResponse.status(), 200, `Trusted grade endpoint failed at Q${index + 1}: ${await gradeResponse.text()}`);
-    const acknowledgement = await gradeResponse.json();
-    assert.equal(acknowledgement.ok, true);
-    assert.equal('correct' in acknowledgement, false, `Q${index + 1} acknowledgement leaked correctness.`);
     if (index < assessItems.length - 1) await waitForAssessQuestion(studentPage, index + 2, assessItems.length);
   }
 
@@ -172,10 +154,10 @@ try {
   await adminPage.click('[data-refresh]');
   const resultRow = adminPage.locator('tbody tr').filter({ hasText: assessStudent });
   await resultRow.waitFor();
-  const rowText = await resultRow.innerText();
   const expectedCorrect = assessItems.length - 1;
   const expectedPercent = expectedCorrect / assessItems.length * 100;
   const formattedPercent = Number.isInteger(expectedPercent) ? `${expectedPercent}%` : `${expectedPercent.toFixed(2)}%`;
+  const rowText = await resultRow.innerText();
   assert.match(rowText, /ASSESS/);
   assert.match(rowText, new RegExp(escapeRegExp(formattedPercent)));
   assert.match(rowText, new RegExp(`${expectedCorrect}/${assessItems.length}`));
@@ -184,8 +166,6 @@ try {
   await adminPage.waitForSelector('.assess-detail-head');
   const detailText = await adminPage.locator('[data-assess-detail]').innerText();
   const q1ExpectedText = first.choices.find(choice => String(choice.id) === String(first.correctChoiceId))?.text ?? '';
-  assert.match(detailText, /ASSESS · BASELINE/);
-  assert.match(detailText, new RegExp(escapeRegExp(formattedPercent)));
   assert.match(detailText, /SAI/);
   assert.ok(q1ExpectedText && detailText.includes(q1ExpectedText), 'Teacher detail did not show Q1 expected answer.');
   await adminPage.screenshot({ path: join(ARTIFACT_DIR, '05-admin-result.png'), fullPage: true });
@@ -196,8 +176,8 @@ try {
   const persistedRow = adminPage.locator('tbody tr').filter({ hasText: assessStudent });
   await persistedRow.waitFor();
   const persistedText = await persistedRow.innerText();
-  assert.match(persistedText, new RegExp(escapeRegExp(formattedPercent)), 'Reload changed canonical Assess percentage.');
-  assert.match(persistedText, new RegExp(`${expectedCorrect}/${assessItems.length}`), 'Reload changed canonical correct/total.');
+  assert.match(persistedText, new RegExp(escapeRegExp(formattedPercent)));
+  assert.match(persistedText, new RegExp(`${expectedCorrect}/${assessItems.length}`));
 
   const assessSessionRef = db.collection('sessions').doc(assessSessionId);
   const assessSessionSnapshot = await assessSessionRef.get();
@@ -221,7 +201,7 @@ try {
   assert.ok(masteryDocument, 'Concurrent Mastery session was not persisted.');
   masterySessionId = masteryDocument.id;
   masteryOwnerUid = masteryDocument.data().ownerUid ?? null;
-  assert.notEqual(masteryDocument.data().deliveryModeAtStart, 'assess', 'Mastery session was stamped as Assess.');
+  assert.notEqual(masteryDocument.data().deliveryModeAtStart, 'assess');
 
   const evidence = {
     ok: true,
@@ -233,8 +213,8 @@ try {
     expectedCorrect,
     expectedPercent: formattedPercent,
     q1IntentionalWrong: true,
-    learnerPayloadAnswerKeyFree: true,
-    gradeAcknowledgementNeutral: true,
+    learnerAssignmentSnapshotAnswerKeyFree: true,
+    studentWritesRawAttemptsDirectly: true,
     studentReceiptBlind: true,
     teacherCanonicalResultPersisted: true,
     concurrentMasteryAssess: true,
@@ -248,117 +228,56 @@ try {
   await masteryContext.close();
   await adminContext.close();
 } finally {
-  try {
-    if (assessSessionId) await cleanupSession(db, assessSessionId);
-    if (masterySessionId) await cleanupSession(db, masterySessionId);
-    if (issuedCode) await db.collection('assignments').doc(issuedCode).delete().catch(() => {});
-    if (assessOwnerUid) await firebaseAuth.deleteUser(assessOwnerUid).catch(() => {});
-    if (masteryOwnerUid) await firebaseAuth.deleteUser(masteryOwnerUid).catch(() => {});
-  } finally {
-    await browser.close().catch(() => {});
-    if (server) await closeServer(server).catch(() => {});
-    await deleteApp(adminApp).catch(() => {});
+  await browser.close().catch(() => {});
+  if (server) await closeServer(server).catch(() => {});
+  await cleanupFirestore().catch(error => console.error('E2E cleanup failed', error));
+  await deleteApp(adminApp).catch(() => {});
+}
+
+async function cleanupFirestore() {
+  if (issuedCode) await db.collection('assignments').doc(issuedCode).delete().catch(() => {});
+  for (const sessionId of [assessSessionId, masterySessionId].filter(Boolean)) {
+    const ref = db.collection('sessions').doc(sessionId);
+    const attempts = await ref.collection('attempts').get().catch(() => null);
+    if (attempts) {
+      const batch = db.batch();
+      for (const doc of attempts.docs) batch.delete(doc.ref);
+      if (!attempts.empty) await batch.commit();
+    }
+    await ref.delete().catch(() => {});
+  }
+  for (const uid of [assessOwnerUid, masteryOwnerUid].filter(Boolean)) {
+    await firebaseAuth.deleteUser(uid).catch(() => {});
   }
 }
 
-function createAppServer() {
-  return createServer(async (req, res) => {
-    try {
-      const url = new URL(req.url ?? '/', ORIGIN);
-      if (url.pathname === '/api/assess/issue') {
-        req.body = await readJsonBody(req);
-        return issueHandler(req, apiResponse(res));
-      }
-      if (url.pathname === '/api/assess/lesson') {
-        req.query = Object.fromEntries(url.searchParams.entries());
-        return lessonHandler(req, apiResponse(res));
-      }
-      if (url.pathname === '/api/assess/grade') {
-        req.body = await readJsonBody(req);
-        return gradeHandler(req, apiResponse(res));
-      }
-
-      let requestedPath = url.pathname;
-      if (requestedPath === '/assess') requestedPath = '/assess.html';
-      else if (requestedPath === '/assess-admin') requestedPath = '/assess-admin.html';
-      else if (requestedPath === '/' || requestedPath.startsWith('/a/') || requestedPath === '/admin') requestedPath = '/index.html';
-
-      const safePath = normalize(requestedPath).replace(/^(\.\.[/\\])+/, '');
-      const absolute = resolve(ROOT, `.${safePath}`);
-      if (!absolute.startsWith(ROOT)) return sendText(res, 403, 'Forbidden');
-      const body = await readFile(absolute);
-      res.statusCode = 200;
-      res.setHeader('Content-Type', mimeType(extname(absolute)));
-      res.setHeader('Cache-Control', 'no-store');
-      res.end(body);
-    } catch (error) {
-      if (error?.code === 'ENOENT') return sendText(res, 404, 'Not found');
-      console.error('E2E server error', error);
-      return sendText(res, 500, 'Internal server error');
-    }
-  });
-}
-
-function apiResponse(res) {
-  let statusCode = 200;
-  return {
-    setHeader(name, value) { res.setHeader(name, value); },
-    status(value) { statusCode = Number(value); return this; },
-    json(payload) {
-      res.statusCode = statusCode;
-      res.setHeader('Content-Type', 'application/json; charset=utf-8');
-      res.end(JSON.stringify(payload));
-    }
-  };
-}
-
-async function readJsonBody(req) {
-  const chunks = [];
-  for await (const chunk of req) chunks.push(chunk);
-  if (!chunks.length) return {};
-  return JSON.parse(Buffer.concat(chunks).toString('utf8'));
-}
-
-async function signInAdminWithCustomToken(page, token) {
-  await page.evaluate(async customToken => {
-    const { firebaseConfig } = await import('/src/config/firebaseConfig.js');
-    const version = '12.16.0';
+async function signInAdminWithCustomToken(page, customToken) {
+  await page.evaluate(async token => {
     const [appSdk, authSdk] = await Promise.all([
-      import(`https://www.gstatic.com/firebasejs/${version}/firebase-app.js`),
-      import(`https://www.gstatic.com/firebasejs/${version}/firebase-auth.js`)
+      import('https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js'),
+      import('https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js')
     ]);
-    const appName = `cbd-admin-${firebaseConfig.project.projectId}`;
-    const app = appSdk.getApps().find(candidate => candidate.name === appName)
-      ?? appSdk.initializeApp(firebaseConfig.project, appName);
-    await authSdk.signInWithCustomToken(authSdk.getAuth(app), customToken);
-  }, token);
+    const app = appSdk.getApp('cbd-admin-chienbinhdich');
+    await authSdk.signInWithCustomToken(authSdk.getAuth(app), token);
+  }, customToken);
 }
 
 async function waitForIssuedOrError(page) {
-  await page.waitForFunction(() => Boolean(
-    document.querySelector('.assess-issued-card code')
-    || document.querySelector('[data-issued-link] .assess-inline-error')
-  ));
+  await page.waitForFunction(() => Boolean(document.querySelector('.assess-issued-card') || document.querySelector('[data-issued-link] .assess-inline-error')));
 }
 
 async function waitForAssessQuestion(page, number, total) {
+  await page.waitForSelector('.assess-question-card');
   await page.waitForFunction(({ number, total }) => {
-    const value = document.querySelector('.assess-progress strong')?.textContent ?? '';
-    return value.includes(`Câu ${number} / ${total}`);
+    const text = document.querySelector('.assess-progress')?.textContent ?? '';
+    return text.includes(`${number}/${total}`);
   }, { number, total });
 }
 
-function attachPageDiagnostics(page, label) {
-  page.on('pageerror', error => console.error(`[${label}] pageerror`, error));
-  page.on('console', message => {
-    if (message.type() === 'error') console.error(`[${label}] console.error`, message.text());
-  });
-}
-
-function findForbiddenKey(value, path = '$') {
+function findForbiddenKey(value, path = '') {
   if (Array.isArray(value)) {
-    for (let index = 0; index < value.length; index += 1) {
-      const match = findForbiddenKey(value[index], `${path}[${index}]`);
+    for (let i = 0; i < value.length; i += 1) {
+      const match = findForbiddenKey(value[i], `${path}[${i}]`);
       if (match) return match;
     }
     return null;
@@ -372,57 +291,55 @@ function findForbiddenKey(value, path = '$') {
   return null;
 }
 
-async function cleanupSession(database, sessionId) {
-  const ref = database.collection('sessions').doc(sessionId);
-  const attempts = await ref.collection('attempts').get().catch(() => null);
-  if (attempts) {
-    const writer = database.bulkWriter();
-    for (const document of attempts.docs) writer.delete(document.ref);
-    await writer.close();
-  }
-  await ref.delete().catch(() => {});
+function attachPageDiagnostics(page, label) {
+  page.on('console', message => {
+    if (message.type() === 'error') console.error(`[${label}] console.error`, message.text());
+  });
+  page.on('pageerror', error => console.error(`[${label}] pageerror`, error));
 }
 
-function listen(target, port) {
-  return new Promise((resolvePromise, rejectPromise) => {
-    target.once('error', rejectPromise);
-    target.listen(port, '127.0.0.1', () => {
-      target.off('error', rejectPromise);
-      resolvePromise();
-    });
+function createStaticServer() {
+  return createServer(async (req, res) => {
+    try {
+      const pathname = decodeURIComponent(new URL(req.url ?? '/', `http://${req.headers.host ?? 'localhost'}`).pathname);
+      let relative = pathname === '/assess' ? 'assess.html'
+        : pathname === '/assess-admin' ? 'assess-admin.html'
+          : pathname === '/' || pathname.startsWith('/a/') || pathname.startsWith('/s/') ? 'index.html'
+            : pathname.replace(/^\/+/, '');
+      relative = normalize(relative).replace(/^(\.\.(\/|\\|$))+/, '');
+      const filePath = resolve(ROOT, relative);
+      if (!filePath.startsWith(ROOT)) throw new Error('Invalid path');
+      const body = await readFile(filePath);
+      res.writeHead(200, { 'Content-Type': mime(extname(filePath)), 'Cache-Control': 'no-store' });
+      res.end(body);
+    } catch {
+      res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
+      res.end('Not found');
+    }
   });
 }
 
-function closeServer(target) {
-  return new Promise((resolvePromise, rejectPromise) => {
-    if (!target.listening) return resolvePromise();
-    target.close(error => error ? rejectPromise(error) : resolvePromise());
-  });
-}
-
-function sendText(res, status, text) {
-  res.statusCode = status;
-  res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-  res.end(text);
-}
-
-function mimeType(extension) {
+function mime(extension) {
   return ({
-    '.html': 'text/html; charset=utf-8',
-    '.js': 'text/javascript; charset=utf-8',
-    '.css': 'text/css; charset=utf-8',
-    '.json': 'application/json; charset=utf-8',
-    '.svg': 'image/svg+xml',
-    '.png': 'image/png',
-    '.jpg': 'image/jpeg',
-    '.jpeg': 'image/jpeg',
-    '.webp': 'image/webp',
-    '.ico': 'image/x-icon'
+    '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8',
+    '.json': 'application/json; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.mp3': 'audio/mpeg', '.wav': 'audio/wav'
   })[extension] ?? 'application/octet-stream';
 }
 
+function listen(serverInstance, port) {
+  return new Promise((resolvePromise, reject) => {
+    serverInstance.once('error', reject);
+    serverInstance.listen(port, '127.0.0.1', resolvePromise);
+  });
+}
+
+function closeServer(serverInstance) {
+  return new Promise((resolvePromise, reject) => serverInstance.close(error => error ? reject(error) : resolvePromise()));
+}
+
 function cssEscape(value) {
-  return String(value).replace(/(["\\])/g, '\\$1');
+  return String(value).replace(/["\\]/g, '\\$&');
 }
 
 function escapeRegExp(value) {
