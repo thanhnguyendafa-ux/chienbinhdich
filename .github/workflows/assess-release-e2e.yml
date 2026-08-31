@@ -1,0 +1,112 @@
+name: Assess Release E2E
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/assess-release-e2e.yml'
+      - 'scripts/assessReleaseE2E.mjs'
+      - 'assess.html'
+      - 'assess-admin.html'
+      - 'src/assess-app.js'
+      - 'src/assess-admin-app.js'
+      - 'src/core/assessDelivery.js'
+      - 'src/core/assessPayload.js'
+      - 'src/core/assessResponse.js'
+      - 'src/core/assessScoringPolicy.js'
+      - 'src/core/assessSummary.js'
+      - 'src/core/deliveryMode.js'
+      - 'src/features/assess/**'
+      - 'src/repositories/assessAttemptRepository.js'
+      - 'src/repositories/assessDeliveryRepository.js'
+      - 'src/repositories/assessSessionRepository.js'
+      - 'firestore.rules'
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/assess-release-e2e.yml'
+      - 'scripts/assessReleaseE2E.mjs'
+      - 'assess.html'
+      - 'assess-admin.html'
+      - 'src/assess-app.js'
+      - 'src/assess-admin-app.js'
+      - 'src/core/assessDelivery.js'
+      - 'src/core/assessPayload.js'
+      - 'src/core/assessResponse.js'
+      - 'src/core/assessScoringPolicy.js'
+      - 'src/core/assessSummary.js'
+      - 'src/core/deliveryMode.js'
+      - 'src/features/assess/**'
+      - 'src/repositories/assessAttemptRepository.js'
+      - 'src/repositories/assessDeliveryRepository.js'
+      - 'src/repositories/assessSessionRepository.js'
+      - 'firestore.rules'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: assess-release-e2e-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release-e2e:
+    name: ${{ github.event_name == 'push' && 'Production Admin → Assess → Admin' || 'PR Admin → Assess → Admin' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      FIREBASE_SERVICE_ACCOUNT_CHIENBINHDICH: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_CHIENBINHDICH }}
+      FIREBASE_PROJECT_ID: chienbinhdich
+      ASSESS_E2E_ORIGIN: ${{ github.event_name == 'push' && 'https://chien-binh-dich.vercel.app' || '' }}
+
+    steps:
+      - name: Checkout tested commit
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Require Firebase acceptance credential
+        shell: bash
+        run: |
+          if [ -z "$FIREBASE_SERVICE_ACCOUNT_CHIENBINHDICH" ]; then
+            echo 'Missing GitHub Actions secret FIREBASE_SERVICE_ACCOUNT_CHIENBINHDICH.' >&2
+            exit 1
+          fi
+
+      - name: Wait for Vercel auto-deploy of merged main
+        if: github.event_name == 'push'
+        shell: bash
+        run: |
+          for attempt in $(seq 1 60); do
+            body="$(curl --fail --silent --show-error --max-time 10 "$ASSESS_E2E_ORIGIN/assess" || true)"
+            if printf '%s' "$body" | grep -q '/src/assess-app.js'; then
+              exit 0
+            fi
+            sleep 5
+          done
+          echo 'Vercel Production did not expose the merged Assess shell.' >&2
+          exit 1
+
+      - name: Install E2E dependencies
+        run: npm install --no-save --package-lock=false firebase-admin@13.5.0 playwright@1.55.0
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run Admin → Assess → Admin acceptance
+        run: node scripts/assessReleaseE2E.mjs
+
+      - name: Upload release evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: assess-release-e2e-${{ github.sha }}
+          path: artifacts/assess-release-e2e
+          if-no-files-found: warn
+          retention-days: 14

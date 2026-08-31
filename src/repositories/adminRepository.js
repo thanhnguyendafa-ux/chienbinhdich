@@ -52,6 +52,32 @@ export function createFirebaseAdminRepository(project) {
       return snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
     },
 
+    async listAssessSessions(limitCount = 25) {
+      const { client } = await requireAdmin(adminClient);
+      const { firestore, db } = client;
+      const query = firestore.query(
+        firestore.collection(db, 'sessions'),
+        firestore.where('deliveryModeAtStart', '==', 'assess'),
+        firestore.limit(limitCount)
+      );
+      const snapshot = await firestore.getDocs(query);
+      return snapshot.docs
+        .map(doc => ({ ...doc.data(), id: doc.id }))
+        .sort((a, b) => Number(b.syncedAt ?? b.submittedAt ?? b.startedAt ?? 0) - Number(a.syncedAt ?? a.submittedAt ?? a.startedAt ?? 0));
+    },
+
+    async listSessionAttempts(sessionId) {
+      const { client } = await requireAdmin(adminClient);
+      const { firestore, db } = client;
+      const attemptsSnapshot = await firestore.getDocs(
+        firestore.query(
+          firestore.collection(db, 'sessions', sessionId, 'attempts'),
+          firestore.orderBy('submittedAt', 'asc')
+        )
+      );
+      return attemptsSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+    },
+
     async getSessionDetail(sessionId) {
       const { client } = await requireAdmin(adminClient);
       const { firestore, db } = client;
