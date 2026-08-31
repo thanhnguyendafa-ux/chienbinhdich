@@ -1,4 +1,5 @@
 import { assessmentSetForSession, scoredItemCount, MASTERY_MODE_COMPLETION } from './assessmentPolicy.js';
+import { effortQualification } from './effortPassPolicy.js';
 import { masteryDisplayPercent } from './masteryEngine.js';
 
 export function deriveAssignmentSummary(session = {}, set = {}, now = Date.now()) {
@@ -36,6 +37,7 @@ export function deriveAssignmentSummary(session = {}, set = {}, now = Date.now()
     ?? finiteTimestamp(session?.submittedAt)
     ?? finiteTimestamp(now)
     ?? startedAt;
+  const effort = effortQualification(session, set, now);
 
   return {
     totalItems,
@@ -49,6 +51,11 @@ export function deriveAssignmentSummary(session = {}, set = {}, now = Date.now()
     masteryEarned,
     mastery: masteryDisplayPercent(attempts, masteryTotal),
     durationMs: Math.max(0, endedAt - startedAt),
+    effortActiveMs: effort.elapsedMs,
+    effortTargetMs: effort.targetMs,
+    effortPassEnabled: effort.enabled,
+    qualificationReason: session?.qualificationReason ?? (session?.qualifiedAt ? 'mastery' : null),
+    effortMsAtQualification: finiteTimestamp(session?.effortMsAtQualification),
     status: assignmentStatus(session?.status)
   };
 }
