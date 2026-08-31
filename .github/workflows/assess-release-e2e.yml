@@ -1,38 +1,12 @@
-name: Assess Release E2E
+name: Assess Production E2E
 
 on:
-  pull_request:
-    branches:
-      - main
-    paths:
-      - '.github/workflows/assess-release-e2e.yml'
-      - 'scripts/assessReleaseE2E.mjs'
-      - 'scripts/setupVercelGcpWif.sh'
-      - 'assess.html'
-      - 'assess-admin.html'
-      - 'api/assess/**'
-      - 'server/assess*.js'
-      - 'server/firestoreRest.js'
-      - 'server/firebaseServerAuth.js'
-      - 'server/googleAccessToken.js'
-      - 'src/assess-app.js'
-      - 'src/assess-admin-app.js'
-      - 'src/core/assessPayload.js'
-      - 'src/core/assessScoringPolicy.js'
-      - 'src/core/assessSummary.js'
-      - 'src/core/deliveryMode.js'
-      - 'src/features/assess/**'
-      - 'src/repositories/assessApiRepository.js'
-      - 'src/repositories/assessDeliveryRepository.js'
-      - 'src/repositories/assessSessionRepository.js'
-      - 'firestore.rules'
   push:
     branches:
       - main
     paths:
       - '.github/workflows/assess-release-e2e.yml'
       - 'scripts/assessReleaseE2E.mjs'
-      - 'scripts/setupVercelGcpWif.sh'
       - 'assess.html'
       - 'assess-admin.html'
       - 'api/assess/**'
@@ -57,22 +31,21 @@ permissions:
   contents: read
 
 concurrency:
-  group: assess-release-e2e-${{ github.event.pull_request.number || github.ref }}
+  group: assess-production-e2e-${{ github.repository }}
   cancel-in-progress: false
 
 jobs:
-  release-e2e:
-    name: Real Firebase browser flow
-    if: github.event_name != 'pull_request' || github.head_ref == 'docs/assess-production-contract'
+  production-e2e:
+    name: Production Admin → Assess → Admin
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
       FIREBASE_SERVICE_ACCOUNT_CHIENBINHDICH: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_CHIENBINHDICH }}
       FIREBASE_PROJECT_ID: chienbinhdich
-      ASSESS_E2E_ORIGIN: ${{ github.event_name == 'push' && 'https://chien-binh-dich.vercel.app' || '' }}
+      ASSESS_E2E_ORIGIN: https://chien-binh-dich.vercel.app
 
     steps:
-      - name: Checkout tested commit
+      - name: Checkout merged main commit
         uses: actions/checkout@v4
 
       - name: Use Node.js 24
@@ -80,7 +53,7 @@ jobs:
         with:
           node-version: '24'
 
-      - name: Require Firebase release credential
+      - name: Require Firebase acceptance credential
         shell: bash
         run: |
           if [ -z "$FIREBASE_SERVICE_ACCOUNT_CHIENBINHDICH" ]; then
@@ -96,12 +69,7 @@ jobs:
           chmod 600 "$credential_file"
           echo "GOOGLE_APPLICATION_CREDENTIALS=$credential_file" >> "$GITHUB_ENV"
 
-      - name: Expand Firestore rules for Session V7 + V8 Assess
-        if: github.event_name != 'push'
-        run: npx --yes firebase-tools@15.24.0 deploy --only firestore:rules --project "$FIREBASE_PROJECT_ID" --non-interactive
-
-      - name: Wait for Vercel Production Assess shell
-        if: github.event_name == 'push'
+      - name: Wait for Vercel auto-deploy of merged main
         shell: bash
         run: |
           for attempt in $(seq 1 60); do
@@ -114,24 +82,20 @@ jobs:
           echo 'Vercel Production did not expose the merged Assess shell.' >&2
           exit 1
 
-      - name: Install release E2E dependencies
+      - name: Install production E2E dependencies
         run: npm install --no-save --package-lock=false firebase-admin@13.5.0 playwright@1.55.0
 
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
 
-      - name: Run Admin → Assess → Admin browser acceptance
+      - name: Run Production Admin → Assess → Admin acceptance
         run: node scripts/assessReleaseE2E.mjs
 
-      - name: Upload runtime release evidence
+      - name: Upload production evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: assess-release-e2e-${{ github.sha }}
+          name: assess-production-e2e-${{ github.sha }}
           path: artifacts/assess-release-e2e
           if-no-files-found: warn
           retention-days: 14
-
-      - name: Configure Vercel → Google workload identity
-        if: github.event_name != 'push'
-        run: bash scripts/setupVercelGcpWif.sh
