@@ -23,14 +23,28 @@ export function createAdminLessonSettingsRepository(project) {
       return readSetting(client, setId);
     },
 
-    async savePassThreshold(setId, passThreshold, updatedAt = Date.now()) {
-      return mutateSetting(adminClient, setId, updatedAt, overrides => ({ ...overrides, passThreshold }));
+    async savePassThreshold(setId, passThresholdOrPolicy, updatedAt = Date.now()) {
+      return mutateSetting(adminClient, setId, updatedAt, overrides => {
+        if (typeof passThresholdOrPolicy === 'object' && passThresholdOrPolicy !== null) {
+          const next = { ...overrides, passThreshold: passThresholdOrPolicy.passThreshold };
+          if (passThresholdOrPolicy.effortPassEnabled !== undefined) {
+            next.effortPassEnabled = passThresholdOrPolicy.effortPassEnabled === true;
+          }
+          if (passThresholdOrPolicy.effortPassMinutes !== undefined) {
+            next.effortPassMinutes = Number(passThresholdOrPolicy.effortPassMinutes);
+          }
+          return next;
+        }
+        return { ...overrides, passThreshold: passThresholdOrPolicy };
+      });
     },
 
     async resetPassThreshold(setId, updatedAt = Date.now()) {
       return mutateSetting(adminClient, setId, updatedAt, overrides => {
         const next = { ...overrides };
         delete next.passThreshold;
+        delete next.effortPassEnabled;
+        delete next.effortPassMinutes;
         return next;
       });
     },
