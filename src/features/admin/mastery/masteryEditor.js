@@ -37,7 +37,7 @@ export function openMasteryEditor({ root, lesson, onSave, onReset, onDone = null
           <input id="admin-effort-enabled" data-effort-enabled type="checkbox" ${effortEnabled ? 'checked' : ''} />
         </label>
         <label class="admin-mastery-field" for="admin-effort-minutes" data-effort-minutes-field>
-          <span>Thời gian học chủ động</span>
+          <span>Thời gian học chủ động <small>(5–60 phút)</small></span>
           <div><input id="admin-effort-minutes" data-effort-minutes type="number" inputmode="numeric" min="${MIN_EFFORT_PASS_MINUTES}" max="${MAX_EFFORT_PASS_MINUTES}" step="1" value="${escAttr(effortMinutes)}" ${effortEnabled ? 'required' : 'disabled'} /><strong>phút</strong></div>
         </label>
         <p class="admin-effort-contract" data-effort-contract>${renderContract(current, effortEnabled, effortMinutes)}</p>
