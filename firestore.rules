@@ -7,12 +7,16 @@ service cloud.firestore {
     function ownsSession(sessionId) { return signedIn() && sessionData(sessionId).ownerUid == request.auth.uid; }
     function assessSession(sessionId) { return sessionData(sessionId).deliveryModeAtStart == 'assess'; }
     function validPassThreshold(value) { return value is int && value >= 1 && value <= 100; }
+    function validEffortMinutes(value) { return value is int && value >= 5 && value <= 60; }
 
     function validLessonSetting() {
-      return request.resource.data.keys().hasOnly(['passThreshold', 'typingTolerance', 'updatedAt', 'updatedBy'])
-        && request.resource.data.keys().hasAny(['passThreshold', 'typingTolerance'])
+      return request.resource.data.keys().hasOnly(['passThreshold', 'typingTolerance', 'effortPassEnabled', 'effortPassMinutes', 'updatedAt', 'updatedBy'])
+        && request.resource.data.keys().hasAny(['passThreshold', 'typingTolerance', 'effortPassEnabled', 'effortPassMinutes'])
         && (!('passThreshold' in request.resource.data) || validPassThreshold(request.resource.data.passThreshold))
         && (!('typingTolerance' in request.resource.data) || request.resource.data.typingTolerance is bool)
+        && (!('effortPassEnabled' in request.resource.data) || request.resource.data.effortPassEnabled is bool)
+        && (!('effortPassMinutes' in request.resource.data) || validEffortMinutes(request.resource.data.effortPassMinutes))
+        && (!('effortPassEnabled' in request.resource.data) || request.resource.data.effortPassEnabled != true || ('effortPassMinutes' in request.resource.data && validEffortMinutes(request.resource.data.effortPassMinutes)))
         && request.resource.data.updatedAt is int
         && request.resource.data.updatedBy == request.auth.uid;
     }
@@ -194,9 +198,14 @@ service cloud.firestore {
         && request.resource.data.schemaVersion in [7, 8]
         && (!('passThresholdAtStart' in request.resource.data) || validPassThreshold(request.resource.data.passThresholdAtStart))
         && (!('typingToleranceAtStart' in request.resource.data) || request.resource.data.typingToleranceAtStart is bool)
+        && (!('effortPassEnabledAtStart' in request.resource.data) || request.resource.data.effortPassEnabledAtStart is bool)
+        && (!('effortTargetMinutesAtStart' in request.resource.data) || validEffortMinutes(request.resource.data.effortTargetMinutesAtStart))
+        && (!('effortPassEnabledAtStart' in request.resource.data) || request.resource.data.effortPassEnabledAtStart != true || ('effortTargetMinutesAtStart' in request.resource.data && validEffortMinutes(request.resource.data.effortTargetMinutesAtStart)))
         && (!('contentRevisionAtStart' in request.resource.data) || (request.resource.data.contentRevisionAtStart is int && request.resource.data.contentRevisionAtStart >= 0))
         && (!('deliveryModeAtStart' in request.resource.data) || request.resource.data.deliveryModeAtStart in ['mastery', 'assess'])
         && (!('deliveryContractVersionAtStart' in request.resource.data) || (request.resource.data.deliveryContractVersionAtStart is int && request.resource.data.deliveryContractVersionAtStart >= 1))
+        && (!('instructionsContractVersion' in request.resource.data) || (request.resource.data.instructionsContractVersion is int && request.resource.data.instructionsContractVersion >= 1))
+        && (!('instructionsAcknowledgedAt' in request.resource.data) || request.resource.data.instructionsAcknowledgedAt is int)
         && (!('entryMode' in request.resource.data)
           || request.resource.data.entryMode != 'assess-delivery'
           || (
@@ -216,6 +225,10 @@ service cloud.firestore {
         && request.resource.data.startedAt == resource.data.startedAt
         && ((!('passThresholdAtStart' in request.resource.data) && !('passThresholdAtStart' in resource.data)) || ('passThresholdAtStart' in request.resource.data && 'passThresholdAtStart' in resource.data && request.resource.data.passThresholdAtStart == resource.data.passThresholdAtStart))
         && ((!('typingToleranceAtStart' in request.resource.data) && !('typingToleranceAtStart' in resource.data)) || ('typingToleranceAtStart' in request.resource.data && 'typingToleranceAtStart' in resource.data && request.resource.data.typingToleranceAtStart == resource.data.typingToleranceAtStart))
+        && ((!('effortPassEnabledAtStart' in request.resource.data) && !('effortPassEnabledAtStart' in resource.data)) || ('effortPassEnabledAtStart' in request.resource.data && 'effortPassEnabledAtStart' in resource.data && request.resource.data.effortPassEnabledAtStart == resource.data.effortPassEnabledAtStart))
+        && ((!('effortTargetMinutesAtStart' in request.resource.data) && !('effortTargetMinutesAtStart' in resource.data)) || ('effortTargetMinutesAtStart' in request.resource.data && 'effortTargetMinutesAtStart' in resource.data && request.resource.data.effortTargetMinutesAtStart == resource.data.effortTargetMinutesAtStart))
+        && ((!('instructionsContractVersion' in request.resource.data) && !('instructionsContractVersion' in resource.data)) || ('instructionsContractVersion' in request.resource.data && 'instructionsContractVersion' in resource.data && request.resource.data.instructionsContractVersion == resource.data.instructionsContractVersion))
+        && ((!('instructionsAcknowledgedAt' in request.resource.data) && !('instructionsAcknowledgedAt' in resource.data)) || ('instructionsAcknowledgedAt' in request.resource.data && 'instructionsAcknowledgedAt' in resource.data && request.resource.data.instructionsAcknowledgedAt == resource.data.instructionsAcknowledgedAt))
         && ((!('contentRevisionAtStart' in request.resource.data) && !('contentRevisionAtStart' in resource.data)) || ('contentRevisionAtStart' in request.resource.data && 'contentRevisionAtStart' in resource.data && request.resource.data.contentRevisionAtStart == resource.data.contentRevisionAtStart))
         && ((!('deliveryModeAtStart' in request.resource.data) && !('deliveryModeAtStart' in resource.data)) || ('deliveryModeAtStart' in request.resource.data && 'deliveryModeAtStart' in resource.data && request.resource.data.deliveryModeAtStart == resource.data.deliveryModeAtStart))
         && ((!('deliveryContractVersionAtStart' in request.resource.data) && !('deliveryContractVersionAtStart' in resource.data)) || ('deliveryContractVersionAtStart' in request.resource.data && 'deliveryContractVersionAtStart' in resource.data && request.resource.data.deliveryContractVersionAtStart == resource.data.deliveryContractVersionAtStart))

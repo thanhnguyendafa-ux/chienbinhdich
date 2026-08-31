@@ -7,7 +7,11 @@ import {
   MASTERY_MODE_COMPLETION,
   WORKBOOK_ALL_ITEMS_ASSESSMENT
 } from './assessmentPolicy.js';
+import { deliverySnapshotFor, DELIVERY_MODE_MASTERY } from './deliveryMode.js';
+import { effortQualification, sessionEffortPassPolicy } from './effortPassPolicy.js';
+import { queueIntegrityWarning } from './integrityTracker.js';
 import { evaluateQuestion, expectedResponseDisplay, questionTypeForItem } from './questionTypes.js';
+import { rapidWarningForAttempts } from './rapidResponsePolicy.js';
 import { typingErrorMapEnabled } from './typingErrorMap.js';
 import { getMasteryCounts, getMasteryTransitions, masteryDisplayPercent, masteryPercentFromAttempts, masteryUnitPercent } from './masteryEngine.js';
 import { masteryDeltaForAttempt } from './masteryScoringPolicy.js';
@@ -16,11 +20,14 @@ import { sessionTypingTolerance } from './typingPolicy.js';
 import { advanceLearningPrompt, queueRetry } from './retryScheduler.js';
 
 export const SESSION_SCHEMA_VERSION = 8;
+export const SESSION_INSTRUCTIONS_CONTRACT_VERSION = 1;
 const EXPLAIN_ACCEPT_POLICY = 'explain-and-accept';
 
 export function createSession({ studentName, set, now = Date.now() }) {
   const firstItem = set.items[0];
   if (!firstItem) throw new Error('Set must contain at least one item.');
+  const delivery = deliverySnapshotFor(DELIVERY_MODE_MASTERY);
+  const effort = sessionEffortPassPolicy(null, set);
 
   return {
     schemaVersion: SESSION_SCHEMA_VERSION,
@@ -28,15 +35,22 @@ export function createSession({ studentName, set, now = Date.now() }) {
     studentName: studentName.trim(),
     setId: set.id,
     setVersion: set.version ?? 1,
+    ...delivery,
     passThresholdAtStart: sessionPassThreshold(null, set),
     typingToleranceAtStart: sessionTypingTolerance(null, set),
+    effortPassEnabledAtStart: effort.enabled === true,
+    effortTargetMinutesAtStart: effort.minutes,
     assessmentPolicyAtStart: set.assessmentPolicy ?? null,
     assessmentContractVersionAtStart: set.assessmentContractVersion ?? null,
     completionPolicyAtStart: set.completionPolicy ?? null,
+    instructionsContractVersion: SESSION_INSTRUCTIONS_CONTRACT_VERSION,
+    instructionsAcknowledgedAt: now,
     startedAt: now,
     completedAt: null,
     submittedAt: null,
     qualifiedAt: null,
+    qualificationReason: null,
+    effortMsAtQualification: null,
     extendedPracticeStartedAt: null,
     extendedPracticeEndedAt: null,
     status: 'active',
@@ -126,6 +140,7 @@ export function submitAnswer({ session, set, response, answer, attemptMeta = {},
 
   if (completionMode && !result.correct) {
     nextSession.retryQueue = queueRetry(nextSession.retryQueue, item.id, session.promptIndex);
+    nextSession = queueRapidWarningIfLearning(nextSession, assessmentSet, submittedAt);
     return {
       session: nextSession,
       event: {
@@ -143,8 +158,9 @@ export function submitAnswer({ session, set, response, answer, attemptMeta = {},
   }
 
   if (!result.correct && explainAndAccept) {
-    nextSession = qualifySessionIfEligible(nextSession, set);
+    nextSession = qualifySessionIfEligible(nextSession, set, submittedAt);
     if (nextSession.status !== 'passed') nextSession = advanceLearningPrompt(nextSession, set);
+    nextSession = queueRapidWarningIfLearning(nextSession, assessmentSet, submittedAt);
     return {
       session: nextSession,
       event: {
@@ -165,6 +181,8 @@ export function submitAnswer({ session, set, response, answer, attemptMeta = {},
 
   if (!result.correct) {
     nextSession.retryQueue = queueRetry(nextSession.retryQueue, item.id, session.promptIndex);
+    nextSession = qualifySessionIfEligible(nextSession, set, submittedAt);
+    if (nextSession.status !== 'passed') nextSession = queueRapidWarningIfLearning(nextSession, assessmentSet, submittedAt);
     return {
       session: nextSession,
       event: {
@@ -177,14 +195,16 @@ export function submitAnswer({ session, set, response, answer, attemptMeta = {},
         masteryDeltaUnits: appliedMasteryDeltaUnits,
         masteryBefore,
         masteryDeltaPercent,
-        mastery
+        mastery,
+        passed: nextSession.status === 'passed'
       }
     };
   }
 
   const wasCorrection = completionMode ? false : hadWrongThisExposure;
-  nextSession = qualifySessionIfEligible(nextSession, set);
+  nextSession = qualifySessionIfEligible(nextSession, set, submittedAt);
   if (nextSession.status !== 'passed') nextSession = advanceLearningPrompt(nextSession, set);
+  nextSession = queueRapidWarningIfLearning(nextSession, assessmentSet, submittedAt);
 
   return {
     session: nextSession,
@@ -203,26 +223,37 @@ export function submitAnswer({ session, set, response, answer, attemptMeta = {},
   };
 }
 
-export function qualifySessionIfEligible(session, set) {
+export function qualifySessionIfEligible(session, set, now = Date.now()) {
   if (session?.status !== 'active') return session;
   const assessmentSet = assessmentSetForSession(session, set);
-  if (!completionPolicySatisfied(session, assessmentSet)) return session;
   const threshold = sessionPassThreshold(session, set);
   const gradedTotal = scoredItemCount(assessmentSet);
-  if (gradedTotal > 0
-    && assessmentSet?.completionPolicy !== EXPLAIN_ACCEPT_POLICY
-    && masteryPercentFromAttempts(session.attempts, gradedTotal) < threshold) return session;
+  const completionSatisfied = completionPolicySatisfied(session, assessmentSet);
+  const masteryExact = masteryPercentFromAttempts(session.attempts, gradedTotal);
+  const masteryQualified = completionSatisfied && (
+    gradedTotal === 0
+    || assessmentSet?.completionPolicy === EXPLAIN_ACCEPT_POLICY
+    || masteryExact >= threshold
+  );
+  const effort = effortQualification(session, set, now);
+  if (!masteryQualified && !effort.reached) return session;
 
-  const qualifiedAt = assessmentSet?.assessmentPolicy === WORKBOOK_ALL_ITEMS_ASSESSMENT
-    ? lastAttemptTimestamp(session.attempts)
-    : assessmentSet?.completionPolicy === EXPLAIN_ACCEPT_POLICY || gradedTotal === 0
+  const qualificationReason = masteryQualified ? 'mastery' : 'effort';
+  const qualifiedAt = qualificationReason === 'effort'
+    ? now
+    : assessmentSet?.assessmentPolicy === WORKBOOK_ALL_ITEMS_ASSESSMENT
       ? lastAttemptTimestamp(session.attempts)
-      : firstQualificationTimestamp(session.attempts, gradedTotal, threshold);
+      : assessmentSet?.completionPolicy === EXPLAIN_ACCEPT_POLICY || gradedTotal === 0
+        ? lastAttemptTimestamp(session.attempts)
+        : firstQualificationTimestamp(session.attempts, gradedTotal, threshold);
 
   return {
     ...session,
     status: 'passed',
-    qualifiedAt: session.qualifiedAt ?? qualifiedAt
+    qualifiedAt: session.qualifiedAt ?? qualifiedAt,
+    qualificationReason: session.qualificationReason ?? qualificationReason,
+    effortMsAtQualification: session.effortMsAtQualification
+      ?? (qualificationReason === 'effort' ? effort.elapsedMs : null)
   };
 }
 
@@ -290,6 +321,7 @@ export function getSessionMetrics(session, set, now = Date.now()) {
   const extendedPractice = Boolean(session.extendedPracticeStartedAt);
   const extraPracticeEnd = session.extendedPracticeEndedAt ?? session.submittedAt ?? (extendedPractice ? now : null);
   const passThreshold = sessionPassThreshold(session, set);
+  const effort = effortQualification(session, set, now);
   const masteryUnitsEarned = clampUnitCount(
     attempts.reduce((total, attempt) => total + Number(attempt.masteryDeltaUnits ?? 0), 0),
     gradedTotal
@@ -322,8 +354,16 @@ export function getSessionMetrics(session, set, now = Date.now()) {
     masteryExact,
     masteryUnit: masteryUnitPercent(gradedTotal),
     passThreshold,
-    thresholdReached: gradedTotal === 0 || Boolean(qualifiedAt) || masteryExact >= passThreshold,
+    masteryThresholdReached: gradedTotal === 0 || masteryExact >= passThreshold,
+    effortPassEnabled: effort.enabled,
+    effortTargetMinutes: effort.minutes,
+    effortTargetMs: effort.targetMs,
+    effortActiveMs: effort.elapsedMs,
+    effortThresholdReached: effort.reached,
+    thresholdReached: Boolean(qualifiedAt) || gradedTotal === 0 || masteryExact >= passThreshold || effort.reached,
     qualifiedAt,
+    qualificationReason: session.qualificationReason ?? (qualifiedAt ? 'mastery' : null),
+    effortMsAtQualification: session.effortMsAtQualification ?? null,
     masteryAtQualification: qualifiedAt ? masteryPercentFromAttempts(attemptsAtQualification, gradedTotal) : null,
     extendedPractice,
     extendedPracticeStartedAt: session.extendedPracticeStartedAt ?? null,
@@ -332,8 +372,18 @@ export function getSessionMetrics(session, set, now = Date.now()) {
     passed: ['passed', 'extended', 'submitted'].includes(session.status) || Boolean(qualifiedAt),
     submitted: session.status === 'submitted',
     abandoned: session.status === 'abandoned',
-    durationMs: (session.completedAt ?? now) - session.startedAt
+    durationMs: Math.max(0, (session.completedAt ?? now) - session.startedAt)
   };
+}
+
+function queueRapidWarningIfLearning(session, set, now) {
+  if (!['active', 'extended'].includes(session?.status)) return session;
+  const warning = rapidWarningForAttempts(session.attempts, set);
+  if (!warning) return session;
+  return queueIntegrityWarning(session, {
+    ...warning,
+    occurredAt: now
+  }, now);
 }
 
 function completionPolicySatisfied(session, set) {

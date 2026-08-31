@@ -26,7 +26,7 @@ test('analytics flags paste and meaningful rapid replies without calling short w
   assert.deepEqual(analytics.attempts[2].flags, ['paste', 'answer_seen']);
 });
 
-test('analytics accepts MCQ, true-false and sentence-order items without typing-only fields', () => {
+test('analytics accepts MCQ, true-false and sentence-order items with type-aware rapid thresholds', () => {
   const mixedSet = {
     items: [
       { id: 'q1', type: 'mcq', prompt: 'Pick one', choices: [{ id: 'a', text: 'A' }], correctChoiceId: 'a' },
@@ -43,7 +43,7 @@ test('analytics accepts MCQ, true-false and sentence-order items without typing-
   };
 
   const analytics = deriveAttemptAnalytics(mixedSession, mixedSet);
-  assert.equal(analytics.rapidCount, 0);
+  assert.equal(analytics.rapidCount, 3);
   assert.equal(analytics.attempts.length, 3);
-  assert.deepEqual(analytics.attempts.map(attempt => attempt.flags), [[], [], []]);
+  assert.deepEqual(analytics.attempts.map(attempt => attempt.flags), [['rapid'], ['rapid'], ['rapid']]);
 });

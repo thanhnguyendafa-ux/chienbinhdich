@@ -18,6 +18,17 @@ export function installIntegrityWarningGate() {
 
 export function warningCopy(warning) {
   const count = Math.max(1, Number(warning?.occurrenceNumber ?? 1));
+  if (warning?.type === 'rapid_response') {
+    const repeated = Number(warning?.currentStreak ?? 0) >= 3 || count >= 4;
+    return {
+      kicker: '⚠ NHẮC CON LÀM BẰNG THỰC LỰC',
+      title: repeated ? 'Con đang trả lời quá nhanh ở nhiều câu' : 'Con đang trả lời khá nhanh',
+      body: repeated
+        ? 'Hãy chậm lại một chút, đọc kỹ câu hỏi và tự suy nghĩ trước khi trả lời. Mục tiêu của bài là học thật và thể hiện đúng năng lực, không phải bấm thật nhanh hoặc nhớ vị trí đáp án.'
+        : 'Hãy đọc kỹ câu hỏi trước khi trả lời nhé. Một câu nhanh chưa có nghĩa là sai, nhưng hệ thống sẽ ghi nhận các phản hồi quá nhanh để giáo viên xem quá trình học.',
+      countLabel: `Phản hồi rất nhanh đã ghi nhận: ${count} lần`
+    };
+  }
   if (warning?.type === 'tab_switch') {
     return {
       kicker: '⚠ CẢNH BÁO RỜI TRANG HỌC',

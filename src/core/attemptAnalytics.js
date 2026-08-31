@@ -1,18 +1,17 @@
-import { expectedResponseDisplay, questionTypeForItem } from './questionTypes.js';
-
-const RAPID_THRESHOLD_MS = 1200;
-const RAPID_MIN_EXPECTED_LENGTH = 8;
+import { deriveRapidResponseSignals, isRapidResponseAttempt } from './rapidResponsePolicy.js';
 
 export function deriveAttemptAnalytics(session, set) {
   const itemById = new Map(set.items.map(item => [item.id, item]));
   const attempts = session.attempts ?? [];
   const pasteAttempts = attempts.filter(attempt => attempt.pasteDetected);
-  const rapidAttempts = attempts.filter(attempt => isRapidAttempt(attempt, itemById.get(attempt.itemId)));
+  const rapidAttempts = attempts.filter(attempt => isRapidResponseAttempt(attempt, itemById.get(attempt.itemId)));
   const durations = attempts.map(attempt => attempt.responseDurationMs).filter(Number.isFinite).slice().sort((a, b) => a - b);
+  const rapidSignals = deriveRapidResponseSignals(attempts, set);
 
   return {
     pasteCount: pasteAttempts.length,
     rapidCount: rapidAttempts.length,
+    rapidMaxStreak: rapidSignals.maxStreak,
     medianResponseMs: median(durations),
     flaggedAttemptIds: new Set([...pasteAttempts, ...rapidAttempts].map(attempt => attempt.id)),
     attempts: attempts.map(attempt => ({
@@ -23,15 +22,13 @@ export function deriveAttemptAnalytics(session, set) {
 }
 
 export function isRapidAttempt(attempt, item) {
-  if (!item || !Number.isFinite(attempt.responseDurationMs)) return false;
-  if (questionTypeForItem(item) !== 'typing') return false;
-  return expectedResponseDisplay(item).length >= RAPID_MIN_EXPECTED_LENGTH && attempt.responseDurationMs < RAPID_THRESHOLD_MS;
+  return isRapidResponseAttempt(attempt, item);
 }
 
 function buildFlags(attempt, item) {
   const flags = [];
   if (attempt.pasteDetected) flags.push('paste');
-  if (isRapidAttempt(attempt, item)) flags.push('rapid');
+  if (isRapidResponseAttempt(attempt, item)) flags.push('rapid');
   if (attempt.answerRevealedBeforeAttempt) flags.push('answer_seen');
   return flags;
 }

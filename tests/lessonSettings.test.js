@@ -17,7 +17,7 @@ const typingEditor = readFileSync(new URL('../src/features/admin/typing/typingTo
 const accessUi = readFileSync(new URL('../src/features/access/renderAccess.js', import.meta.url), 'utf8');
 const app = readFileSync(new URL('../src/app.js', import.meta.url), 'utf8');
 
-test('lesson setting document supports independent mastery and typing overrides', () => {
+test('lesson setting document supports independent mastery, typing and effort overrides', () => {
   assert.deepEqual(lessonSettingDocumentFor('g5-u1-reading-01', 90, 'admin-1', 123), {
     passThreshold: 90,
     updatedAt: 123,
@@ -28,31 +28,42 @@ test('lesson setting document supports independent mastery and typing overrides'
     updatedAt: 124,
     updatedBy: 'admin-1'
   });
-  assert.deepEqual(lessonSettingDocumentFor('g2-u6-translation-01', { passThreshold: 90, typingTolerance: false }, 'admin-1', 125), {
+  assert.deepEqual(lessonSettingDocumentFor('g2-u6-translation-01', {
     passThreshold: 90,
     typingTolerance: false,
+    effortPassEnabled: true,
+    effortPassMinutes: 10
+  }, 'admin-1', 125), {
+    passThreshold: 90,
+    typingTolerance: false,
+    effortPassEnabled: true,
+    effortPassMinutes: 10,
     updatedAt: 125,
     updatedBy: 'admin-1'
   });
   assert.throws(() => lessonSettingDocumentFor('x', 80.5, 'admin', 1), /1 to 100/);
   assert.throws(() => lessonSettingDocumentFor('x', { typingTolerance: 'yes' }, 'admin', 1), /boolean/);
+  assert.throws(() => lessonSettingDocumentFor('x', { effortPassEnabled: true, effortPassMinutes: 4 }, 'admin', 1), /5 to 60/);
+  assert.throws(() => lessonSettingDocumentFor('x', { effortPassEnabled: true }, 'admin', 1), /required/);
   assert.throws(() => lessonSettingDocumentFor('x', {}, 'admin', 1), /At least one/);
 });
 
-test('persisted setting parser accepts either override and rejects corrupt values', () => {
+test('persisted setting parser accepts effort override and rejects corrupt values', () => {
   const mastery = normalizeLessonSettingRecord('x', { passThreshold: 70, updatedAt: 10, updatedBy: 'admin' });
   assert.equal(mastery.passThreshold, 70);
-  assert.equal(mastery.typingTolerance, undefined);
   const typing = normalizeLessonSettingRecord('x', { typingTolerance: false, updatedAt: 11, updatedBy: 'admin' });
-  assert.equal(typing.passThreshold, undefined);
   assert.equal(typing.typingTolerance, false);
-  assert.deepEqual(lessonSettingOverrides(typing), { typingTolerance: false });
+  const effort = normalizeLessonSettingRecord('x', { effortPassEnabled: true, effortPassMinutes: 20, updatedAt: 12, updatedBy: 'admin' });
+  assert.equal(effort.effortPassEnabled, true);
+  assert.equal(effort.effortPassMinutes, 20);
+  assert.deepEqual(lessonSettingOverrides(effort), { effortPassEnabled: true, effortPassMinutes: 20 });
   assert.throws(() => normalizeLessonSettingRecord('x', { passThreshold: 0 }), /không hợp lệ/);
   assert.throws(() => normalizeLessonSettingRecord('x', { typingTolerance: 'yes' }), /không hợp lệ/);
+  assert.throws(() => normalizeLessonSettingRecord('x', { effortPassEnabled: true, effortPassMinutes: 61 }), /không hợp lệ/);
   assert.throws(() => normalizeLessonSettingRecord('x', { updatedAt: 1 }), /không có override/);
 });
 
-test('student reader is read-only while Admin repository owns transactional independent save and reset operations', () => {
+test('student reader is read-only while Admin repository owns transactional save and reset operations', () => {
   assert.match(studentReader, /getLessonSetting/);
   assert.doesNotMatch(studentReader, /setDoc|deleteDoc|listLessonSettings/);
   assert.match(adminWriter, /listLessonSettings/);
@@ -60,24 +71,30 @@ test('student reader is read-only while Admin repository owns transactional inde
   assert.match(adminWriter, /resetPassThreshold/);
   assert.match(adminWriter, /saveTypingTolerance/);
   assert.match(adminWriter, /resetTypingTolerance/);
+  assert.match(adminWriter, /effortPassEnabled/);
+  assert.match(adminWriter, /effortPassMinutes/);
   assert.match(adminWriter, /runTransaction/);
   assert.match(adminWriter, /transaction\.get\(ref\)/);
   assert.match(adminWriter, /transaction\.set\(ref, document\)/);
   assert.match(adminWriter, /transaction\.delete\(ref\)/);
   assert.match(adminWriter, /delete next\.passThreshold/);
+  assert.match(adminWriter, /delete next\.effortPassEnabled/);
+  assert.match(adminWriter, /delete next\.effortPassMinutes/);
   assert.match(adminWriter, /delete next\.typingTolerance/);
   assert.match(adminWriter, /Object\.keys\(nextOverrides\)\.length === 0/);
 });
 
-test('simultaneous independent lesson setting mutations retain both overrides', async () => {
+test('simultaneous independent lesson setting mutations retain all overrides', async () => {
   const state = createSerializedTransactionClient();
   await Promise.all([
-    mutateLessonSettingTransaction({ client: state.client, user: { uid: 'admin-1' }, setId: 'g2-u6-translation-01', updatedAt: 100, mutate: overrides => ({ ...overrides, passThreshold: 90 }) }),
+    mutateLessonSettingTransaction({ client: state.client, user: { uid: 'admin-1' }, setId: 'g2-u6-translation-01', updatedAt: 100, mutate: overrides => ({ ...overrides, passThreshold: 90, effortPassEnabled: true, effortPassMinutes: 10 }) }),
     mutateLessonSettingTransaction({ client: state.client, user: { uid: 'admin-1' }, setId: 'g2-u6-translation-01', updatedAt: 101, mutate: overrides => ({ ...overrides, typingTolerance: true }) })
   ]);
   const stored = state.read();
   assert.equal(stored.passThreshold, 90);
   assert.equal(stored.typingTolerance, true);
+  assert.equal(stored.effortPassEnabled, true);
+  assert.equal(stored.effortPassMinutes, 10);
   assert.equal(stored.updatedBy, 'admin-1');
 });
 
@@ -85,27 +102,45 @@ test('Firestore allows signed-in reads, Admin-only setting writes, and immutable
   assert.match(rules, /match \/lessonSettings\/\{setId\}/);
   assert.match(rules, /allow get: if signedIn\(\)/);
   assert.match(rules, /allow list: if isAdmin\(\)/);
-  assert.match(rules, /hasOnly\(\['passThreshold', 'typingTolerance', 'updatedAt', 'updatedBy'\]\)/);
+  assert.match(rules, /hasOnly\(\['passThreshold', 'typingTolerance', 'effortPassEnabled', 'effortPassMinutes', 'updatedAt', 'updatedBy'\]\)/);
   assert.match(rules, /typingTolerance is bool/);
+  assert.match(rules, /validEffortMinutes/);
   assert.match(rules, /allow create, update: if isAdmin\(\) && validLessonSetting\(\)/);
   assert.match(rules, /allow delete: if isAdmin\(\)/);
   assert.match(rules, /validPassThreshold\(request\.resource\.data\.passThresholdAtStart\)/);
   assert.match(rules, /typingToleranceAtStart is bool/);
+  assert.match(rules, /effortPassEnabledAtStart is bool/);
+  assert.match(rules, /validEffortMinutes\(request\.resource\.data\.effortTargetMinutesAtStart\)/);
   assert.match(rules, /request\.resource\.data\.passThresholdAtStart == resource\.data\.passThresholdAtStart/);
   assert.match(rules, /request\.resource\.data\.typingToleranceAtStart == resource\.data\.typingToleranceAtStart/);
+  assert.match(rules, /request\.resource\.data\.effortTargetMinutesAtStart == resource\.data\.effortTargetMinutesAtStart/);
 });
 
-test('Session V7 persistence carries both policy snapshots without embedding attempts', () => {
-  const session = { schemaVersion: 7, id: 'MRT-ABC123', setId: 'g2-u6-translation-01', setVersion: 1, passThresholdAtStart: 80, typingToleranceAtStart: true, attempts: [{ id: 'a1' }] };
+test('Session persistence carries policy snapshots without embedding attempts', () => {
+  const session = {
+    schemaVersion: 8,
+    id: 'MRT-ABC123',
+    setId: 'g2-u6-translation-01',
+    setVersion: 1,
+    passThresholdAtStart: 80,
+    typingToleranceAtStart: true,
+    effortPassEnabledAtStart: true,
+    effortTargetMinutesAtStart: 10,
+    attempts: [{ id: 'a1' }]
+  };
   const document = sessionDocumentFor(session, 'uid-1', 999);
   assert.equal(document.passThresholdAtStart, 80);
   assert.equal(document.typingToleranceAtStart, true);
+  assert.equal(document.effortPassEnabledAtStart, true);
+  assert.equal(document.effortTargetMinutesAtStart, 10);
   assert.equal('attempts' in document, false);
 });
 
 test('Admin policy editors are UI-only and state new-session snapshot semantics', () => {
-  assert.match(masteryEditor, /Fixed link không đổi/);
-  assert.match(masteryEditor, /Session đã bắt đầu giữ nguyên mốc lúc bắt đầu/);
+  assert.match(masteryEditor, /Mastery \+ Timer cố gắng/);
+  assert.match(masteryEditor, /Session đã bắt đầu giữ nguyên Mastery target và Timer/);
+  assert.match(masteryEditor, /5/);
+  assert.match(masteryEditor, /60/);
   assert.doesNotMatch(masteryEditor, /firebase|firestore|setDoc|deleteDoc/i);
   assert.match(typingEditor, /Chấm Typing lớp nhỏ/);
   assert.match(typingEditor, /Bỏ qua viết hoa & dấu câu/);

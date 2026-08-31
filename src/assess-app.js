@@ -50,18 +50,29 @@ function renderEntry() {
   root.innerHTML = `
     <main class="assess-entry-page">
       <section class="assess-entry shell">
-        <span class="assess-mode-badge">ASSESS</span>
+        <span class="assess-mode-badge">ASSESS MODE</span>
         <h1>${esc(lesson.title)}</h1>
-        <p>Đây là bài kiểm tra độc lập. Hệ thống chỉ ghi nhận câu trả lời và không hiển thị đúng/sai, đáp án hoặc điểm.</p>
+        <p>Đây là lượt kiểm tra độc lập để giáo viên xem năng lực hiện tại của con.</p>
         <div class="assess-contract-note">
           <strong>${lesson.itemCount} câu được chấm khách quan</strong>
           <span>Điểm chỉ hiển thị cho giáo viên.</span>
         </div>
+        <section class="assess-mode-rules" aria-label="Luật lượt Assess">
+          <strong>Con hãy làm bằng khả năng hiện tại của mình</strong>
+          <ul>
+            <li>Đọc kỹ và trả lời theo thực lực; không cần cố làm thật nhanh.</li>
+            <li>Hệ thống không cho biết đúng/sai, đáp án hoặc điểm trong lúc làm.</li>
+            <li>Không có hint, correction hay Effort Timer trong Assess.</li>
+            <li>Nếu chưa biết, con có thể bỏ qua thay vì đoán theo đáp án đã nhớ.</li>
+          </ul>
+          <p><strong>Mục tiêu là đo đúng năng lực hiện tại, không phải đạt PASS bằng mọi cách.</strong></p>
+        </section>
         <form data-assess-entry>
           <label>Họ và tên học sinh
             <input name="studentName" autocomplete="name" maxlength="100" required placeholder="Nhập họ và tên" />
           </label>
-          <button type="submit" class="primary-btn">Bắt đầu Assess</button>
+          <label class="assess-mode-ack"><input name="contractAck" type="checkbox" required /><span>Con đã hiểu đây là lượt kiểm tra độc lập và sẽ làm bằng thực lực.</span></label>
+          <button type="submit" class="primary-btn">Tôi đã hiểu · Bắt đầu Assess</button>
         </form>
       </section>
     </main>`;
@@ -69,8 +80,10 @@ function renderEntry() {
     event.preventDefault();
     const button = event.currentTarget.querySelector('button');
     button.disabled = true;
-    const name = String(new FormData(event.currentTarget).get('studentName') ?? '').trim();
-    if (!name) {
+    const formData = new FormData(event.currentTarget);
+    const name = String(formData.get('studentName') ?? '').trim();
+    const acknowledged = formData.get('contractAck') !== null;
+    if (!name || !acknowledged) {
       button.disabled = false;
       return;
     }

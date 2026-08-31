@@ -31,6 +31,9 @@ export function renderLessonInspector({
   const custom = set.masteryPolicy?.source === 'admin-override';
   const defaultThreshold = Number(set.masteryPolicy?.defaultThreshold ?? set.passThreshold);
   const completionLabel = set.completionPolicy === 'all-items' ? 'All items' : 'Theo Mastery';
+  const effortEnabled = set.effortPassEnabled === true;
+  const effortMinutes = Number(set.effortPassMinutes ?? 10);
+  const effortCustom = set.effortPassPolicy?.source === 'admin-override';
   const hasTyping = (set.activityTypes ?? []).includes('typing');
   const contentEditable = isUniversalContentEditableLesson(set);
   const typingCustom = set.typingPolicy?.source === 'admin-override';
@@ -40,6 +43,7 @@ export function renderLessonInspector({
   const baseChanged = set.contentPolicy?.baseChanged === true;
   const expectedTime = Number.isInteger(set.expectedTimeMinutes) ? set.expectedTimeMinutes : null;
   const review = reviewState ?? { state: REVIEW_VIEW.UNREVIEWED, label: 'Chưa duyệt', note: '', contentRevision, baseVersion: Number(set.version ?? 1) };
+  const assessAdminUrl = `/assess-admin?setId=${encodeURIComponent(set.id)}`;
 
   root.innerHTML = `
     <main class="page admin-page">
@@ -61,15 +65,37 @@ export function renderLessonInspector({
             <span class="admin-review-badge is-${escAttr(review.state)}">Review · ${esc(review.label)}</span>
             ${baseChanged ? '<span class="lesson-difficulty-badge">BASE ĐÃ ĐỔI · CẦN REVIEW OVERRIDE</span>' : ''}
             <span>Mastery ≥ ${set.passThreshold}% · ${custom ? `Custom (mặc định ${defaultThreshold}%)` : 'Default'}</span>
+            <span>Timer cố gắng · ${effortEnabled ? `${effortMinutes} phút${effortCustom ? ' · Custom' : ''}` : 'TẮT'}</span>
             <span>Completion · ${esc(completionLabel)}</span>
             ${hasTyping ? `<span>Typing lớp nhỏ · ${set.typingTolerance ? 'BẬT' : 'TẮT'} · ${typingCustom ? `Custom (mặc định ${typingDefault ? 'BẬT' : 'TẮT'})` : 'Default'}</span>` : ''}
             <code>/a/${esc(set.lessonSlug)}</code>
           </div>
         </section>
+
+        <section class="admin-delivery-composer" aria-label="Chọn chế độ giao bài">
+          <div class="admin-delivery-composer-head">
+            <div><p class="eyebrow">GIAO BÀI</p><h2>Chọn chế độ</h2></div>
+            <p>Mastery để học có feedback; Assess để kiểm tra độc lập.</p>
+          </div>
+          <div class="admin-delivery-toggle" role="group" aria-label="Delivery mode">
+            <button class="admin-delivery-option is-active" type="button" data-delivery-mastery><strong>● MASTERY</strong><span>${set.passThreshold}%${effortEnabled ? ` HOẶC ${effortMinutes} phút` : ''}</span></button>
+            <a class="admin-delivery-option" href="${escAttr(assessAdminUrl)}"><strong>○ ASSESS</strong><span>Blind · không feedback · không Timer</span></a>
+          </div>
+          <div class="admin-delivery-contract">
+            <strong>Mastery hiện tại</strong>
+            <p>PASS khi đạt <b>${set.passThreshold}% Mastery</b>${effortEnabled ? ` HOẶC học chủ động đủ <b>${effortMinutes} phút</b>` : ''}. Rapid-response chỉ là cảnh báo hành vi, không tự trừ điểm hay FAIL.</p>
+            <div class="admin-delivery-actions">
+              <button class="secondary-btn" id="admin-delivery-edit-mastery" type="button">Chỉnh Mastery + Timer</button>
+              <button class="primary-btn" id="admin-delivery-copy-mastery" type="button" data-url="${escAttr(fixedUrl)}">Copy link Mastery</button>
+              <span id="admin-delivery-copy-status" class="copy-status"></span>
+            </div>
+          </div>
+        </section>
+
         <div class="admin-inspector-actions">
           <button class="secondary-btn" id="admin-student-preview-btn" type="button">Xem như học sinh</button>
           <button class="secondary-btn" id="admin-print-btn" type="button">In / PDF</button>
-          <button class="secondary-btn" id="admin-edit-mastery-btn" type="button">Chỉnh Mastery</button>
+          <button class="secondary-btn" id="admin-edit-mastery-btn" type="button">Chỉnh Mastery + Timer</button>
           ${hasTyping ? '<button class="secondary-btn" id="admin-edit-typing-btn" type="button">Chỉnh Typing</button>' : ''}
           ${contentEditable ? `<button class="secondary-btn" id="admin-edit-content-btn" type="button">Chỉnh nội dung${contentCustom ? ` · Rev ${contentRevision}` : ''}</button>` : ''}
           <button class="primary-btn" id="admin-copy-fixed-btn" type="button" data-url="${escAttr(fixedUrl)}">Copy link cố định</button>
@@ -80,10 +106,7 @@ export function renderLessonInspector({
       </section>
     </main>`;
 
-  root.querySelector('#admin-back-btn')?.addEventListener('click', onBack);
-  root.querySelector('#admin-student-preview-btn')?.addEventListener('click', onStudentPreview);
-  root.querySelector('#admin-print-btn')?.addEventListener('click', onPrint);
-  root.querySelector('#admin-edit-mastery-btn')?.addEventListener('click', () => {
+  const openPolicy = () => {
     openMasteryEditor({
       root,
       lesson: set,
@@ -91,6 +114,16 @@ export function renderLessonInspector({
       onReset: () => onResetMastery?.(set.id),
       onDone: onRefresh
     });
+  };
+  root.querySelector('#admin-back-btn')?.addEventListener('click', onBack);
+  root.querySelector('#admin-student-preview-btn')?.addEventListener('click', onStudentPreview);
+  root.querySelector('#admin-print-btn')?.addEventListener('click', onPrint);
+  root.querySelector('#admin-edit-mastery-btn')?.addEventListener('click', openPolicy);
+  root.querySelector('#admin-delivery-edit-mastery')?.addEventListener('click', openPolicy);
+  root.querySelector('#admin-delivery-copy-mastery')?.addEventListener('click', async event => {
+    const copied = await copyText(event.currentTarget.dataset.url);
+    const status = root.querySelector('#admin-delivery-copy-status');
+    if (status) status.textContent = copied ? '✓ Đã copy link Mastery.' : 'Không copy được link.';
   });
   root.querySelector('#admin-edit-typing-btn')?.addEventListener('click', () => {
     openTypingToleranceEditor({
