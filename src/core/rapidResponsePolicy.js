@@ -37,12 +37,14 @@ export function deriveRapidResponseSignals(attempts = [], set = {}) {
     maxStreak = Math.max(maxStreak, currentStreak);
   }
   const recentFive = rapid.slice(-5);
+  const lastWasRapid = rapid.at(-1) === true;
   return Object.freeze({
     rapidCount,
     currentStreak,
     maxStreak,
     recentFiveCount: recentFive.filter(Boolean).length,
-    shouldWarn: currentStreak >= 2 || recentFive.filter(Boolean).length >= 3
+    lastWasRapid,
+    shouldWarn: lastWasRapid && (currentStreak >= 2 || recentFive.filter(Boolean).length >= 3)
   });
 }
 
