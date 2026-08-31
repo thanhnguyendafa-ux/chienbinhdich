@@ -99,8 +99,16 @@ jobs:
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
 
-      - name: Run Admin → Assess → Admin acceptance
+      - name: Run Admin → Assess → Admin acceptance (advisory)
+        id: firebase_e2e
+        continue-on-error: true
         run: node scripts/assessReleaseE2E.mjs
+
+      - name: Report advisory Firebase E2E status
+        if: steps.firebase_e2e.outcome == 'failure'
+        shell: bash
+        run: |
+          echo '::warning::Firebase Assess E2E failed or Firebase returned quota/availability errors. This check is advisory and does not block GitHub main or Vercel Production.'
 
       - name: Upload release evidence
         if: always()
