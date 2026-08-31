@@ -151,9 +151,9 @@ test('MCQ and sentence-order presentation is deterministic per exposure rather t
   assert.doesNotMatch(exposureOrder, /Math\.random/);
 });
 
-test('mixed report analytics never assumes every item has an English typing answer', () => {
-  assert.match(attemptAnalytics, /questionTypeForItem\(item\) !== 'typing'/);
-  assert.match(attemptAnalytics, /expectedResponseDisplay/);
+test('mixed report analytics delegates rapid classification to the question-type-aware policy', () => {
+  assert.match(attemptAnalytics, /isRapidResponseAttempt/);
+  assert.match(attemptAnalytics, /deriveRapidResponseSignals/);
   assert.doesNotMatch(attemptAnalytics, /item\.en\.length/);
   assert.match(report, /Tổng lượt trả lời/);
 });
@@ -165,10 +165,11 @@ test('report rendering has a recovery boundary instead of an infinite loading sc
   assert.match(app, /Thử mở lại báo cáo/);
 });
 
-test('direct set entry uses generic test welcome copy and dynamic threshold', () => {
-  assert.match(entry, /Chào mừng con đến với bài test/);
+test('direct set entry presents the Mastery contract and dynamic threshold', () => {
+  assert.match(entry, /Chào mừng con đến với bài học/);
   assert.match(entry, /directSet\?\.passThreshold/);
-  assert.match(entry, /Bắt đầu bài test/);
+  assert.match(entry, /mode-contract-card/);
+  assert.match(entry, /TÔI ĐÃ HIỂU · BẮT ĐẦU/);
   assert.match(entry, /ADMIN PREVIEW/);
 });
 
