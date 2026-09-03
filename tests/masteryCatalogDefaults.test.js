@@ -6,14 +6,19 @@ import { validateSet } from '../src/data/contentValidator.js';
 import { listSetDescriptors } from '../src/repositories/lessonRepository.js';
 
 const isG6Tier23 = set => /^g6-u\d{2}-tier23-s\d{2}$/.test(set?.id ?? '');
+const isG7Tier23 = set => /^g7-u\d{2}-tier23-s\d{2}$/.test(set?.id ?? '');
+const isApprovedTier23 = set => isG6Tier23(set) || isG7Tier23(set);
 
-test('published fixed lessons keep 80% default except the approved G6 Tier 2-3 SSOT program at 90%', () => {
+test('published fixed lessons keep 80% default except approved G6/G7 Tier 2-3 SSOT programs at 90%', () => {
   const descriptors = listSetDescriptors();
-  const tier23 = descriptors.filter(isG6Tier23);
-  const other = descriptors.filter(set => !isG6Tier23(set));
+  const g6Tier23 = descriptors.filter(isG6Tier23);
+  const g7Tier23 = descriptors.filter(isG7Tier23);
+  const other = descriptors.filter(set => !isApprovedTier23(set));
   assert.equal(descriptors.length, lessonRegistry.length);
-  assert.equal(tier23.length, 137);
-  assert.ok(tier23.every(set => set.passThreshold === 90));
+  assert.equal(g6Tier23.length, 137);
+  assert.equal(g7Tier23.length, 76);
+  assert.ok(g6Tier23.every(set => set.passThreshold === 90));
+  assert.ok(g7Tier23.every(set => set.passThreshold === 90));
   assert.ok(other.every(set => set.passThreshold === 80));
   assert.ok(descriptors.every(set => set.lessonSlug));
 });
