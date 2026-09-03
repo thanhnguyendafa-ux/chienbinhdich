@@ -5,10 +5,16 @@ import { validateCatalog } from '../src/data/catalogValidator.js';
 import { validateSet } from '../src/data/contentValidator.js';
 import { listSetDescriptors } from '../src/repositories/lessonRepository.js';
 
-test('all currently published fixed lessons still default to 80% Mastery', () => {
+const isG6Tier23 = set => /^g6-u\d{2}-tier23-s\d{2}$/.test(set?.id ?? '');
+
+test('published fixed lessons keep 80% default except the approved G6 Tier 2-3 SSOT program at 90%', () => {
   const descriptors = listSetDescriptors();
+  const tier23 = descriptors.filter(isG6Tier23);
+  const other = descriptors.filter(set => !isG6Tier23(set));
   assert.equal(descriptors.length, lessonRegistry.length);
-  assert.equal(descriptors.filter(set => set.passThreshold !== 80).length, 0);
+  assert.equal(tier23.length, 137);
+  assert.ok(tier23.every(set => set.passThreshold === 90));
+  assert.ok(other.every(set => set.passThreshold === 80));
   assert.ok(descriptors.every(set => set.lessonSlug));
 });
 
