@@ -1,0 +1,8 @@
+const pad=n=>String(n).padStart(2,'0');
+const TITLES=Object.freeze(['','My New School','My House','My Friends','My Neighbourhood','Natural Wonders of Viet Nam','Our Tet Holiday','Television','Sports and Games','Cities of the World','Our Houses in the Future','Our Greener World','Robots']);
+const SET_COUNTS=Object.freeze([0,13,8,14,19,17,18,6,8,8,8,9,9]);
+const TAIL=Object.freeze({1:[13,13,39],2:[8,5,15],3:[14,14,42],4:[19,8,24],5:[17,8,24],6:[18,14,42],8:[8,12,36],9:[8,11,33],10:[8,10,30],11:[9,11,33],12:[9,14,42]});
+const rows=[];
+for(let u=1;u<=12;u++)for(let s=1;s<=SET_COUNTS[u];s++){const tail=TAIL[u],isTail=tail&&s===tail[0],vocabCount=isTail?tail[1]:15,questionCount=isTail?tail[2]:45;rows.push(Object.freeze({u,s,vocabCount,questionCount,id:`g6-u${pad(u)}-tier23-s${pad(s)}`}))}
+export const g6Tier23Folders=Object.freeze([{id:'g6-tier23-vocab',name:'Global Success 6 · Tier 2–3 Vocabulary',parentId:'global6',order:6200},...Array.from({length:12},(_,i)=>{const u=i+1;return Object.freeze({id:`g6-tier23-u${pad(u)}`,name:`Unit ${u} · ${TITLES[u]}`,parentId:'g6-tier23-vocab',order:u})})]);
+export const g6Tier23Registry=Object.freeze(rows.map(({u,s,vocabCount,questionCount,id})=>Object.freeze({id,folderId:`g6-tier23-u${pad(u)}`,order:s,version:1,course:'Global Success 6',unit:`Unit ${u} · ${TITLES[u]}`,title:`Tier 2–3 Vocabulary · Set ${pad(s)}`,subtitle:`${vocabCount} từ/cụm · ${questionCount} câu · Drive SSOT`,lessonSlug:id,passThreshold:90,completionPolicy:'all-items',teacher:'Thầy Thành MRT',description:'Generated from Google Drive Tier 2–3 SSOT · schema chienbinhdich-mcq-v2',activityTypes:['mcq'],itemCount:questionCount,loadContent:()=>import('./tier23/g6/dataset.js').then(m=>m.getSet(id))})));
