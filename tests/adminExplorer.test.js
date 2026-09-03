@@ -25,7 +25,9 @@ test('Explorer keeps the top-level curriculum tree and nests published program f
   assert.deepEqual(folderChildren('g6-tier23-vocab'),Array.from({length:12},(_,i)=>`g6-tier23-u${String(i+1).padStart(2,'0')}`));
   assert.equal(folderLessonCount(findAdminTreeNode(tree,'g6-tier23-vocab')),137);
   assert.equal(folderChildren('global6-unit1').includes('global6-unit1-vocab-typing'),false);
-  assert.deepEqual(folderChildren('global7'),['global7-unit1','global7-unit2','global7-unit3','global7-unit-review']);
+  assert.deepEqual(folderChildren('global7'),['global7-unit1','global7-unit2','global7-unit3','global7-unit-review','g7-tier23-vocab']);
+  assert.deepEqual(folderChildren('g7-tier23-vocab'),Array.from({length:12},(_,i)=>`g7-tier23-u${String(i+1).padStart(2,'0')}`));
+  assert.equal(folderLessonCount(findAdminTreeNode(tree,'g7-tier23-vocab')),76);
   assert.deepEqual(folderChildren('global7-unit1').includes('global7-unit1-workbook'),true);
   assert.deepEqual(folderChildren('global7-unit2'),['global7-unit2-writing-sentence-builder','global7-unit2-workbook']);
   assert.deepEqual(folderChildren('global7-unit3'),['global7-unit3-workbook']);
@@ -61,7 +63,7 @@ test('Explorer retains legacy contracts and exposes G2 G3 workbook roots',()=>{
   assert.deepEqual(lessonIds('global7-unit1').slice(0,3),['g7-u1-translation-01','g7-u1-translation-02','g7-u1-pronunciation-01']);
 });
 
-test('Explorer breadcrumbs include G2 G3 workbooks, G6 U4-U12, G6 Tier 2-3 and all three G7 workbook units',()=>{
+test('Explorer breadcrumbs include G2 G3 workbooks, G6/G7 Tier 2-3 and all three G7 workbook units',()=>{
   assert.deepEqual(folderBreadcrumbs(tree,'global2-workbook-u01').map(item=>item.label),['Bài tập','Global Success 2','Sách bài tập','Unit 1 · At my birthday party']);
   assert.deepEqual(folderBreadcrumbs(tree,'global3-workbook-u01').map(item=>item.label),['Bài tập','Global Success 3','Sách bài tập','Unit 1 · Hello']);
   assert.deepEqual(folderBreadcrumbs(tree,'global7-unit1-workbook').map(item=>item.label),['Bài tập','Global Success 7','Unit 1 · Hobbies','Sách bài tập · Unit 1']);
@@ -70,6 +72,7 @@ test('Explorer breadcrumbs include G2 G3 workbooks, G6 U4-U12, G6 Tier 2-3 and a
   assert.deepEqual(folderBreadcrumbs(tree,'global6-unit3-workbook').map(item=>item.label),['Bài tập','Global Success 6','Unit 3 · My Friends','Sách bài tập · Unit 3']);
   assert.deepEqual(folderBreadcrumbs(tree,'global6-unit12-workbook').map(item=>item.label),['Bài tập','Global Success 6','Unit 12 · Robots','Sách bài tập · Unit 12']);
   assert.deepEqual(folderBreadcrumbs(tree,'g6-tier23-u12').map(item=>item.label),['Bài tập','Global Success 6','Global Success 6 · Tier 2–3 Vocabulary','Unit 12 · Robots']);
+  assert.deepEqual(folderBreadcrumbs(tree,'g7-tier23-u12').map(item=>item.label),['Bài tập','Global Success 7','Global Success 7 · Tier 2–3 Vocabulary','Unit 12 · English-Speaking Countries']);
 });
 
 test('Explorer recursive lesson counts include complete G2 G3 G5 G6 G7 programs',()=>{
@@ -86,7 +89,8 @@ test('Explorer recursive lesson counts include complete G2 G3 G5 G6 G7 programs'
   assert.equal(folderLessonCount(findAdminTreeNode(tree,'global7-unit3')),17);
   assert.equal(folderLessonCount(findAdminTreeNode(tree,'global7-unit3-workbook')),17);
   assert.equal(folderLessonCount(findAdminTreeNode(tree,'global7-unit-review')),20);
-  assert.equal(folderLessonCount(findAdminTreeNode(tree,'global7')),128);
+  assert.equal(folderLessonCount(findAdminTreeNode(tree,'g7-tier23-vocab')),76);
+  assert.equal(folderLessonCount(findAdminTreeNode(tree,'global7')),204);
   assert.equal(folderLessonCount(tree),sets.length);
 });
 
@@ -100,6 +104,7 @@ test('Explorer search finds legacy and new workbook lessons by title, slug, id a
   assert.deepEqual(searchLessonDescriptors(sets,'g7-u3-wb-d3').map(set=>set.id),['g7-u3-wb-d3']);
   assert.deepEqual(searchLessonDescriptors(sets,'g6-u1-wb-c2').map(set=>set.id),['g6-u1-wb-c2']);
   assert.deepEqual(searchLessonDescriptors(sets,'g6-u12-wb-d2').map(set=>set.id),['g6-u12-wb-d2']);
+  assert.deepEqual(searchLessonDescriptors(sets,'g7-u03-tier23-s06').map(set=>set.id),['g7-u03-tier23-s06']);
   assert.deepEqual(searchLessonDescriptors(sets,'g6-u1-vocab-typing-01').map(set=>set.id),[]);
   assert.ok(searchLessonDescriptors(sets,'typing').some(set=>set.id==='g7-u2-wb-b3'));
   assert.ok(searchLessonDescriptors(sets,'classification').some(set=>set.id==='g6-u2-wb-b2'));
@@ -108,6 +113,7 @@ test('Explorer search finds legacy and new workbook lessons by title, slug, id a
 test('Explorer type filters still distinguish single-type and mixed lessons',()=>{
   for(const id of ['g2u01-writing-01','g3u01-writing-01','g6-u1-writing-s1-01','g7-u1-writing-s1-01']) assert.equal(lessonMatchesType(sets.find(set=>set.id===id),'typing'),true);
   assert.equal(lessonMatchesType(sets.find(set=>set.id==='g7-u1-translation-01'),'mcq'),true);
+  assert.equal(lessonMatchesType(sets.find(set=>set.id==='g7-u03-tier23-s06'),'mcq'),true);
   assert.equal(lessonMatchesType(sets.find(set=>set.id==='mrt-left-cut-right-01'),'mix'),true);
   assert.equal(lessonMatchesType(sets.find(set=>set.id==='g7-u2-wb-b5'),'mix'),true);
   assert.equal(lessonMatchesType(sets.find(set=>set.id==='g7-u3-wb-c2'),'mix'),true);
