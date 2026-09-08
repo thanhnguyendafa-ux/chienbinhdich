@@ -5,7 +5,7 @@ export const gs67SentenceOrderThinkingFolders = Object.freeze([
     id: 'gs67-sentence-skills',
     name: 'Global 6–7 · Sentence Skills',
     description: 'Kỹ năng phân tích cấu trúc trước khi sắp xếp từ/cụm thành câu.',
-    parentId: null,
+    parentId: 'global6',
     order: 80
   })
 ]);
