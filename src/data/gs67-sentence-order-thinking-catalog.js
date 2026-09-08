@@ -1,20 +1,12 @@
 import { gs67SentenceOrderThinkingContent } from './gs67-sentence-order-thinking-content.js';
 
-export const gs67SentenceOrderThinkingFolders = Object.freeze([
-  Object.freeze({
-    id: 'gs67-sentence-skills',
-    name: 'Global 6–7 · Sentence Skills',
-    description: 'Kỹ năng phân tích cấu trúc trước khi sắp xếp từ/cụm thành câu.',
-    parentId: 'global6',
-    order: 80
-  })
-]);
+export const gs67SentenceOrderThinkingFolders = Object.freeze([]);
 
 export const gs67SentenceOrderThinkingRegistry = Object.freeze([
   Object.freeze({
     id: 'gs67-sentence-order-thinking',
-    folderId: 'gs67-sentence-skills',
-    order: 1,
+    folderId: 'global6-unit-review',
+    order: 90,
     version: 1,
     course: 'Global Success 6–7',
     unit: 'Sentence Order Skill',
