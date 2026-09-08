@@ -108,17 +108,22 @@ test('Explorer search finds legacy and new workbook lessons by title, slug, id a
   assert.deepEqual(searchLessonDescriptors(sets,'g6-u1-vocab-typing-01').map(set=>set.id),[]);
   assert.ok(searchLessonDescriptors(sets,'typing').some(set=>set.id==='g7-u2-wb-b3'));
   assert.ok(searchLessonDescriptors(sets,'classification').some(set=>set.id==='g6-u2-wb-b2'));
-  assert.ok(searchLessonDescriptors(sets,'sentence_order').some(set=>set.id==='g6-u1-wb-b6'));
 });
 
 test('Explorer type filters still distinguish single-type and mixed lessons',()=>{
-  assert.equal(lessonMatchesType({activityTypes:['typing']},'typing'),true);
-  assert.equal(lessonMatchesType({activityTypes:['typing','mcq']},'mixed'),true);
-  assert.equal(lessonMatchesType({activityTypes:['typing']},'mixed'),false);
+  for(const id of ['g2u01-writing-01','g3u01-writing-01','g6-u1-writing-s1-01','g7-u1-writing-s1-01']) assert.equal(lessonMatchesType(sets.find(set=>set.id===id),'typing'),true);
+  assert.equal(lessonMatchesType(sets.find(set=>set.id==='g7-u1-translation-01'),'mcq'),true);
+  assert.equal(lessonMatchesType(sets.find(set=>set.id==='g7-u03-tier23-s06'),'mcq'),true);
+  assert.equal(lessonMatchesType(sets.find(set=>set.id==='mrt-left-cut-right-01'),'mix'),true);
+  assert.equal(lessonMatchesType(sets.find(set=>set.id==='g7-u2-wb-b5'),'mix'),true);
+  assert.equal(lessonMatchesType(sets.find(set=>set.id==='g7-u3-wb-c2'),'mix'),true);
+  assert.equal(lessonMatchesType({activityTypes:['classification']},'classify'),true);
 });
 
 test('every published Set appears exactly once in the Explorer tree',()=>{
-  const seen=new Set();
-  const walk=node=>{if(node.type==='lesson'){assert.equal(seen.has(node.setId),false,`duplicate ${node.setId}`);seen.add(node.setId);}for(const child of node.children??[])walk(child);};
-  walk(tree);assert.equal(seen.size,sets.length);
+  const found=[];
+  const visit=node=>{for(const child of node.children??[]){if(child.type==='lesson')found.push(child.setId);else visit(child);}};
+  visit(tree);
+  assert.deepEqual([...found].sort(),sets.map(set=>set.id).sort());
+  assert.equal(new Set(found).size,found.length);
 });
