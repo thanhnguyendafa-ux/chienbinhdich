@@ -161,7 +161,8 @@ test('mobile Teaching Mode switches to a bottom trigger and fixed bottom sheet w
 });
 
 test('teaching controls remain visually scoped away from normal student mode', () => {
-  assert.match(htmlSource, /admin-teaching-mode\.css/);
+  assert.doesNotMatch(htmlSource, /admin-teaching-mode\.css/);
+  assert.match(adminFlowSource, /\/styles\/admin-teaching-mode\.css/);
   assert.match(teachingCss, /\.admin-teaching-mode/);
   assert.match(teachingCss, /\.admin-teaching-panel/);
   assert.match(teachingCss, /\.teaching-continue-btn/);
