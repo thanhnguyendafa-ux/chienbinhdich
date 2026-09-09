@@ -9,6 +9,8 @@ import {
 } from '../src/features/admin/preview/teachingPreviewController.js';
 
 const appSource = readFileSync(new URL('../src/app.js', import.meta.url), 'utf8');
+const adminFlowSource = readFileSync(new URL('../src/features/admin/adminFlow.js', import.meta.url), 'utf8');
+const teachingToolbarSource = readFileSync(new URL('../src/features/admin/preview/teachingToolbar.js', import.meta.url), 'utf8');
 const htmlSource = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const teachingCss = readFileSync(new URL('../styles/admin-teaching-mode.css', import.meta.url), 'utf8');
 const panelEnhancerSource = readFileSync(new URL('../src/features/admin/preview/teachingPanelEnhancer.js', import.meta.url), 'utf8');
@@ -95,22 +97,24 @@ test('reset current clears only that question while reset all clears all demo at
 });
 
 test('admin auth gate stays before preview routing and student URLs do not gain a teaching query switch', () => {
-  const adminGate = appSource.indexOf('if (!state.isAdmin)');
-  const previewRoute = appSource.indexOf("params.get('preview')");
+  const adminGate = adminFlowSource.indexOf('if (!state.isAdmin)');
+  const previewRoute = adminFlowSource.indexOf("params.get('preview')");
   assert.ok(adminGate >= 0 && previewRoute > adminGate);
   assert.doesNotMatch(appSource, /teaching=1|searchParams\.get\(['"]teaching/);
 });
 
 test('teaching mode reuses learner renderDrill and never writes preview sessions', () => {
   assert.match(appSource, /renderDrill\(\{/);
-  assert.match(appSource, /attachTeachingToolbar/);
+  assert.match(appSource, /teachingUi\.attachTeachingToolbar/);
+  assert.match(teachingToolbarSource, /export function attachTeachingToolbar/);
   assert.match(appSource, /if \(!previewMode && session\) sessions\.saveActive\(session\)/);
   assert.match(appSource, /if \(!previewMode && session\) sessions\.saveReport\(session\)/);
   assert.doesNotMatch(appSource, /createTeachingQuestion|renderTeachingQuestion/);
 });
 
-test('responsive panel enhancer is loaded without changing learner rendering architecture', () => {
-  assert.match(htmlSource, /teachingPanelEnhancer\.js/);
+test('responsive panel enhancer is lazy-loaded without changing learner rendering architecture', () => {
+  assert.match(appSource, /import\('\.\/features\/admin\/preview\/teachingPanelEnhancer\.js'\)/);
+  assert.doesNotMatch(htmlSource, /<script[^>]+teachingPanelEnhancer\.js/);
   assert.match(panelEnhancerSource, /new MutationObserver\(handleTeachingMutation\)/);
   assert.match(panelEnhancerSource, /admin-teaching-workspace/);
   assert.match(panelEnhancerSource, /workspace\.append\(drillShell\)/);
