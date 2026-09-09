@@ -91,7 +91,7 @@ function meaningfulLineCount(source) {
 }
 
 function buildStaticImportGraph(files, sourceMap) {
-  const fileSet = new Set(files.map(resolve));
+  const fileSet = new Set(files.map(file => resolve(file)));
   const graph = new Map(files.map(file => [resolve(file), []]));
   const pattern = /(?:import|export)\s+(?:[^'";]*?\s+from\s+)?['"](\.[^'"]+)['"]/g;
   for (const file of files) {
