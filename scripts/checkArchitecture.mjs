@@ -7,14 +7,18 @@ const srcRoot = join(root, 'src');
 
 const lineBudgets = Object.freeze({
   'src/app.js': 575,
-  'src/features/admin/adminFlow.js': 190,
+  'src/assess-admin-app.js': 180,
+  'src/features/assess/adminAssessResults.js': 210,
+  'src/features/admin/adminFlow.js': 200,
   'src/features/admin/preview/teachingToolbar.js': 130,
   'src/features/drill/renderDrill.js': 180,
   'src/features/drill/drillFeedback.js': 220,
   'src/features/drill/questionTypeRegistry.js': 40,
   'src/features/drill/questionInteractions/basic.js': 240,
   'src/features/drill/questionInteractions/sequenceNumber.js': 240,
-  'src/features/drill/questionInteractions/classification.js': 160
+  'src/features/drill/questionInteractions/classification.js': 160,
+  'src/ui/persistenceStatus.js': 65,
+  'src/ui/styleLoader.js': 50
 });
 
 const failures = [];
@@ -44,6 +48,18 @@ for (const lazyFeature of [
   if (!app.includes(`import('${lazyFeature}')`)) failures.push(`src/app.js: ${lazyFeature} must remain dynamically imported`);
 }
 if (/new\s+MutationObserver\b/.test(app)) failures.push('src/app.js: composition root must not own MutationObserver side effects');
+
+const adminFlow = sources.get(join(srcRoot, 'features', 'admin', 'adminFlow.js')) ?? '';
+for (const adminStyle of [
+  '/styles/admin-mastery.css',
+  '/styles/admin-content-editor.css',
+  '/styles/admin-review.css',
+  '/styles/admin-teaching-mode.css',
+  '/styles/admin-tree-depth.css'
+]) {
+  if (index.includes(`href="${adminStyle}"`)) failures.push(`index.html: Admin-only stylesheet must not be eager: ${adminStyle}`);
+  if (!adminFlow.includes(adminStyle)) failures.push(`adminFlow.js: missing lazy Admin stylesheet ${adminStyle}`);
+}
 
 const graph = buildStaticImportGraph(jsFiles, sources);
 for (const cycle of findCycles(graph)) failures.push(`static import cycle: ${cycle.map(displayPath).join(' -> ')}`);
