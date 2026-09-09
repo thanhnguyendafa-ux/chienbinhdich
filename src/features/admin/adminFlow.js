@@ -1,3 +1,13 @@
+import { ensureStyles } from '../../ui/styleLoader.js';
+
+const ADMIN_STYLES = Object.freeze([
+  '/styles/admin-mastery.css',
+  '/styles/admin-content-editor.css',
+  '/styles/admin-review.css',
+  '/styles/admin-teaching-mode.css',
+  '/styles/admin-tree-depth.css'
+]);
+
 export function createAdminFlow({
   root,
   firebaseEnabled,
@@ -18,7 +28,11 @@ export function createAdminFlow({
   startStudentPreview,
   renderLoading
 }) {
+  let stylesPromise = null;
+
   async function showAdmin() {
+    stylesPromise ??= ensureStyles(ADMIN_STYLES);
+    await stylesPromise;
     if (!firebaseEnabled) {
       const { renderFirebaseSetupGate } = await getScreen('access', 'Đang kiểm tra Firebase...');
       return renderFirebaseSetupGate({ root });
