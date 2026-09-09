@@ -8,7 +8,7 @@ export const g6PcScaffold32Registry = Object.freeze([
     unit: 'Unit 3 · My Friends',
     title: '04 · Present Continuous · Scaffold → Exam · 32 câu',
     subtitle: '14 MCQ · 17 Typing · 1 Sentence Order · giải thích sau Submit',
-    expectedTimeMinutes: 30,
+    expectedTimeMinutes: 20,
     lessonSlug: 'g6-review-u1-3-pc-scaffold-32',
     passThreshold: 80,
     completionPolicy: 'all-items',
