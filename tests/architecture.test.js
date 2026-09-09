@@ -18,6 +18,9 @@ const retryScheduler = readFileSync(new URL('../src/core/retryScheduler.js', imp
 const entry = readFileSync(new URL('../src/features/entry/renderEntry.js', import.meta.url), 'utf8');
 const library = readFileSync(new URL('../src/features/library/renderLibrary.js', import.meta.url), 'utf8');
 const drill = readFileSync(new URL('../src/features/drill/renderDrill.js', import.meta.url), 'utf8');
+const drillFeedback = readFileSync(new URL('../src/features/drill/drillFeedback.js', import.meta.url), 'utf8');
+const qualificationView = readFileSync(new URL('../src/features/drill/qualificationView.js', import.meta.url), 'utf8');
+const effortClock = readFileSync(new URL('../src/features/drill/effortClock.js', import.meta.url), 'utf8');
 const questionRegistry = readFileSync(new URL('../src/features/drill/questionTypeRegistry.js', import.meta.url), 'utf8');
 const basicQuestionInteractions = readFileSync(new URL('../src/features/drill/questionInteractions/basic.js', import.meta.url), 'utf8');
 const sequenceNumberInteraction = readFileSync(new URL('../src/features/drill/questionInteractions/sequenceNumber.js', import.meta.url), 'utf8');
@@ -72,6 +75,10 @@ test('composition modules have explicit anti-god growth budgets', () => {
   assert.ok(meaningfulLines(app) <= 575, `app.js grew to ${meaningfulLines(app)} meaningful lines`);
   assert.ok(meaningfulLines(adminFlow) <= 190, `adminFlow.js grew to ${meaningfulLines(adminFlow)} meaningful lines`);
   assert.ok(meaningfulLines(teachingToolbar) <= 130, `teachingToolbar.js grew to ${meaningfulLines(teachingToolbar)} meaningful lines`);
+  assert.ok(meaningfulLines(drill) <= 180, `renderDrill.js grew to ${meaningfulLines(drill)} meaningful lines`);
+  assert.ok(meaningfulLines(drillFeedback) <= 220, `drillFeedback.js grew to ${meaningfulLines(drillFeedback)} meaningful lines`);
+  assert.ok(meaningfulLines(qualificationView) <= 80, `qualificationView.js grew to ${meaningfulLines(qualificationView)} meaningful lines`);
+  assert.ok(meaningfulLines(effortClock) <= 45, `effortClock.js grew to ${meaningfulLines(effortClock)} meaningful lines`);
   assert.ok(meaningfulLines(questionRegistry) <= 40, `questionTypeRegistry.js grew to ${meaningfulLines(questionRegistry)} meaningful lines`);
   for (const [name, source] of [
     ['basic interactions', basicQuestionInteractions],
@@ -222,8 +229,8 @@ test('direct set entry presents the Mastery contract and dynamic threshold', () 
 });
 
 test('qualification checkpoint offers submit and continue, while extended mode remains submittable', () => {
-  assert.match(drill, /Nộp bài/);
-  assert.match(drill, /Làm tiếp/);
+  assert.match(qualificationView, /Nộp bài/);
+  assert.match(qualificationView, /Làm tiếp/);
   assert.match(sessionMachine, /continueQualifiedSession/);
   assert.match(sessionMachine, /status: 'extended'/);
   assert.match(retryScheduler, /session\.status === 'extended'/);
@@ -238,6 +245,8 @@ test('mastery progress is CSP-safe, accessible and driven by set threshold', () 
   assert.match(masteryProgress, /x1="\$\{target\}"/);
   assert.match(masteryProgress, /width="\$\{before\}"/);
   assert.doesNotMatch(drill, /style=/);
+  assert.doesNotMatch(drillFeedback, /style=/);
+  assert.doesNotMatch(qualificationView, /style=/);
   for (const source of [questionRegistry, basicQuestionInteractions, sequenceNumberInteraction, classificationInteraction]) {
     assert.doesNotMatch(source, /style=/);
   }
@@ -266,9 +275,9 @@ test('mastery animation supports gain, loss and reduced-motion users', () => {
 });
 
 test('student feedback distinguishes mastery loss, floor and neutral correction attempts', () => {
-  assert.match(drill, /Mastery không đổi/);
-  assert.match(drill, /Mastery đang ở sàn 0%/);
-  assert.match(drill, /delta < 0/);
+  assert.match(drillFeedback, /Mastery không đổi/);
+  assert.match(drillFeedback, /Mastery đang ở sàn 0%/);
+  assert.match(drillFeedback, /delta < 0/);
 });
 
 test('Session V8 snapshots changed grading semantics while V7 sessions remain resumable', () => {
