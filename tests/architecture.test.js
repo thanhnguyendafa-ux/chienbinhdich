@@ -18,14 +18,23 @@ const retryScheduler = readFileSync(new URL('../src/core/retryScheduler.js', imp
 const entry = readFileSync(new URL('../src/features/entry/renderEntry.js', import.meta.url), 'utf8');
 const library = readFileSync(new URL('../src/features/library/renderLibrary.js', import.meta.url), 'utf8');
 const drill = readFileSync(new URL('../src/features/drill/renderDrill.js', import.meta.url), 'utf8');
+const drillFeedback = readFileSync(new URL('../src/features/drill/drillFeedback.js', import.meta.url), 'utf8');
+const qualificationView = readFileSync(new URL('../src/features/drill/qualificationView.js', import.meta.url), 'utf8');
+const effortClock = readFileSync(new URL('../src/features/drill/effortClock.js', import.meta.url), 'utf8');
 const questionRegistry = readFileSync(new URL('../src/features/drill/questionTypeRegistry.js', import.meta.url), 'utf8');
+const basicQuestionInteractions = readFileSync(new URL('../src/features/drill/questionInteractions/basic.js', import.meta.url), 'utf8');
+const sequenceNumberInteraction = readFileSync(new URL('../src/features/drill/questionInteractions/sequenceNumber.js', import.meta.url), 'utf8');
+const classificationInteraction = readFileSync(new URL('../src/features/drill/questionInteractions/classification.js', import.meta.url), 'utf8');
+const questionInteractionShared = readFileSync(new URL('../src/features/drill/questionInteractions/shared.js', import.meta.url), 'utf8');
 const report = readFileSync(new URL('../src/features/report/renderReport.js', import.meta.url), 'utf8');
 const masteryProgress = readFileSync(new URL('../src/ui/masteryProgress.js', import.meta.url), 'utf8');
 const adminFacade = readFileSync(new URL('../src/features/admin/renderAdmin.js', import.meta.url), 'utf8');
+const adminFlow = readFileSync(new URL('../src/features/admin/adminFlow.js', import.meta.url), 'utf8');
 const adminDashboard = readFileSync(new URL('../src/features/admin/explorer/renderAdminDashboard.js', import.meta.url), 'utf8');
 const splitPane = readFileSync(new URL('../src/features/admin/explorer/splitPane.js', import.meta.url), 'utf8');
 const previewRenderer = readFileSync(new URL('../src/features/admin/preview/renderLessonPreview.js', import.meta.url), 'utf8');
 const previewController = readFileSync(new URL('../src/features/admin/preview/lessonPreviewController.js', import.meta.url), 'utf8');
+const teachingToolbar = readFileSync(new URL('../src/features/admin/preview/teachingToolbar.js', import.meta.url), 'utf8');
 const sharedLessonContent = readFileSync(new URL('../src/features/admin/shared/renderLessonContent.js', import.meta.url), 'utf8');
 const adminRepository = readFileSync(new URL('../src/repositories/adminRepository.js', import.meta.url), 'utf8');
 const legacyAssignmentRepository = readFileSync(new URL('../src/repositories/legacyAssignmentRepository.js', import.meta.url), 'utf8');
@@ -38,6 +47,10 @@ const sessionFlowCss = readFileSync(new URL('../styles/session-flow.css', import
 const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const vercel = JSON.parse(readFileSync(new URL('../vercel.json', import.meta.url), 'utf8'));
 
+function meaningfulLines(source) {
+  return source.split('\n').filter(line => line.trim() && !line.trim().startsWith('//')).length;
+}
+
 test('feature screens and lesson content stay lazy-loaded', () => {
   for (const path of ['access/renderAccess.js', 'admin/renderAdmin.js', 'entry/renderEntry.js', 'drill/renderDrill.js', 'report/renderReport.js']) {
     assert.match(app, new RegExp(`import\\('./features/${path.replace('.', '\\.')}`));
@@ -46,6 +59,34 @@ test('feature screens and lesson content stay lazy-loaded', () => {
   assert.match(lessonCatalog, /global7-unit1-mixed-demo\.js/);
   assert.match(lessonCatalog, /loadContent:\s*\(\) => import/);
   assert.doesNotMatch(lessonRepository, /global7-unit1-set1\.js|global7-unit1-mixed-demo\.js/);
+});
+
+test('drill-only observers and teaching enhancer are not eager entry scripts', () => {
+  assert.doesNotMatch(index, /<script[^>]+integrityWarningGate\.js/);
+  assert.doesNotMatch(index, /<script[^>]+longPromptEnhancer\.js/);
+  assert.doesNotMatch(index, /<script[^>]+teachingPanelEnhancer\.js/);
+  assert.match(index, /<script type="module" src="\/src\/app\.js"><\/script>/);
+  assert.match(app, /import\('\.\/features\/drill\/integrityWarningGate\.js'\)/);
+  assert.match(app, /import\('\.\/features\/drill\/longPromptEnhancer\.js'\)/);
+  assert.match(app, /import\('\.\/features\/admin\/preview\/teachingPanelEnhancer\.js'\)/);
+});
+
+test('composition modules have explicit anti-god growth budgets', () => {
+  assert.ok(meaningfulLines(app) <= 575, `app.js grew to ${meaningfulLines(app)} meaningful lines`);
+  assert.ok(meaningfulLines(adminFlow) <= 190, `adminFlow.js grew to ${meaningfulLines(adminFlow)} meaningful lines`);
+  assert.ok(meaningfulLines(teachingToolbar) <= 130, `teachingToolbar.js grew to ${meaningfulLines(teachingToolbar)} meaningful lines`);
+  assert.ok(meaningfulLines(drill) <= 180, `renderDrill.js grew to ${meaningfulLines(drill)} meaningful lines`);
+  assert.ok(meaningfulLines(drillFeedback) <= 220, `drillFeedback.js grew to ${meaningfulLines(drillFeedback)} meaningful lines`);
+  assert.ok(meaningfulLines(qualificationView) <= 80, `qualificationView.js grew to ${meaningfulLines(qualificationView)} meaningful lines`);
+  assert.ok(meaningfulLines(effortClock) <= 45, `effortClock.js grew to ${meaningfulLines(effortClock)} meaningful lines`);
+  assert.ok(meaningfulLines(questionRegistry) <= 40, `questionTypeRegistry.js grew to ${meaningfulLines(questionRegistry)} meaningful lines`);
+  for (const [name, source] of [
+    ['basic interactions', basicQuestionInteractions],
+    ['sequence-number interaction', sequenceNumberInteraction],
+    ['classification interaction', classificationInteraction]
+  ]) {
+    assert.ok(meaningfulLines(source) <= 240, `${name} grew to ${meaningfulLines(source)} meaningful lines`);
+  }
 });
 
 test('published catalog owns Set metadata while content files own questions only', () => {
@@ -79,12 +120,15 @@ test('legacy random assignment and direct Set links remain isolated compatibilit
   assert.doesNotMatch(legacyAssignmentRepository, /setDoc|updateDoc|createAssignment/);
 });
 
-test('Admin renderer is a facade rather than a god component', () => {
-  const meaningfulLines = adminFacade.split('\n').filter(line => line.trim());
-  assert.ok(meaningfulLines.length <= 8);
+test('Admin renderer is a facade and Admin application flow is outside app.js', () => {
+  assert.ok(meaningfulLines(adminFacade) <= 8);
   assert.match(adminFacade, /explorer\/renderAdminDashboard/);
   assert.match(adminFacade, /inspector\/renderLessonInspector/);
   assert.match(adminFacade, /results\/renderAdminSessionDetail/);
+  assert.match(app, /import\('\.\/features\/admin\/adminFlow\.js'\)/);
+  assert.match(adminFlow, /showAdminDashboard/);
+  assert.match(adminFlow, /showAdminInspector/);
+  assert.match(adminFlow, /showAdminSession/);
   assert.match(adminDashboard, /createLessonPreviewController/);
   assert.match(splitPane, /attachPreviewSplitter/);
   assert.doesNotMatch(splitPane, /Firebase|loadLesson|question/);
@@ -130,21 +174,32 @@ test('mastery delta has one scoring owner while session machine only orchestrate
 test('retry timing lives in scheduler domain rather than question renderers', () => {
   assert.match(retryScheduler, /export const RETRY_GAP = 2/);
   assert.doesNotMatch(drill, /splice\(|eligiblePromptIndex|retryQueue\.push/);
-  assert.doesNotMatch(questionRegistry, /eligiblePromptIndex|retryQueue/);
+  for (const source of [questionRegistry, basicQuestionInteractions, sequenceNumberInteraction, classificationInteraction]) {
+    assert.doesNotMatch(source, /eligiblePromptIndex|retryQueue/);
+  }
 });
 
-test('Question Type Registry owns interactions for Sample A types', () => {
-  assert.match(questionRegistry, /typing:\s*\{/);
-  assert.match(questionRegistry, /mcq:\s*\{/);
-  assert.match(questionRegistry, /true_false:\s*\{/);
-  assert.match(questionRegistry, /sentence_order:\s*\{/);
-  assert.match(questionRegistry, /data-choice-id/);
-  assert.match(questionRegistry, /data-boolean/);
-  assert.match(questionRegistry, /data-order-root/);
+test('Question Type Registry is a thin facade over per-type interaction modules', () => {
+  assert.match(questionRegistry, /basicQuestionDefinitions/);
+  assert.match(questionRegistry, /sequenceNumberDefinition/);
+  assert.match(questionRegistry, /classificationDefinition/);
+  assert.match(basicQuestionInteractions, /typing:\s*\{/);
+  assert.match(basicQuestionInteractions, /mcq:\s*\{/);
+  assert.match(basicQuestionInteractions, /true_false:\s*\{/);
+  assert.match(basicQuestionInteractions, /sentence_order:\s*\{/);
+  assert.match(basicQuestionInteractions, /data-choice-id/);
+  assert.match(basicQuestionInteractions, /data-boolean/);
+  assert.match(basicQuestionInteractions, /data-order-root/);
+  assert.match(sequenceNumberInteraction, /data-sequence-root/);
+  assert.match(classificationInteraction, /data-classification-root/);
+  assert.match(questionInteractionShared, /export function attemptMeta/);
+  assert.doesNotMatch(basicQuestionInteractions, /function attemptMeta/);
+  assert.doesNotMatch(sequenceNumberInteraction, /function attemptMeta/);
+  assert.doesNotMatch(classificationInteraction, /function attemptMeta/);
 });
 
 test('MCQ and sentence-order presentation is deterministic per exposure rather than answer-position SSOT', () => {
-  assert.match(questionRegistry, /orderForExposure/);
+  assert.match(basicQuestionInteractions, /orderForExposure/);
   assert.match(drill, /session\.promptIndex/);
   assert.match(drill, /exposureKey/);
   assert.match(exposureOrder, /hashString/);
@@ -174,8 +229,8 @@ test('direct set entry presents the Mastery contract and dynamic threshold', () 
 });
 
 test('qualification checkpoint offers submit and continue, while extended mode remains submittable', () => {
-  assert.match(drill, /Nộp bài/);
-  assert.match(drill, /Làm tiếp/);
+  assert.match(qualificationView, /Nộp bài/);
+  assert.match(qualificationView, /Làm tiếp/);
   assert.match(sessionMachine, /continueQualifiedSession/);
   assert.match(sessionMachine, /status: 'extended'/);
   assert.match(retryScheduler, /session\.status === 'extended'/);
@@ -190,7 +245,11 @@ test('mastery progress is CSP-safe, accessible and driven by set threshold', () 
   assert.match(masteryProgress, /x1="\$\{target\}"/);
   assert.match(masteryProgress, /width="\$\{before\}"/);
   assert.doesNotMatch(drill, /style=/);
-  assert.doesNotMatch(questionRegistry, /style=/);
+  assert.doesNotMatch(drillFeedback, /style=/);
+  assert.doesNotMatch(qualificationView, /style=/);
+  for (const source of [questionRegistry, basicQuestionInteractions, sequenceNumberInteraction, classificationInteraction]) {
+    assert.doesNotMatch(source, /style=/);
+  }
   assert.doesNotMatch(masteryProgress, /style=/);
 });
 
@@ -216,9 +275,9 @@ test('mastery animation supports gain, loss and reduced-motion users', () => {
 });
 
 test('student feedback distinguishes mastery loss, floor and neutral correction attempts', () => {
-  assert.match(drill, /Mastery không đổi/);
-  assert.match(drill, /Mastery đang ở sàn 0%/);
-  assert.match(drill, /delta < 0/);
+  assert.match(drillFeedback, /Mastery không đổi/);
+  assert.match(drillFeedback, /Mastery đang ở sàn 0%/);
+  assert.match(drillFeedback, /delta < 0/);
 });
 
 test('Session V8 snapshots changed grading semantics while V7 sessions remain resumable', () => {
