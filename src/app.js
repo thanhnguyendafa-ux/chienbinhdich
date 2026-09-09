@@ -15,6 +15,7 @@ import { abandonSession, continueQualifiedSession, createSession, qualifySession
 import { resolveAccessRoute } from './core/accessRouting.js';
 import { buildFixedLessonUrl, buildLegacyAssignmentUrl } from './core/lessonLinks.js';
 import { renderLoading } from './ui/renderLoading.js';
+import { renderPersistenceStatus } from './ui/persistenceStatus.js';
 import { alignTeachingSession, createTeachingPreviewController, resetTeachingSession } from './features/admin/preview/teachingPreviewController.js';
 
 const route = resolveAccessRoute(window.location);
@@ -525,6 +526,9 @@ async function showReport() {
         await showEntry();
       }
     });
+    const refreshPersistenceStatus = () => renderPersistenceStatus(root, sessions.getPersistenceStatus());
+    refreshPersistenceStatus();
+    void sessions.syncNow().then(refreshPersistenceStatus);
   } catch (error) {
     console.error('Report render failed', error);
     moduleCache.delete('report');
