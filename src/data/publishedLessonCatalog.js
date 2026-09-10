@@ -22,6 +22,7 @@ import { g6U2WorkbookFolders, g6U2WorkbookRegistry } from './g6-u2-workbook-cata
 import { g6U2TrapFolders, g6U2TrapRegistry } from './g6-u2-trap-catalog.js';
 import { g6U3WorkbookFolders, g6U3WorkbookRegistry } from './g6-u3-workbook-catalog.js';
 import { g6ReviewU13Folders, g6ReviewU13Registry } from './g6-review-u1-3-catalog.js';
+import { g6PcScaffold32Registry } from './g6-review-u1-3-pc-scaffold-32-catalog.js';
 import { g6WorkbookRemainingFolders, g6WorkbookRemainingRegistry } from './workbooks/g6/index.js';
 import { g6Tier23Folders, g6Tier23Registry } from './g6-tier23-vocab-catalog.js';
 import { g7U1MlhVocabContextFolders, g7U1MlhVocabContextRegistry } from './g7-u1-mlh-vocab-context-catalog.js';
@@ -59,5 +60,5 @@ export const lessonFolders = Object.freeze([
 export const lessonRegistry = Object.freeze([
   ...baseLessonRegistry,...demoMasteryEffortRegistry,...gs23WritingRegistry,...gradedG2WorkbookRegistry,...gradedG3WorkbookRegistry,...g5U1WritingRegistry,...g5U2WritingRegistry,...g5U3WritingRegistry,...g5U4WritingRegistry,...g5U5WritingRegistry,
   ...g5U6WritingRegistry,...g5U7WritingRegistry,...g5U8WritingRegistry,...g5U9WritingRegistry,...g5U10WritingRegistry,
-  ...g5ReviewU15Registry,...gradedG5WorkbookRegistry,...g6U1WritingRegistry,...g6U2WritingRegistry,...g6U2TrapRegistry,...g6ReviewU13Registry,...gradedG6WorkbookRegistry,...g6Tier23Registry,...g7U1MlhVocabContextRegistry,...g6U1MlhReadingGapRegistry,...g6U1MlhWritingRegistry,...g7U1WritingRegistry,...g7U2WritingRegistry,...gradedG7WorkbookRegistry,...g7ReviewU13Registry,...g7Tier23Registry,...gs67SentenceOrderThinkingRegistry
+  ...g5ReviewU15Registry,...gradedG5WorkbookRegistry,...g6U1WritingRegistry,...g6U2WritingRegistry,...g6U2TrapRegistry,...g6ReviewU13Registry,...g6PcScaffold32Registry,...gradedG6WorkbookRegistry,...g6Tier23Registry,...g7U1MlhVocabContextRegistry,...g6U1MlhReadingGapRegistry,...g6U1MlhWritingRegistry,...g7U1WritingRegistry,...g7U2WritingRegistry,...gradedG7WorkbookRegistry,...g7ReviewU13Registry,...g7Tier23Registry,...gs67SentenceOrderThinkingRegistry
 ]);

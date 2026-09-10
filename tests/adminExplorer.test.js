@@ -81,7 +81,7 @@ test('Explorer recursive lesson counts include complete G2 G3 G5 G6 G7 programs'
   assert.equal(folderLessonCount(findAdminTreeNode(tree,'global2')),73);
   assert.equal(folderLessonCount(findAdminTreeNode(tree,'global3')),112);
   assert.equal(folderLessonCount(findAdminTreeNode(tree,'global5')),442);
-  assert.equal(folderLessonCount(findAdminTreeNode(tree,'global6')),460);
+  assert.equal(folderLessonCount(findAdminTreeNode(tree,'global6')),461);
   assert.equal(folderLessonCount(findAdminTreeNode(tree,'global7-unit1')),59);
   assert.equal(folderLessonCount(findAdminTreeNode(tree,'global7-unit1-workbook')),12);
   assert.equal(folderLessonCount(findAdminTreeNode(tree,'global7-unit2')),32);
