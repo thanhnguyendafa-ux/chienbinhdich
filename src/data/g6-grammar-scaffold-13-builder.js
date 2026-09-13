@@ -12,68 +12,35 @@ const TYPING_UI = Object.freeze({
 });
 
 function feedback(answer, reason, scaffoldStage) {
-  return Object.freeze({
-    correctLabel: String(answer),
-    reason: String(reason || ''),
-    theory: `TẦNG SCAFFOLD → ${String(scaffoldStage || '')}`,
-    example: String(answer)
-  });
+  return Object.freeze({ correctLabel: String(answer), reason: String(reason || ''), theory: `TẦNG SCAFFOLD → ${String(scaffoldStage || '')}`, example: String(answer) });
 }
-
-function tokenKey(value) {
-  return String(value ?? '')
-    .trim()
-    .toLocaleLowerCase('en')
-    .replace(/[.!?,;:]+$/g, '')
-    .replace(/\s+/g, ' ');
-}
-
+function tokenKey(value) { return String(value ?? '').trim().toLocaleLowerCase('en').replace(/[.!?,;:]+$/g, '').replace(/\s+/g, ' '); }
 function mapOrderToTokenPool(order = [], tokenPool = []) {
   const buckets = new Map();
-  for (const token of tokenPool) {
-    const key = tokenKey(token);
-    if (!buckets.has(key)) buckets.set(key, []);
-    buckets.get(key).push(String(token));
-  }
+  for (const token of tokenPool) { const key = tokenKey(token); if (!buckets.has(key)) buckets.set(key, []); buckets.get(key).push(String(token)); }
   const used = new Map();
-  return order.map(rawToken => {
-    const key = tokenKey(rawToken);
-    const matches = buckets.get(key) || [];
-    const index = used.get(key) || 0;
-    used.set(key, index + 1);
-    return matches[index] ?? matches[0] ?? String(rawToken);
-  });
+  return order.map(rawToken => { const key = tokenKey(rawToken); const matches = buckets.get(key) || []; const index = used.get(key) || 0; used.set(key, index + 1); return matches[index] ?? matches[0] ?? String(rawToken); });
 }
 
 export function buildScaffoldItem(raw) {
-  const [id, type, subtype, scaffoldStage, prompt, answer, reason, extra] = raw;
+  const [id, type, subtype, scaffoldStage, prompt, answer, reason, extra = {}] = raw;
   if (type === 'mcq') {
-    const choices = (extra?.choices || []).map((text, index) => Object.freeze({ id: `c${index + 1}`, text: String(text) }));
-    return Object.freeze({
-      id, type: 'mcq', prompt, choices: Object.freeze(choices), correctChoiceId: 'c1',
-      scaffoldStage, exerciseKind: subtype, teachingFeedback: feedback(answer, reason, scaffoldStage)
-    });
+    const choices = (extra.choices || []).map((text, index) => Object.freeze({ id: `c${index + 1}`, text: String(text) }));
+    return Object.freeze({ id, type: 'mcq', prompt, choices: Object.freeze(choices), correctChoiceId: 'c1', scaffoldStage, exerciseKind: subtype, teachingFeedback: feedback(answer, reason, scaffoldStage) });
   }
   if (type === 'sentence_order') {
-    const tokenPool = Object.freeze([...(extra?.tokens || extra?.correctOrder || [])].map(String));
-    const correctOrder = Object.freeze(mapOrderToTokenPool(extra?.correctOrder || [], tokenPool));
-    const acceptedOrders = Object.freeze((extra?.acceptedOrders || [extra?.correctOrder || []])
-      .map(order => Object.freeze(mapOrderToTokenPool(order, tokenPool))));
-    return Object.freeze({
-      id, type: 'sentence_order', prompt, tokens: tokenPool, displayOrder: tokenPool,
-      correctOrder, acceptedOrders, scaffoldStage, exerciseKind: subtype,
-      teachingFeedback: feedback(answer, reason, scaffoldStage)
-    });
+    const tokenPool = Object.freeze([...(extra.tokens || extra.correctOrder || [])].map(String));
+    const correctOrder = Object.freeze(mapOrderToTokenPool(extra.correctOrder || [], tokenPool));
+    const acceptedOrders = Object.freeze((extra.acceptedOrders || [extra.correctOrder || []]).map(order => Object.freeze(mapOrderToTokenPool(order, tokenPool))));
+    return Object.freeze({ id, type: 'sentence_order', prompt, tokens: tokenPool, displayOrder: tokenPool, correctOrder, acceptedOrders, scaffoldStage, exerciseKind: subtype, teachingFeedback: feedback(answer, reason, scaffoldStage) });
   }
+  const scoringAnswer = String(extra.scoreAnswer ?? answer);
   return Object.freeze({
-    id, type: 'typing', vi: prompt, en: answer,
-    ...(extra?.acceptedAnswers?.length ? { acceptedAnswers: Object.freeze([...extra.acceptedAnswers]) } : {}),
+    id, type: 'typing', vi: prompt, en: scoringAnswer,
+    ...(extra.acceptedAnswers?.length ? { acceptedAnswers: Object.freeze([...extra.acceptedAnswers]) } : {}),
     ...(subtype === 'mixed_verb_form' ? { typingSeparatorTolerance: true } : {}),
     typingUi: TYPING_UI[subtype] || TYPING_UI.grammar_cloze,
     scaffoldStage, exerciseKind: subtype, teachingFeedback: feedback(answer, reason, scaffoldStage)
   });
 }
-
-export function buildScaffoldContent(rows) {
-  return Object.freeze({ items: Object.freeze(rows.map(buildScaffoldItem)) });
-}
+export function buildScaffoldContent(rows) { return Object.freeze({ items: Object.freeze(rows.map(buildScaffoldItem)) }); }
