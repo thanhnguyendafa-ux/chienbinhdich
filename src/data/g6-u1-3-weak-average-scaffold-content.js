@@ -1,0 +1,15 @@
+const TYPING_UI=Object.freeze({promptLabel:'TỰ LÀM / TYPING',contextLabel:'Câu hỏi / yêu cầu',instruction:'Gõ đáp án tiếng Anh. Viết đúng cấu trúc; app bỏ qua khác biệt viết hoa/dấu câu nhỏ theo cài đặt của Set.',inputLabel:'Đáp án',placeholder:'Type your answer...'});
+const cache=new Map();
+function freeze(value){if(!value||typeof value!=='object'||Object.isFrozen(value))return value;for(const child of Object.values(value))freeze(child);return Object.freeze(value)}
+function feedback(type,row,theory){let correct='';if(type==='m')correct=row[3][row[4]];else if(type==='f')correct=row[3]?'TRUE':'FALSE';else if(type==='t')correct=row[3];else if(type==='o')correct=row[4].join(' ');return freeze({correctLabel:String(correct),reason:String(row[type==='m'?5:type==='f'?4:type==='t'?5:5]),theory:String(theory),example:String(correct)})}
+function inflate(setNo,source){const set=source[String(setNo)];if(!set)throw new Error(`Missing weak-average scaffold source: ${setNo}`);const items=set.rows.map((row,index)=>{const type=row[0],stage=row[1],id=`g6-u13-wa-s${String(setNo).padStart(2,'0')}-q${String(index+1).padStart(2,'0')}`,base={id,scaffoldStage:stage,sourceScaffoldQuestion:`Q${index+1}`,theorySupport:{access:index<4?'anytime':'after_submit'}};if(type==='m'){const choices=row[3].map((text,i)=>({id:`c${i+1}`,text}));return freeze({...base,type:'mcq',prompt:row[2],choices,correctChoiceId:`c${row[4]+1}`,teachingFeedback:feedback(type,row,set.theory)})}if(type==='f')return freeze({...base,type:'true_false',statement:row[2],answer:row[3],teachingFeedback:feedback(type,row,set.theory)});if(type==='t')return freeze({...base,type:'typing',vi:row[2],en:row[3],...(row[4]?.length?{acceptedAnswers:row[4]}:{}),...(row[6]?{typingSeparatorTolerance:true}:{}),typingUi:TYPING_UI,teachingFeedback:feedback(type,row,set.theory)});if(type==='o')return freeze({...base,type:'sentence_order',prompt:row[2],tokens:row[3],displayOrder:row[3],correctOrder:row[4],acceptedOrders:[row[4]],teachingFeedback:feedback(type,row,set.theory)});throw new Error(`Unknown weak-average scaffold row type: ${type}`)});return freeze({items})}
+const loaders=Object.freeze({
+  1:()=>import('./g6-u1-3-weak-average-scaffold-data-01-04.js').then(m=>m.g6WeakAverageSource01_04),
+  2:()=>import('./g6-u1-3-weak-average-scaffold-data-05-08.js').then(m=>m.g6WeakAverageSource05_08),
+  3:()=>import('./g6-u1-3-weak-average-scaffold-data-09-12.js').then(m=>m.g6WeakAverageSource09_12),
+  4:()=>import('./g6-u1-3-weak-average-scaffold-data-13-16.js').then(m=>m.g6WeakAverageSource13_16),
+  5:()=>import('./g6-u1-3-weak-average-scaffold-data-17-20.js').then(m=>m.g6WeakAverageSource17_20),
+  6:()=>import('./g6-u1-3-weak-average-scaffold-data-21-24.js').then(m=>m.g6WeakAverageSource21_24),
+  7:()=>import('./g6-u1-3-weak-average-scaffold-data-25-28.js').then(m=>m.g6WeakAverageSource25_28)
+});
+export async function getG6WeakAverageScaffoldContent(setNo){if(cache.has(setNo))return cache.get(setNo);const bucket=Math.ceil(Number(setNo)/4);const source=await loaders[bucket]();const content=inflate(setNo,source);cache.set(setNo,content);return content}
