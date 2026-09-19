@@ -26,7 +26,7 @@ export const g6U1MixedTestRegistry = Object.freeze(specs.map(spec => Object.free
   unit: 'Unit 1 · My New School',
   title: spec.title,
   subtitle: '25 câu · Dạng đề thật · Giải thích Việt–Anh theo ý nghĩa câu sau Submit',
-  expectedTimeMinutes: 30,
+  expectedTimeMinutes: 20,
   lessonSlug: spec.id,
   passThreshold: 90,
   completionPolicy: 'all-items',
