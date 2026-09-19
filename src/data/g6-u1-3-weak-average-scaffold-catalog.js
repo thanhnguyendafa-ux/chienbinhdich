@@ -238,7 +238,7 @@ const specs = Object.freeze([
     "folderId": "global6-u1-3-wa-scaffold-mistakes",
     "order": 4,
     "title": "Common Mistake – Possessive ’s vs Plural -s",
-    "slug": "g6-u1-3-scaffold-17-possessive-vs-plural",
+    "slug": "g6-u1-3-scaffold-17-possessive-vs-plural-s",
     "activityTypes": [
       "mcq",
       "true_false",
