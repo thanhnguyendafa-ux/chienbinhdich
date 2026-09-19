@@ -24,6 +24,7 @@ import { g6U2TrapFolders, g6U2TrapRegistry } from './g6-u2-trap-catalog.js';
 import { g6U3WorkbookFolders, g6U3WorkbookRegistry } from './g6-u3-workbook-catalog.js';
 import { g6ReviewU13Folders, g6ReviewU13Registry } from './g6-review-u1-3-catalog.js';
 import { g6PcScaffold32Registry } from './g6-review-u1-3-pc-scaffold-32-catalog.js';
+import { g6WeakAverageScaffoldFolders, g6WeakAverageScaffoldRegistry } from './g6-u1-3-weak-average-scaffold-catalog.js';
 import { g6WorkbookRemainingFolders, g6WorkbookRemainingRegistry } from './workbooks/g6/index.js';
 import { g6Tier23Folders, g6Tier23Registry } from './g6-tier23-vocab-catalog.js';
 import { g7U1MlhVocabContextFolders, g7U1MlhVocabContextRegistry } from './g7-u1-mlh-vocab-context-catalog.js';
@@ -78,6 +79,7 @@ export const lessonFolders = Object.freeze([
   ...g6U2TrapFolders,
   ...g6U3WorkbookFolders,
   ...g6ReviewU13Folders,
+  ...g6WeakAverageScaffoldFolders,
   ...g6WorkbookRemainingFolders,
   ...g6Tier23Folders,
   ...g7U1MlhVocabContextFolders,
@@ -117,6 +119,7 @@ export const lessonRegistry = Object.freeze([
   ...g6U2TrapRegistry,
   ...g6ReviewU13Registry,
   ...g6PcScaffold32Registry,
+  ...g6WeakAverageScaffoldRegistry,
   ...gradedG6WorkbookRegistry,
   ...g6Tier23Registry,
   ...g7U1MlhVocabContextRegistry,
