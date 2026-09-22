@@ -3,7 +3,7 @@ import { getG6U2WritingTypingContent } from './g6-u2-writing-typing-content.js';
 
 export const g6U2WritingFolders = Object.freeze([
   Object.freeze({ id: 'global6-unit2', name: 'Unit 2 · My House', description: 'Kho bài Global Success 6 Unit 2 · My House.', parentId: 'global6', order: 2 }),
-  Object.freeze({ id: 'global6-unit2-writing-sentence-builder', name: 'Writing · Sentence Builder', description: '16 mini writing lessons: cue rõ surface form → chunk → sentence part → full target.', parentId: 'global6-unit2', order: 1 }),
+  Object.freeze({ id: 'global6-unit2-writing-sentence-builder', name: 'Writing · Sentence Builder', description: '17 mini writing lessons: cue rõ surface form → chunk → sentence part → full target.', parentId: 'global6-unit2', order: 1 }),
   Object.freeze({ id: 'global6-unit2-writing-s1', name: 'Cấu trúc 1 · Possessive', description: 'Sở hữu trong chính target sentence, không dạy công thức trừu tượng.', parentId: 'global6-unit2-writing-sentence-builder', order: 1 }),
   Object.freeze({ id: 'global6-unit2-writing-s2', name: 'Cấu trúc 2 · Prepositions of Place', description: 'behind / next to với cue xác định article rõ ràng.', parentId: 'global6-unit2-writing-sentence-builder', order: 2 }),
   Object.freeze({ id: 'global6-unit2-writing-s3', name: 'Cấu trúc 3 · There is / There are', description: 'Dựng cảnh và contents của house / bedroom.', parentId: 'global6-unit2-writing-sentence-builder', order: 3 }),
