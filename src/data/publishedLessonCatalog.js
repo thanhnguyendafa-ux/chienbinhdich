@@ -19,6 +19,7 @@ import { g6U1WritingFolders, g6U1WritingRegistry } from './g6-u1-writing-typing-
 import { g6U1WorkbookFolders, g6U1WorkbookRegistry } from './g6-u1-workbook-catalog.js';
 import { g6U1MixedTestFolders, g6U1MixedTestRegistry } from './g6-u1-mixed-tests-catalog.js';
 import { g6U2WritingFolders, g6U2WritingRegistry } from './g6-u2-writing-typing-catalog.js';
+import { g6U2LongSentenceTypingRegistry } from './g6-u2-long-sentence-typing-catalog.js';
 import { g6U2WorkbookFolders, g6U2WorkbookRegistry } from './g6-u2-workbook-catalog.js';
 import { g6U2TrapFolders, g6U2TrapRegistry } from './g6-u2-trap-catalog.js';
 import { g6U3WorkbookFolders, g6U3WorkbookRegistry } from './g6-u3-workbook-catalog.js';
@@ -116,6 +117,7 @@ export const lessonRegistry = Object.freeze([
   ...g6U1WritingRegistry,
   ...g6U1MixedTestRegistry,
   ...g6U2WritingRegistry,
+  ...g6U2LongSentenceTypingRegistry,
   ...g6U2TrapRegistry,
   ...g6ReviewU13Registry,
   ...g6PcScaffold32Registry,
