@@ -4,7 +4,6 @@ import { g6U2WritingPart3 } from './g6-u2-writing-typing-part3.js';
 import { g6U2WritingPart4 } from './g6-u2-writing-typing-part4.js';
 import { g6U2WritingPart5 } from './g6-u2-writing-typing-part5.js';
 import { g6U2WritingPart6 } from './g6-u2-writing-typing-part6.js';
-import { g6U2LongSentenceTyping01Content } from './g6-u2-long-sentence-typing-01.js';
 export { g6U2WritingSource, g6U2WritingSourceById } from './g6-u2-writing-source.js';
 
 export const g6U2WritingTypingContents = Object.freeze({
@@ -13,8 +12,7 @@ export const g6U2WritingTypingContents = Object.freeze({
   ...g6U2WritingPart3,
   ...g6U2WritingPart4,
   ...g6U2WritingPart5,
-  ...g6U2WritingPart6,
-  'long-01': g6U2LongSentenceTyping01Content
+  ...g6U2WritingPart6
 });
 
 export function getG6U2WritingTypingContent(key) {
