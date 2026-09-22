@@ -3,7 +3,7 @@ import { getG6U2WritingTypingContent } from './g6-u2-writing-typing-content.js';
 
 export const g6U2WritingFolders = Object.freeze([
   Object.freeze({ id: 'global6-unit2', name: 'Unit 2 · My House', description: 'Kho bài Global Success 6 Unit 2 · My House.', parentId: 'global6', order: 2 }),
-  Object.freeze({ id: 'global6-unit2-writing-sentence-builder', name: 'Writing · Sentence Builder', description: '17 mini writing lessons: cue rõ surface form → chunk → sentence part → full target.', parentId: 'global6-unit2', order: 1 }),
+  Object.freeze({ id: 'global6-unit2-writing-sentence-builder', name: 'Writing · Sentence Builder', description: '16 mini writing lessons: cue rõ surface form → chunk → sentence part → full target.', parentId: 'global6-unit2', order: 1 }),
   Object.freeze({ id: 'global6-unit2-writing-s1', name: 'Cấu trúc 1 · Possessive', description: 'Sở hữu trong chính target sentence, không dạy công thức trừu tượng.', parentId: 'global6-unit2-writing-sentence-builder', order: 1 }),
   Object.freeze({ id: 'global6-unit2-writing-s2', name: 'Cấu trúc 2 · Prepositions of Place', description: 'behind / next to với cue xác định article rõ ràng.', parentId: 'global6-unit2-writing-sentence-builder', order: 2 }),
   Object.freeze({ id: 'global6-unit2-writing-s3', name: 'Cấu trúc 3 · There is / There are', description: 'Dựng cảnh và contents của house / bedroom.', parentId: 'global6-unit2-writing-sentence-builder', order: 3 }),
@@ -40,7 +40,7 @@ const safeTitleKeywordsByOrder = Object.freeze({
   16: 'phòng khách · lý do'
 });
 
-const baseG6U2WritingRegistry = g6U2WritingSource.map(source => {
+export const g6U2WritingRegistry = Object.freeze(g6U2WritingSource.map(source => {
   const key = String(source.order).padStart(2, '0');
   const itemCount = getG6U2WritingTypingContent(key).items.length;
   const safeTitleKeywords = safeTitleKeywordsByOrder[source.order];
@@ -67,33 +67,4 @@ const baseG6U2WritingRegistry = g6U2WritingSource.map(source => {
     targetSentenceId: source.id,
     loadContent: () => import('./g6-u2-writing-typing-content.js').then(module => module.getG6U2WritingTypingContent(key))
   });
-});
-
-const longSentence01Content = getG6U2WritingTypingContent('long-01');
-
-export const g6U2WritingRegistry = Object.freeze([
-  ...baseG6U2WritingRegistry,
-  Object.freeze({
-    id: 'g6-u2-writing-long-01',
-    folderId: 'global6-unit2-writing-s4',
-    order: 17,
-    version: 1,
-    course: 'Global Success 6',
-    unit: 'Unit 2 · My House',
-    title: '17 · Câu dài · HAS + vị trí',
-    subtitle: 'Typing · Nhìn câu đích → CHUNK NGẮN → GHÉP CHỒNG → FULL SENTENCE',
-    expectedTimeMinutes: 12,
-    difficulty: 'hard',
-    lessonSlug: 'g6u2-long-sentence-typing-01',
-    passThreshold: 100,
-    completionPolicy: 'all-items',
-    typingTolerance: false,
-    effortPassEnabled: false,
-    teacher: 'Thầy Thành MRT',
-    description: '13 lượt Typing: xem trước một câu đích Unit 2 rồi ẩn mẫu; gõ cụm 2–3 từ, tăng dần bằng các đoạn chồng lấn và kết thúc bằng đúng toàn câu.',
-    activityTypes: Object.freeze(['typing']),
-    itemCount: longSentence01Content.items.length,
-    targetSentenceId: 'g6u2-wr-t09',
-    loadContent: () => import('./g6-u2-writing-typing-content.js').then(module => module.getG6U2WritingTypingContent('long-01'))
-  })
-]);
+}));
